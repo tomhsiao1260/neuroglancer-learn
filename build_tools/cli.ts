@@ -18,11 +18,17 @@ import process from "node:process";
 import yargs from "yargs";
 
 function parseArgs() {
-  const instance = yargs(process.argv.slice(2))
-  console.log(process.argv.slice(2))
-  console.log(instance)
-
-  return instance
+  return yargs(process.argv.slice(2))
+    .command({
+      command: "serve",
+      describe: "Run the development server.",
+      builder: (parser) => console.log('builder here'),
+      handler: async (argv) => console.log('handler here'),
+    })
+    .strict()
+    .version(false)
+    .help()
+    .parse();
 }
 
 async function parseArgsAndRunMain() {
