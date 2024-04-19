@@ -25,19 +25,22 @@ function parseArgs() {
       describe: "Run the development server.",
       builder: (parser) =>
         parser.options({
-          output: {
-            group: "Build options",
+          mode: {
+            default: "development",
+          },
+          port: {
+            group: "Development server options",
+            type: "number",
+            nargs: 1,
+            default: 8080,
+            description: "Port number for the development server",
+          },
+          host: {
+            group: "Development server options",
             type: "string",
             nargs: 1,
-            description: "Output directory.",
-          },
-          watch: {
-            type: "boolean",
-            default: false,
-            description: "Watch for changes.",
-          },
-          mode: {
-            default: "production",
+            description: "Specifies bind address for development server.",
+            default: "localhost",
           },
         }),
       handler: async (argv) => {
