@@ -16,14 +16,33 @@
 
 import process from "node:process";
 import yargs from "yargs";
+import { setConfig } from "./webpack/webpack_config_from_cli.cjs";
 
 function parseArgs() {
   return yargs(process.argv.slice(2))
     .command({
       command: "serve",
       describe: "Run the development server.",
-      builder: (parser) => console.log('builder here'),
-      handler: async (argv) => console.log('handler here'),
+      builder: (parser) =>
+        parser.options({
+          output: {
+            group: "Build options",
+            type: "string",
+            nargs: 1,
+            description: "Output directory.",
+          },
+          watch: {
+            type: "boolean",
+            default: false,
+            description: "Watch for changes.",
+          },
+          mode: {
+            default: "production",
+          },
+        }),
+      handler: async (argv) => {
+        console.log(argv)
+      }
     })
     .strict()
     .version(false)
