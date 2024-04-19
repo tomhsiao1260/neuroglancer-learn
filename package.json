@@ -1,0 +1,19 @@
+{
+  "name": "neuroglancer",
+  "description": "Visualization tool for 3-D volumetric data.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/google/neuroglancer.git"
+  },
+  "engines": {
+    "node": ">=20.10 <21 || >=21.2"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions"
+  ],
+  "scripts": {
+    "dev-server": "node --version"
+  }
+}
