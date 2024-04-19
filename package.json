@@ -14,6 +14,11 @@
     "last 2 Safari versions"
   ],
   "scripts": {
-    "dev-server": "node --version"
+    "dev-server": "tsx ./build_tools/cli.ts serve"
+  },
+  "type": "module",
+  "dependencies": {
+    "tsx": "^4.7.2",
+    "typescript": "^5.4.5"
   }
 }
