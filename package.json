@@ -14,7 +14,7 @@
     "last 2 Safari versions"
   ],
   "scripts": {
-    "start": "webpack serve",
+    "start": "webpack serve --mode developement",
     "dev-server": "tsx ./build_tools/cli.ts serve"
   },
   "type": "module",

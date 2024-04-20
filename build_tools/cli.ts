@@ -15,10 +15,21 @@
  */
 
 import process from "node:process";
+import webpackCli from "webpack-cli/lib/bootstrap.js"; // eslint-disable-line import/default
 import yargs from "yargs";
 
 async function getWebpackConfig(argv, ...extraConfigs){
   console.log(argv, extraConfigs)
+}
+
+async function runWebpack(...args: string[]) {
+  // @ts-expect-error: no typings available
+  console.log('webpack-cli input: ', [...process.argv.slice(0, 2), ...args ])
+
+  await webpackCli([
+    ...process.argv.slice(0, 2),
+    ...args,
+  ]);
 }
 
 function parseArgs() {
@@ -47,7 +58,7 @@ function parseArgs() {
           },
         }),
       handler: async (argv) => {
-        console.log(argv)
+        await runWebpack("serve", `--mode=${argv.mode}`);
       }
     })
     .strict()
