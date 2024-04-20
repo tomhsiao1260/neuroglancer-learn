@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-import "#src/ui/default_viewer.css";
-import { makeMinimalViewer } from "#src/ui/minimal_viewer.js";
+import { DisplayContext } from "#src/display_context.js";
+import { Viewer } from "#src/viewer.js";
 
-export function makeDefaultViewer(options) {
-  return makeMinimalViewer(options);
+export function makeMinimalViewer(options) {
+  const target = document.createElement("div");
+  target.id = "neuroglancer-container";
+  document.body.appendChild(target);
+
+  const display = new DisplayContext(target);
+  return new Viewer(display, options);
 }

@@ -10,7 +10,18 @@ export default (env, args) => {
     },
     devtool: "source-map",
     module: {
-      rules: [],
+      rules: [
+        // Necessary to handle CSS files.
+        {
+          test: /\.css$/,
+          use: [
+            {
+              loader: "style-loader",
+            },
+            { loader: "css-loader" },
+          ],
+        },
+      ],
     },
     devServer: {
       client: {

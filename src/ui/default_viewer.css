@@ -14,9 +14,25 @@
  * limitations under the License.
  */
 
-import "#src/ui/default_viewer.css";
-import { makeMinimalViewer } from "#src/ui/minimal_viewer.js";
+html,
+body {
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+  color: white;
+}
 
-export function makeDefaultViewer(options) {
-  return makeMinimalViewer(options);
+body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#neuroglancer-container {
+  width: 100vw;
+  overflow: hidden;
+  flex: 1;
 }
