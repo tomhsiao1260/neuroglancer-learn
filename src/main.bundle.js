@@ -1,1 +1,1 @@
-console.log('Hello JS World')
+import "#main";

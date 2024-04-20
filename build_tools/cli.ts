@@ -24,8 +24,6 @@ async function getWebpackConfig(argv, ...extraConfigs){
 
 async function runWebpack(...args: string[]) {
   // @ts-expect-error: no typings available
-  console.log('webpack-cli input: ', [...process.argv.slice(0, 2), ...args ])
-
   await webpackCli([
     ...process.argv.slice(0, 2),
     ...args,
