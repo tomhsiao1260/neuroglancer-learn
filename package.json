@@ -19,6 +19,8 @@
   },
   "type": "module",
   "imports": {
+    "#src/*.js": "./src/*.ts",
+    "#src/*": "./src/*",
     "#main": {
       "default": "./src/main.ts"
     }

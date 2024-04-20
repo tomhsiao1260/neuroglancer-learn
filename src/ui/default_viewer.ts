@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-/**
- * @file Main entry point for default neuroglancer viewer.
- */
-import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
-
-setupDefaultViewer();
+export function makeDefaultViewer(options) {
+  const target = document.createElement("div");
+  target.id = "neuroglancer-container";
+  document.body.appendChild(target);
+}
