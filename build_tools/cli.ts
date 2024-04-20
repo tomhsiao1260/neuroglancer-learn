@@ -16,7 +16,10 @@
 
 import process from "node:process";
 import yargs from "yargs";
-import { setConfig } from "./webpack/webpack_config_from_cli.cjs";
+
+async function getWebpackConfig(argv, ...extraConfigs){
+  console.log(argv, extraConfigs)
+}
 
 function parseArgs() {
   return yargs(process.argv.slice(2))
