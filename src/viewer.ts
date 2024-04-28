@@ -691,12 +691,12 @@ export class Viewer extends RefCounted implements ViewerState {
       new SidePanelManager(this.display, this.layout.element, this.visibility),
     );
 
-    // this.registerDisposer(
-    //   new LayerSidePanelManager(
-    //     this.sidePanelManager,
-    //     this.selectedLayer.addRef(),
-    //   ),
-    // );
+    this.registerDisposer(
+      new LayerSidePanelManager(
+        this.sidePanelManager,
+        this.selectedLayer.addRef(),
+      ),
+    );
 
     gridContainer.appendChild(this.sidePanelManager.element);
   }
