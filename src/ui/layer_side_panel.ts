@@ -140,94 +140,7 @@ class LayerSidePanel extends SidePanel {
     super(sidePanelManager, panelState.location);
     const layer = (this.layer = panelState.layer);
     const { element } = this;
-    const { titleBar } = this.addTitleBar({});
-    titleBar.classList.add("neuroglancer-layer-side-panel-title");
-    titleBar.appendChild(
-      this.registerDisposer(new LayerTypeWidget(layer)).element,
-    );
-    titleBar.appendChild(
-      this.registerDisposer(new LayerNameWidget(layer.managedLayer)).element,
-    );
-    this.registerDisposer(
-      observeWatchable(
-        (visible) => {
-          element.dataset.neuroglancerLayerVisible = visible.toString();
-        },
-        {
-          get value() {
-            return layer.managedLayer.visible;
-          },
-          changed: layer.managedLayer.layerChanged,
-        },
-      ),
-    );
-    const pickButton = this.registerDisposer(
-      new CheckboxIcon(
-        {
-          get value() {
-            return layer.managedLayer.pickEnabled;
-          },
-          set value(value: boolean) {
-            layer.managedLayer.pickEnabled = value;
-          },
-          changed: layer.managedLayer.layerChanged,
-        },
-        {
-          svg: svg_cursor,
-          enableTitle: "Spatial object selection: disabled",
-          disableTitle: "Spatial object selection: enabled",
-        },
-      ),
-    );
-    this.registerDisposer(
-      new ElementVisibilityFromTrackableBoolean(
-        {
-          get value() {
-            return layer.managedLayer.supportsPickOption;
-          },
-          changed: layer.managedLayer.layerChanged,
-        },
-        pickButton.element,
-      ),
-    );
-    titleBar.appendChild(pickButton.element);
-    const pinWatchable = {
-      get value() {
-        return panelState !== layer.panels.panels[0];
-      },
-      set value(value: boolean) {
-        if (value) {
-          panelState.pin();
-        } else {
-          panelState.unpin();
-        }
-      },
-      changed: layer.manager.root.layerManager.layersChanged,
-    };
-    titleBar.appendChild(
-      this.registerDisposer(
-        new CheckboxIcon(pinWatchable, {
-          // Note: \ufe0e forces text display, as otherwise the pin icon
-          // may as an emoji with color.
-          text: "📌\ufe0e",
-          enableTitle: "Pin panel to this layer",
-          disableTitle: "Unpin panel to this layer",
-        }),
-      ).element,
-    );
-    this.registerDisposer(
-      observeWatchable((pinned) => {
-        element.dataset.neuroglancerLayerPanelPinned = pinned.toString();
-      }, pinWatchable),
-    );
-    titleBar.appendChild(
-      makeDeleteButton({
-        title: "Delete layer",
-        onClick: () => {
-          deleteLayer(this.layer.managedLayer);
-        },
-      }),
-    );
+
     this.tabView = new TabView(
       {
         makeTab: (id) => layer.tabs.options.get(id)!.getter(),
@@ -247,75 +160,8 @@ class LayerSidePanel extends SidePanel {
             changed: panelState.tabsChanged,
           }),
         ),
-        handleTabElement: (id: string, element: HTMLElement) => {
-          element.draggable = true;
-          element.addEventListener("dragstart", (event: DragEvent) => {
-            event.stopPropagation();
-            event.dataTransfer!.setData("neuroglancer-side-panel", "");
-            let message =
-              "Drag tab to dock as new panel to the left/right/top/bottom of another panel";
-            const hasOtherPanel = panelState.panels.panels.find(
-              (p) => p !== panelState && p.location.visible,
-            );
-            if (hasOtherPanel) {
-              message += `, or move tab to other ${JSON.stringify(
-                layer.managedLayer.name,
-              )} panel`;
-            }
-            pushDragStatus(element, "drag", message);
-            this.sidePanelManager.startDrag(
-              {
-                dropAsNewPanel: (location) => {
-                  this.panelState.splitOffTab(id, {
-                    ...LAYER_SIDE_PANEL_DEFAULT_LOCATION,
-                    ...location,
-                  });
-                },
-                canDropAsTabs: (target) => {
-                  if (
-                    target instanceof LayerSidePanel &&
-                    target.layer === this.layer &&
-                    target !== this
-                  ) {
-                    return 1;
-                  }
-                  return 0;
-                },
-                dropAsTab: (target) => {
-                  this.panelState.moveTabTo(
-                    id,
-                    (target as LayerSidePanel).panelState,
-                  );
-                },
-              },
-              event,
-            );
-          });
-          element.addEventListener("dragend", (event: DragEvent) => {
-            event;
-            popDragStatus(element, "drag");
-            this.sidePanelManager.endDrag();
-          });
-        },
       },
       this.visibility,
-    );
-    this.tabView.element.style.flex = "1";
-    this.tabView.element.classList.add(
-      "neuroglancer-layer-side-panel-tab-view",
-    );
-    this.tabView.element.style.position = "relative";
-    this.tabView.element.appendChild(this.makeTabDropZone());
-    this.addBody(this.tabView.element);
-
-    // Hide panel automatically if there are no tabs to display (because they have all been moved to
-    // another panel).
-    this.registerDisposer(
-      panelState.tabsChanged.add(() => {
-        if (panelState.tabs.length === 0) {
-          this.location.visible = false;
-        }
-      }),
     );
   }
 
@@ -337,47 +183,6 @@ class LayerSidePanel extends SidePanel {
       },
     };
   }
-
-  private makeTabDropZone() {
-    const element = document.createElement("div");
-    element.className = "neuroglancer-side-panel-drop-zone";
-    element.style.position = "absolute";
-    element.style.left = "20px";
-    element.style.right = "20px";
-    element.style.bottom = "20px";
-    element.style.top = "20px";
-    element.addEventListener("dragenter", (event) => {
-      const { dragSource } = this.sidePanelManager;
-      const numTabs = dragSource?.canDropAsTabs?.(this);
-      if (!numTabs) return;
-      element.classList.add(DRAG_OVER_CLASSNAME);
-      pushDragStatus(
-        element,
-        "drop",
-        `Move ${numTabs} ${numTabs === 1 ? "tab" : "tabs"} to this panel`,
-      );
-      event.preventDefault();
-    });
-    element.addEventListener("dragleave", () => {
-      popDragStatus(element, "drop");
-      element.classList.remove(DRAG_OVER_CLASSNAME);
-    });
-    element.addEventListener("dragover", (event) => {
-      const { dragSource } = this.sidePanelManager;
-      if (!dragSource?.canDropAsTabs?.(this)) return;
-      event.preventDefault();
-    });
-    element.addEventListener("drop", (event) => {
-      popDragStatus(element, "drop");
-      const { dragSource } = this.sidePanelManager;
-      if (!dragSource?.canDropAsTabs?.(this)) return;
-      element.classList.remove(DRAG_OVER_CLASSNAME);
-      dragSource.dropAsTab!(this);
-      event.preventDefault();
-      event.stopPropagation();
-    });
-    return element;
-  }
 }
 
 export class LayerSidePanelManager extends RefCounted {
@@ -392,26 +197,32 @@ export class LayerSidePanelManager extends RefCounted {
     public sidePanelManager: SidePanelManager,
     public selectedLayerState: SelectedLayerState,
   ) {
+    // constructor(public selectedLayerState: SelectedLayerState) {
     super();
-    const handleUpdate = () => {
-      this.layersNeedUpdate = true;
-      this.sidePanelManager.display.scheduleRedraw();
-    };
-    this.registerDisposer(selectedLayerState.changed.add(handleUpdate));
-    this.registerDisposer(
-      selectedLayerState.layerManager.layersChanged.add(handleUpdate),
-    );
-    this.registerDisposer(
-      sidePanelManager.beforeRender.add(() => this.update()),
-    );
+    // const handleUpdate = () => {
+    //   this.layersNeedUpdate = true;
+    //   this.sidePanelManager.display.scheduleRedraw();
+    // };
+    // this.registerDisposer(selectedLayerState.changed.add(handleUpdate));
+    // this.registerDisposer(
+    //   selectedLayerState.layerManager.layersChanged.add(handleUpdate),
+    // );
+    // this.registerDisposer(
+    //   sidePanelManager.beforeRender.add(() => this.update()),
+    // );
+    this.layersNeedUpdate = true;
+    this.update();
   }
 
   private getSelectedUserLayer() {
     return this.selectedLayerState.layer?.layer ?? undefined;
   }
 
-  private update() {
+  private async update() {
     if (!this.layersNeedUpdate) return;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    });
     const { layerManager } = this.selectedLayerState;
     const generation = ++this.generation;
     this.layersNeedUpdate = false;
@@ -438,36 +249,36 @@ export class LayerSidePanelManager extends RefCounted {
       const layer = this.getSelectedUserLayer();
       const { location } = this.selectedLayerState;
       if (layer === undefined || !location.visible) {
-        if (this.placeholderSelectedLayerPanel === undefined) {
-          this.placeholderSelectedLayerPanel =
-            this.sidePanelManager.registerPanel({
-              location,
-              makePanel: () => new SidePanel(this.sidePanelManager, location),
-            });
-        }
+        // if (this.placeholderSelectedLayerPanel === undefined) {
+        //   this.placeholderSelectedLayerPanel =
+        //     this.sidePanelManager.registerPanel({
+        //       location,
+        //       makePanel: () => new SidePanel(this.sidePanelManager, location),
+        //     });
+        // }
       } else {
-        this.placeholderSelectedLayerPanel?.();
-        this.placeholderSelectedLayerPanel = undefined;
+        // this.placeholderSelectedLayerPanel?.();
+        // this.placeholderSelectedLayerPanel = undefined;
         const panelState = layer.panels.panels[0];
         panelState.location.value = location.value;
         ensurePanel(panelState);
       }
     }
 
-    // Add extra layer panels
-    for (const layer of layerManager.managedLayers) {
-      const userLayer = layer.layer;
-      if (userLayer === null) continue;
-      const { panels } = userLayer.panels;
-      for (let i = 1, length = panels.length; i < length; ++i) {
-        ensurePanel(panels[i]);
-      }
-    }
-    for (const [panelState, existing] of layerSidePanels) {
-      if (existing.generation === generation) continue;
-      existing.unregister();
-      layerSidePanels.delete(panelState);
-    }
+    // // Add extra layer panels
+    // for (const layer of layerManager.managedLayers) {
+    //   const userLayer = layer.layer;
+    //   if (userLayer === null) continue;
+    //   const { panels } = userLayer.panels;
+    //   for (let i = 1, length = panels.length; i < length; ++i) {
+    //     ensurePanel(panels[i]);
+    //   }
+    // }
+    // for (const [panelState, existing] of layerSidePanels) {
+    //   if (existing.generation === generation) continue;
+    //   existing.unregister();
+    //   layerSidePanels.delete(panelState);
+    // }
   }
 
   disposed() {

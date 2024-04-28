@@ -93,25 +93,25 @@ export class SidePanel extends RefCounted {
   ) {
     super();
     const { element } = this;
-    element.classList.add("neuroglancer-side-panel");
-    element.draggable = true;
-    element.addEventListener("dragstart", (event: DragEvent) => {
-      this.sidePanelManager.startDrag(this.makeDragSource(), event);
-      element.style.backgroundColor = "black";
-      setTimeout(() => {
-        element.style.backgroundColor = "";
-      }, 0);
-      pushDragStatus(element, "drag", () => {
-        return document.createTextNode(
-          "Drag side panel to move it to the left/right/top/bottom of another panel",
-        );
-      });
-    });
-    element.addEventListener("dragend", (event: DragEvent) => {
-      event;
-      this.sidePanelManager.endDrag();
-      popDragStatus(element, "drag");
-    });
+    // element.classList.add("neuroglancer-side-panel");
+    // element.draggable = true;
+    // element.addEventListener("dragstart", (event: DragEvent) => {
+    //   this.sidePanelManager.startDrag(this.makeDragSource(), event);
+    //   element.style.backgroundColor = "black";
+    //   setTimeout(() => {
+    //     element.style.backgroundColor = "";
+    //   }, 0);
+    //   pushDragStatus(element, "drag", () => {
+    //     return document.createTextNode(
+    //       "Drag side panel to move it to the left/right/top/bottom of another panel",
+    //     );
+    //   });
+    // });
+    // element.addEventListener("dragend", (event: DragEvent) => {
+    //   event;
+    //   this.sidePanelManager.endDrag();
+    //   popDragStatus(element, "drag");
+    // });
   }
 
   makeDragSource(): DragSource {
@@ -246,7 +246,7 @@ export class SidePanelManager extends RefCounted {
         ++display.resizeGeneration;
       }),
     );
-    this.registerDisposer(this.visibility.changed.add(this.invalidateLayout));
+    // this.registerDisposer(this.visibility.changed.add(this.invalidateLayout));
   }
   private makeSidePanelSideState(side: Side): SidePanelSideState {
     return {
