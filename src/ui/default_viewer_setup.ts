@@ -1,5 +1,28 @@
-import { makeDefaultViewer } from "#src/ui/default_viewer.js";
+/**
+ * @license
+ * Copyright 2016 Google Inc.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-export function setupDefaultViewer(options) {
-    makeDefaultViewer(options);
+import { setDefaultInputEventBindings } from "#src/ui/default_input_event_bindings.js";
+import { makeDefaultViewer } from "#src/ui/default_viewer.js";
+import type { MinimalViewerOptions } from "#src/ui/minimal_viewer.js";
+
+/**
+ * Sets up the default neuroglancer viewer.
+ */
+export function setupDefaultViewer(options?: Partial<MinimalViewerOptions>) {
+  // const viewer = ((<any>window).viewer = makeDefaultViewer(options));
+  makeDefaultViewer(options);
+  // setDefaultInputEventBindings(viewer.inputEventBindings);
 }
