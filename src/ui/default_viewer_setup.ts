@@ -22,7 +22,7 @@ import type { MinimalViewerOptions } from "#src/ui/minimal_viewer.js";
  * Sets up the default neuroglancer viewer.
  */
 export function setupDefaultViewer(options?: Partial<MinimalViewerOptions>) {
-  // const viewer = ((<any>window).viewer = makeDefaultViewer(options));
-  makeDefaultViewer(options);
-  // setDefaultInputEventBindings(viewer.inputEventBindings);
+  const viewer = ((<any>window).viewer = makeDefaultViewer(options));
+  // makeDefaultViewer(options);
+  setDefaultInputEventBindings(viewer.inputEventBindings);
 }

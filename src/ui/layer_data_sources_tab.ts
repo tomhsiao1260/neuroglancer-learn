@@ -382,10 +382,11 @@ export class DataSourceView extends RefCounted {
   }
 }
 
-async function changeLayerTypeToDetected(userLayer: UserLayer) {
+export async function changeLayerTypeToDetected(userLayer: UserLayer) {
   await new Promise((resolve) => {
     setTimeout(resolve, 1000);
   });
+
   if (userLayer instanceof NewUserLayer) {
     const layerConstructor = userLayer.detectedLayerConstructor;
     if (layerConstructor !== undefined) {
@@ -410,44 +411,11 @@ export class LayerDataSourcesTab extends Tab {
   constructor(public layer: Borrowed<UserLayer>) {
     super();
     const { element, dataSourcesContainer } = this;
-    element.classList.add("neuroglancer-layer-data-sources-tab");
-    dataSourcesContainer.classList.add(
-      "neuroglancer-layer-data-sources-container",
-    );
-    const { addDataSourceIcon } = this;
-    addDataSourceIcon.style.alignSelf = "start";
-    addDataSourceIcon.addEventListener("click", () => {
-      const layerDataSource = this.layer.addDataSource(undefined);
-      this.updateView();
-      const view = this.sourceViews.get(layerDataSource);
-      if (view === undefined) return;
-      view.urlInput.inputElement.focus();
-    });
-    element.appendChild(this.dataSourcesContainer);
     if (layer instanceof NewUserLayer) {
-      const { layerTypeDetection, layerTypeElement } = this;
-      layerTypeDetection.style.display = "none";
-      layerTypeElement.classList.add(
-        "neuroglancer-layer-data-sources-tab-type-detection-type",
-      );
-      layerTypeDetection.appendChild(document.createTextNode("Create as "));
-      layerTypeDetection.appendChild(layerTypeElement);
-      layerTypeDetection.appendChild(document.createTextNode(" layer"));
-      element.appendChild(layerTypeDetection);
-      layerTypeDetection.classList.add(
-        "neuroglancer-layer-data-sources-tab-type-detection",
-      );
-      changeLayerTypeToDetected(layer);
-      layerTypeDetection.addEventListener("click", () => {
-        changeLayerTypeToDetected(layer);
-      });
+      console.log("layer", layer);
+      // personal mark
+      // changeLayerTypeToDetected(layer);
     }
-    const reRender = (this.reRender = animationFrameDebounce(() =>
-      this.updateView(),
-    ));
-    this.registerDisposer(layer.dataSourcesChanged.add(reRender));
-    this.registerDisposer(this.visibility.changed.add(reRender));
-    this.updateView();
   }
 
   detectedLayerConstructor: UserLayerConstructor | undefined = undefined;

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { changeLayerTypeToDetected } from "#src/ui/layer_data_sources_tab.js";
+
 import "#src/viewer.css";
 import "#src/ui/layer_data_sources_tab.js";
 import "#src/noselect.css";
@@ -659,6 +661,19 @@ export class Viewer extends RefCounted implements ViewerState {
     );
 
     this.makeUI();
+
+    this.poc();
+  }
+
+  private async poc() {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    });
+
+    const layer = this.layerManager.managedLayers[0].layer;
+    if (layer === null) return;
+
+    changeLayerTypeToDetected(layer);
   }
 
   private updateShowBorders() {
@@ -691,12 +706,12 @@ export class Viewer extends RefCounted implements ViewerState {
       new SidePanelManager(this.display, this.layout.element, this.visibility),
     );
 
-    this.registerDisposer(
-      new LayerSidePanelManager(
-        this.sidePanelManager,
-        this.selectedLayer.addRef(),
-      ),
-    );
+    // this.registerDisposer(
+    //   new LayerSidePanelManager(
+    //     this.sidePanelManager,
+    //     this.selectedLayer.addRef(),
+    //   ),
+    // );
 
     gridContainer.appendChild(this.sidePanelManager.element);
   }
