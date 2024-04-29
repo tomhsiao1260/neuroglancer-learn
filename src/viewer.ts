@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { changeLayerTypeToDetected } from "#src/ui/layer_data_sources_tab.js";
+import { changeLayerType, NewUserLayer } from "#src/layer/index.js";
 
 import "#src/viewer.css";
-import "#src/ui/layer_data_sources_tab.js";
+// import "#src/ui/layer_data_sources_tab.js";
 import "#src/noselect.css";
 import svg_controls_alt from "ikonate/icons/controls-alt.svg?raw";
 import svg_layers from "ikonate/icons/layers.svg?raw";
@@ -673,7 +673,22 @@ export class Viewer extends RefCounted implements ViewerState {
     const layer = this.layerManager.managedLayers[0].layer;
     if (layer === null) return;
 
-    changeLayerTypeToDetected(layer);
+    this.changeLayerTypeToDetected(layer);
+  }
+
+  private async changeLayerTypeToDetected(userLayer: UserLayer) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    });
+
+    if (userLayer instanceof NewUserLayer) {
+      const layerConstructor = userLayer.detectedLayerConstructor;
+      if (layerConstructor !== undefined) {
+        changeLayerType(userLayer.managedLayer, layerConstructor);
+        return true;
+      }
+    }
+    return false;
   }
 
   private updateShowBorders() {
