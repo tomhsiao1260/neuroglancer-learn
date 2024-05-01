@@ -17,7 +17,6 @@
 import { changeLayerType, NewUserLayer } from "#src/layer/index.js";
 
 import "#src/viewer.css";
-// import "#src/ui/layer_data_sources_tab.js";
 import "#src/noselect.css";
 import svg_controls_alt from "ikonate/icons/controls-alt.svg?raw";
 import svg_layers from "ikonate/icons/layers.svg?raw";
@@ -537,23 +536,23 @@ export class Viewer extends RefCounted implements ViewerState {
     options: Partial<ViewerOptions> = {},
   ) {
     super();
+    // const options = {};
 
-    const {
-      dataContext = new DataManagementContext(display.gl, display),
-      visibility = new WatchableVisibilityPriority(
-        WatchableVisibilityPriority.VISIBLE,
-      ),
-      inputEventBindings = {
-        global: new EventActionMap(),
-        sliceView: new EventActionMap(),
-        perspectiveView: new EventActionMap(),
-      },
-      element = display.makeCanvasOverlayElement(),
-      dataSourceProvider = getDefaultDataSourceProvider({
-        credentialsManager: defaultCredentialsManager,
-      }),
-      uiConfiguration = makeViewerUIConfiguration(),
-    } = options;
+    const dataContext = new DataManagementContext(display.gl, display);
+    const visibility = new WatchableVisibilityPriority(
+      WatchableVisibilityPriority.VISIBLE,
+    );
+    const inputEventBindings = {
+      global: new EventActionMap(),
+      sliceView: new EventActionMap(),
+      perspectiveView: new EventActionMap(),
+    };
+    const element = display.makeCanvasOverlayElement();
+    const dataSourceProvider = getDefaultDataSourceProvider({
+      credentialsManager: defaultCredentialsManager,
+    });
+    const uiConfiguration = makeViewerUIConfiguration();
+
     this.visibility = visibility;
     this.inputEventBindings = inputEventBindings;
     this.element = element;
@@ -605,14 +604,6 @@ export class Viewer extends RefCounted implements ViewerState {
       }),
     );
 
-    this.showDefaultAnnotations.changed.add(() => {
-      if (this.showDefaultAnnotations.value) {
-        this.visibleLayerRoles.add(RenderLayerRole.DEFAULT_ANNOTATION);
-      } else {
-        this.visibleLayerRoles.delete(RenderLayerRole.DEFAULT_ANNOTATION);
-      }
-    });
-
     this.registerDisposer(
       this.navigationState.changed.add(() => {
         this.handleNavigationStateChanged();
@@ -661,7 +652,6 @@ export class Viewer extends RefCounted implements ViewerState {
     );
 
     this.makeUI();
-
     this.poc();
   }
 

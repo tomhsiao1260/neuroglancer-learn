@@ -24,10 +24,11 @@ export interface MinimalViewerOptions extends ViewerOptions {
   target: HTMLElement;
 }
 
+// export function makeMinimalViewer() {
 export function makeMinimalViewer(options: Partial<MinimalViewerOptions> = {}) {
   const target = document.createElement("div");
   target.id = "neuroglancer-container";
   document.body.appendChild(target);
   const display = new DisplayContext(target);
-  return new Viewer(display, options);
+  return new Viewer(display, {});
 }
