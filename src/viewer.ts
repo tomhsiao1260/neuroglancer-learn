@@ -18,10 +18,6 @@ import { changeLayerType, NewUserLayer } from "#src/layer/index.js";
 
 import "#src/viewer.css";
 import "#src/noselect.css";
-import svg_controls_alt from "ikonate/icons/controls-alt.svg?raw";
-import svg_layers from "ikonate/icons/layers.svg?raw";
-import svg_list from "ikonate/icons/list.svg?raw";
-import svg_settings from "ikonate/icons/settings.svg?raw";
 import { debounce } from "lodash-es";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
@@ -37,13 +33,9 @@ import { defaultCredentialsManager } from "#src/credentials_provider/default_man
 import { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
-import { StateShare, stateShareEnabled } from "#src/datasource/state_share.js";
 import type { DisplayContext } from "#src/display_context.js";
 import { TrackableWindowedViewport } from "#src/display_context.js";
-import {
-  HelpPanelState,
-  InputEventBindingHelpDialog,
-} from "#src/help/input_event_bindings.js";
+import { HelpPanelState } from "#src/help/input_event_bindings.js";
 import {
   addNewLayer,
   LayerManager,
@@ -88,9 +80,6 @@ import {
   LayerListPanel,
   LayerListPanelState,
 } from "#src/ui/layer_list_panel.js";
-import { LayerSidePanelManager } from "#src/ui/layer_side_panel.js";
-import { setupPositionDropHandlers } from "#src/ui/position_drag_and_drop.js";
-import { SelectionDetailsPanel } from "#src/ui/selection_details.js";
 import { SidePanelManager } from "#src/ui/side_panel.js";
 import { StateEditorDialog } from "#src/ui/state_editor.js";
 import { StatisticsDisplayState, StatisticsPanel } from "#src/ui/statistics.js";
@@ -129,9 +118,6 @@ import type {
 } from "#src/viewer_state.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import { AnnotationToolStatusWidget } from "#src/widget/annotation_tool_status.js";
-import { CheckboxIcon } from "#src/widget/checkbox_icon.js";
-import { makeIcon } from "#src/widget/icon.js";
 import {
   MousePositionWidget,
   PositionWidget,
