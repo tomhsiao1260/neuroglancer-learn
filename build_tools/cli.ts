@@ -21,7 +21,6 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import path from "path";
-import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import type { Configuration } from "webpack";
 import webpackCli from "webpack-cli/lib/bootstrap.js"; // eslint-disable-line import/default
 import * as webpackMerge from "webpack-merge";
@@ -109,18 +108,6 @@ async function getWebpackConfig(
       outDir = path.resolve(outDir);
     }
     const plugins = [];
-    if (argv.typecheck || argv.lint) {
-      plugins.push(
-        new ForkTsCheckerWebpackPlugin({
-          typescript: argv.typecheck,
-          eslint: argv.lint
-            ? {
-                files: ".",
-              }
-            : undefined,
-        }),
-      );
-    }
     const inlineConfig = {
       define: argv.define,
       plugins,

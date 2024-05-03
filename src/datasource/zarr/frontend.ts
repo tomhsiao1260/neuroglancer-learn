@@ -17,7 +17,6 @@
 import "#src/datasource/zarr/codec/blosc/resolve.js";
 import "#src/datasource/zarr/codec/zstd/resolve.js";
 
-import { makeDataBoundsBoundingBoxAnnotationSet } from "#src/annotation/index.js";
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { WithParameters } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
@@ -530,17 +529,7 @@ export class ZarrDataSource extends DataSourceProvider {
               default: true,
               url: undefined,
               subsource: { volume },
-            },
-            {
-              id: "bounds",
-              default: true,
-              url: undefined,
-              subsource: {
-                staticAnnotations: makeDataBoundsBoundingBoxAnnotationSet(
-                  volume.modelSpace.bounds,
-                ),
-              },
-            },
+            }
           ],
         };
       },
