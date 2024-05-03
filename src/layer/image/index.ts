@@ -57,7 +57,6 @@ import {
   registerNested,
   WatchableValue,
 } from "#src/trackable_value.js";
-import { UserLayerWithAnnotationsMixin } from "#src/ui/annotations.js";
 import { setClipboard } from "#src/util/clipboard.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { makeValueOrError } from "#src/util/error.js";
@@ -116,12 +115,11 @@ export interface ImageLayerSelectionState extends UserLayerSelectionState {
   value: any;
 }
 
-const Base = UserLayerWithAnnotationsMixin(UserLayer);
 const [
   volumeRenderingDepthSamplesOriginLogScale,
   volumeRenderingDepthSamplesMaxLogScale,
 ] = getVolumeRenderingDepthSamplesBoundsLogScale();
-export class ImageUserLayer extends Base {
+export class ImageUserLayer extends UserLayer {
   opacity = trackableAlphaValue(0.5);
   blendMode = trackableBlendModeValue();
   fragmentMain = getTrackableFragmentMain();
@@ -225,7 +223,6 @@ export class ImageUserLayer extends Base {
   activateDataSubsources(subsources: Iterable<LoadedDataSubsource>) {
     let dataType: DataType | undefined;
     for (const loadedSubsource of subsources) {
-      if (this.addStaticAnnotations(loadedSubsource)) continue;
       const { subsourceEntry } = loadedSubsource;
       const { subsource } = subsourceEntry;
       const { volume } = subsource;
