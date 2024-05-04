@@ -20,3 +20,4 @@
 import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
 
 setupDefaultViewer();
+

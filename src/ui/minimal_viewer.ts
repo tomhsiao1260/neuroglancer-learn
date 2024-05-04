@@ -17,11 +17,11 @@
 import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
 
-export function makeMinimalViewer(options) {
+export function makeMinimalViewer() {
   const target = document.createElement("div");
   target.id = "neuroglancer-container";
   document.body.appendChild(target);
 
   const display = new DisplayContext(target);
-  return new Viewer(display, options);
+  return new Viewer(display);
 }

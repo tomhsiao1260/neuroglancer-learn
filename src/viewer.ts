@@ -1,4 +1,3 @@
 export class Viewer {
-  constructor(display, options) {
-  }
+  constructor(public display) {}
 }

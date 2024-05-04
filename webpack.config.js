@@ -11,6 +11,15 @@ export default (env, args) => {
     devtool: "source-map",
     module: {
       rules: [
+        // Needed to support Neuroglancer TypeScript sources.
+        {
+          test: /\.tsx?$/,
+          loader: "esbuild-loader",
+          options: {
+            // Needed to ensure `import.meta.url` is available.
+            target: "es2020",
+          },
+        },
         // Necessary to handle CSS files.
         {
           test: /\.css$/,
@@ -40,7 +49,7 @@ export default (env, args) => {
     ],
     experiments: {
       outputModule: true,
-    }
+    },
   };
-  return config
+  return config;
 };
