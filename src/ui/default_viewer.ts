@@ -15,7 +15,7 @@
  */
 
 import "#src/ui/default_viewer.css";
-import { makeMinimalViewer } from "#src/ui/minimal_viewer.js";
+import { makeMinimalViewer } from "#src/ui/minimal_viewer.ts";
 
 export function makeDefaultViewer() {
   return makeMinimalViewer();

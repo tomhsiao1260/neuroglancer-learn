@@ -17,7 +17,6 @@
 /**
  * @file Main entry point for default neuroglancer viewer.
  */
-import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
+import { setupDefaultViewer } from "#src/ui/default_viewer_setup.ts";
 
 setupDefaultViewer();
-

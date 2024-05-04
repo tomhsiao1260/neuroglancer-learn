@@ -17,14 +17,6 @@
     "start": "webpack serve --mode developement",
     "dev-server": "tsx ./build_tools/cli.ts serve"
   },
-  "type": "module",
-  "imports": {
-    "#src/*.js": "./src/*.ts",
-    "#src/*": "./src/*",
-    "#main": {
-      "default": "./src/main.ts"
-    }
-  },
   "dependencies": {
     "css-loader": "^7.1.1",
     "esbuild": "^0.20.2",
@@ -40,5 +32,12 @@
   "devDependencies": {
     "@types/yargs": "^17.0.32",
     "yargs": "^17.7.2"
+  },
+  "type": "module",
+  "imports": {
+    "#src/*": "./src/*",
+    "#main": {
+      "default": "./src/main.ts"
+    }
   }
 }

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { DisplayContext } from "#src/display_context.js";
-import { Viewer } from "#src/viewer.js";
+import { DisplayContext } from "#src/display_context.ts";
+import { Viewer } from "#src/viewer.ts";
 
 export function makeMinimalViewer() {
   const target = document.createElement("div");
