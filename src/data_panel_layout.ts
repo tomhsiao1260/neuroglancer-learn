@@ -739,9 +739,9 @@ export class DataPanelLayoutSpecification
     this.crossSections = this.registerDisposer(
       new CrossSectionSpecificationMap(parentNavigationState.addRef()),
     );
-    this.crossSections.changed.add(this.changed.dispatch);
-    this.orthographicProjection.changed.add(this.changed.dispatch);
-    this.registerDisposer(parentNavigationState);
+    // this.crossSections.changed.add(this.changed.dispatch);
+    // this.orthographicProjection.changed.add(this.changed.dispatch);
+    // this.registerDisposer(parentNavigationState);
   }
 
   reset() {
@@ -813,15 +813,15 @@ export class DataPanelLayoutContainer extends RefCounted {
     );
     this.specification.type.changed.add(scheduleUpdateLayout);
 
-    registerActionListener(this.element, "toggle-orthographic-projection", () =>
-      this.specification.orthographicProjection.toggle(),
-    );
+    // registerActionListener(this.element, "toggle-orthographic-projection", () =>
+    //   this.specification.orthographicProjection.toggle(),
+    // );
 
-    // Ensure the layout is updated before drawing begins to avoid flicker.
-    this.registerDisposer(
-      this.viewer.display.updateStarted.add(() => scheduleUpdateLayout.flush()),
-    );
-    scheduleUpdateLayout();
+    // // Ensure the layout is updated before drawing begins to avoid flicker.
+    // this.registerDisposer(
+    //   this.viewer.display.updateStarted.add(() => scheduleUpdateLayout.flush()),
+    // );
+    // scheduleUpdateLayout();
   }
   get changed() {
     return this.specification.changed;

@@ -220,11 +220,11 @@ export class SidePanelManager extends RefCounted {
     return this.visibility.visible;
   }
   constructor(
-    public display: DisplayContext,
+    // public display: DisplayContext,
     public center: HTMLElement,
-    public visibility = new WatchableVisibilityPriority(
-      WatchableVisibilityPriority.VISIBLE,
-    ),
+    // public visibility = new WatchableVisibilityPriority(
+    //   WatchableVisibilityPriority.VISIBLE,
+    // ),
   ) {
     super();
     const { element, centerColumn } = this;
@@ -237,15 +237,15 @@ export class SidePanelManager extends RefCounted {
     centerColumn.style.flexBasis = "0px";
     centerColumn.style.minWidth = "0px";
     this.render();
-    this.registerDisposer(
-      display.updateStarted.add(() => {
-        this.beforeRender.dispatch();
-        if (!this.layoutNeedsUpdate) return;
-        this.render();
-        // Changing the side panel layout can affect the bounds of rendered panels as well.
-        ++display.resizeGeneration;
-      }),
-    );
+    // this.registerDisposer(
+    //   display.updateStarted.add(() => {
+    //     this.beforeRender.dispatch();
+    //     if (!this.layoutNeedsUpdate) return;
+    //     this.render();
+    //     // Changing the side panel layout can affect the bounds of rendered panels as well.
+    //     ++display.resizeGeneration;
+    //   }),
+    // );
     // this.registerDisposer(this.visibility.changed.add(this.invalidateLayout));
   }
   private makeSidePanelSideState(side: Side): SidePanelSideState {
@@ -384,19 +384,19 @@ export class SidePanelManager extends RefCounted {
       this.renderSide(side, this.sides[side].flexGroups, sides[side]);
     const self = this;
     function* getRowChildren() {
-      yield self.sides.left.outerDropZoneElement;
-      yield* getSideChildren("left");
+      // yield self.sides.left.outerDropZoneElement;
+      // yield* getSideChildren("left");
       yield self.centerColumn;
-      yield* getSideChildren("right");
-      yield self.sides.right.outerDropZoneElement;
+      // yield* getSideChildren("right");
+      // yield self.sides.right.outerDropZoneElement;
     }
     updateChildren(this.element, getRowChildren());
     function* getColumnChildren() {
-      yield self.sides.top.outerDropZoneElement;
-      yield* getSideChildren("top");
+      // yield self.sides.top.outerDropZoneElement;
+      // yield* getSideChildren("top");
       yield self.center;
-      yield* getSideChildren("bottom");
-      yield self.sides.bottom.outerDropZoneElement;
+      // yield* getSideChildren("bottom");
+      // yield self.sides.bottom.outerDropZoneElement;
     }
     updateChildren(this.centerColumn, getColumnChildren());
   }

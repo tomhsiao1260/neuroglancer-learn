@@ -88,89 +88,7 @@ export class LayoutComponentContainer extends RefCounted {
   flex = new TrackableValue<number>(1, verifyFinitePositiveFloat);
 
   private setComponent(component: LayoutComponent) {
-    this.unsetComponent();
-    this.componentValue = component;
-    component.changed.add(this.changed.dispatch);
     this.element.appendChild(component.element);
-
-    if (component instanceof LayerGroupViewer) {
-      const { layerManager } = component;
-      const scheduleMaybeDelete = component.registerCancellable(
-        debounce(() => {
-          if (layerManager.managedLayers.length === 0) {
-            this.dispose();
-          }
-        }, 0),
-      );
-      component.registerDisposer(
-        layerManager.layersChanged.add(() => {
-          if (layerManager.managedLayers.length === 0) {
-            scheduleMaybeDelete();
-          }
-        }),
-      );
-      scheduleMaybeDelete();
-    } else if (component instanceof StackLayoutComponent) {
-      const scheduleMaybeDelete = component.registerCancellable(
-        debounce(() => {
-          const { length } = component;
-          if (length === 0 && this.parent !== undefined) {
-            this.dispose();
-          } else if (length === 1) {
-            const childComponent = component.get(0).component;
-            let spec: any;
-            if (
-              this.parent === undefined &&
-              childComponent instanceof LayerGroupViewer
-            ) {
-              spec = childComponent.layout.specification.toJSON();
-              childComponent.viewerNavigationState.copyToParent();
-              const childManagedLayers =
-                childComponent.layerManager.managedLayers;
-              const layersToKeep = new Set(childManagedLayers);
-              const { layerSpecification } = childComponent;
-              // Retain only layers that are part of the layer group, or are archived.
-              layerSpecification.rootLayers.filter(
-                (layer) => layersToKeep.has(layer) || layer.archived,
-              );
-              // Permute the non-archived layers to match the order in the layer group.
-              const childLayerIndices: number[] = [];
-              const { managedLayers: rootManagedLayers } =
-                layerSpecification.rootLayers;
-              for (
-                let i = 0, count = rootManagedLayers.length;
-                i < count;
-                ++i
-              ) {
-                if (layersToKeep.has(rootManagedLayers[i])) {
-                  childLayerIndices.push(i);
-                }
-              }
-              for (
-                let i = 0, count = childManagedLayers.length;
-                i < count;
-                ++i
-              ) {
-                rootManagedLayers[childLayerIndices[i]] = childManagedLayers[i];
-              }
-              layerSpecification.rootLayers.layersChanged.dispatch();
-            } else {
-              spec = childComponent.toJSON();
-            }
-            this.setSpecification(spec);
-          }
-        }, 0),
-      );
-      component.registerDisposer(
-        component.changed.add(() => {
-          if (component.length < 2) {
-            scheduleMaybeDelete();
-          }
-        }),
-      );
-      scheduleMaybeDelete();
-    }
-    this.changed.dispatch();
   }
   element = document.createElement("div");
 
@@ -185,126 +103,12 @@ export class LayoutComponentContainer extends RefCounted {
     element.style.flex = "1";
     element.style.position = "relative";
     element.style.alignItems = "stretch";
-    (<any>element)[layoutComponentContainerSymbol] = this;
-    this.flex.changed.add(() => {
-      element.style.flexGrow = "" + this.flex.value;
-      this.changed.dispatch();
-    });
+    // (<any>element)[layoutComponentContainerSymbol] = this;
+    // this.flex.changed.add(() => {
+    //   element.style.flexGrow = "" + this.flex.value;
+    //   this.changed.dispatch();
+    // });
     this.setSpecification(spec);
-
-    interface DropZone {
-      element: HTMLElement;
-      direction: "row" | "column";
-      orientation: "left" | "right" | "top" | "bottom";
-    }
-
-    const dropZones: DropZone[] = [];
-    const makeDropZone = (name: "left" | "right" | "top" | "bottom") => {
-      const dropZone = document.createElement("div");
-      dropZone.className = "neuroglancer-layout-split-drop-zone";
-      let direction: "row" | "column";
-      dropZone.style[name] = "0";
-      switch (name) {
-        case "left":
-        case "right":
-          direction = "row";
-          dropZone.style.width = "10px";
-          dropZone.style.height = "100%";
-          break;
-        case "top":
-        case "bottom":
-          direction = "column";
-          dropZone.style.height = "10px";
-          dropZone.style.width = "100%";
-          break;
-      }
-      dropZone.style.display = "none";
-      dropZones.push({
-        element: dropZone,
-        direction: direction!,
-        orientation: name,
-      });
-      element.appendChild(dropZone);
-      setupDropZone(
-        dropZone,
-        this.viewer.layerSpecification,
-        () => <LayerGroupViewer>this.split(name).newContainer.component,
-        direction === "row" ? "column" : "row",
-      );
-    };
-    makeDropZone("left");
-    makeDropZone("right");
-    makeDropZone("top");
-    makeDropZone("bottom");
-
-    let dropZonesVisible = false;
-    element.addEventListener(
-      "dragenter",
-      (event: DragEvent) => {
-        if (dropZonesVisible) {
-          return;
-        }
-        if (getLayerDragInfo(event) === undefined) {
-          return;
-        }
-        dropZonesVisible = true;
-        for (const { element: dropZone, direction, orientation } of dropZones) {
-          if (parent !== undefined && direction === parent.direction) {
-            if (
-              ((orientation === "left" || orientation === "top") &&
-                parent.get(0) !== this) ||
-              ((orientation === "bottom" || orientation === "right") &&
-                parent.get(parent.length - 1) !== this)
-            ) {
-              continue;
-            }
-          }
-          const { component } = this;
-          if (
-            component instanceof StackLayoutComponent &&
-            component.direction === direction
-          ) {
-            continue;
-          }
-          dropZone.style.display = "block";
-        }
-      },
-      true,
-    );
-
-    element.addEventListener(
-      "drop",
-      (_event: DragEvent) => {
-        if (!dropZonesVisible) {
-          return;
-        }
-        dropZonesVisible = false;
-        for (const { element: dropZone } of dropZones) {
-          dropZone.style.display = "none";
-        }
-      },
-      /*capture=*/ true,
-    );
-    element.addEventListener(
-      "dragleave",
-      (event: DragEvent) => {
-        const { relatedTarget } = event;
-        if (!dropZonesVisible) {
-          return;
-        }
-        if (
-          relatedTarget instanceof HTMLElement &&
-          this.element.contains(relatedTarget)
-        ) {
-          return;
-        }
-        dropZonesVisible = false;
-        for (const { element: dropZone } of dropZones) {
-          dropZone.style.display = "none";
-        }
-      },
-      true,
-    );
   }
 
   toJSON() {
@@ -317,12 +121,6 @@ export class LayoutComponentContainer extends RefCounted {
 
   setSpecification(spec: any) {
     this.setComponent(makeComponent(this, spec));
-    this.flex.value = verifyOptionalObjectProperty(
-      spec,
-      "flex",
-      verifyFinitePositiveFloat,
-      1,
-    );
   }
 
   static getFromElement(element: Element): LayoutComponentContainer {
@@ -720,63 +518,7 @@ function makeComponent(container: LayoutComponentContainer, spec: any) {
   const element = document.createElement("div");
   element.style.flex = "1";
   element.style.width = "0px";
-  if (typeof spec === "string") {
-    if (container.parent !== undefined) {
-      throw new Error(
-        `Invalid layout component specification: ${JSON.stringify(spec)}`,
-      );
-    }
-    return new SingletonLayerGroupViewer(element, spec, container.viewer);
-  }
-  verifyObject(spec);
-  const componentType = verifyObjectProperty(spec, "type", verifyString);
-  switch (componentType) {
-    case "row":
-    case "column": {
-      return new StackLayoutComponent(
-        element,
-        componentType,
-        verifyObjectProperty(spec, "children", (x) => {
-          const children = parseArray(x, (y) => y);
-          if (container.parent === undefined && children.length === 0) {
-            throw new Error("Stack layout requires at least one child.");
-          }
-          return children;
-        }),
-        container,
-      );
-    }
-    case "viewer": {
-      const viewer = container.viewer;
-      const layerSpecification = new LayerSubsetSpecification(
-        viewer.layerSpecification.addRef(),
-      );
-      const layerGroupViewer = new LayerGroupViewer(
-        element,
-        {
-          display: viewer.display,
-          layerSpecification,
-          ...getCommonViewerState(viewer),
-        },
-        {
-          showLayerPanel: viewer.uiControlVisibility.showLayerPanel,
-          showViewerMenu: true,
-          showLayerHoverValues: viewer.uiControlVisibility.showLayerHoverValues,
-        },
-      );
-      try {
-        layerGroupViewer.restoreState(spec);
-      } catch (e) {
-        layerGroupViewer.dispose();
-        throw e;
-      }
-      return layerGroupViewer;
-    }
-    default: {
-      // Treat it as a singleton layer group.
-      return new SingletonLayerGroupViewer(element, spec, container.viewer);
-    }
-  }
+  return new SingletonLayerGroupViewer(element, spec, container.viewer);
 }
 
 export class RootLayoutContainer extends RefCounted implements Trackable {

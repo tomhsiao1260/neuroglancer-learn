@@ -404,61 +404,21 @@ export class LayerGroupViewer extends RefCounted {
       showLayerHoverValues: new TrackableBoolean(true),
       ...options,
     };
+
     this.layerSpecification = this.registerDisposer(
       viewerState.layerSpecification,
     );
-    this.toolBinder = this.registerDisposer(
-      new LocalToolBinder(this, this.layerSpecification.root.toolBinder),
-    );
+
     this.viewerNavigationState = this.registerDisposer(
       new LinkedViewerNavigationState(viewerState),
     );
-    this.viewerNavigationState.register(this.state);
-    this.registerDisposer(
-      registerNested((context, linkValue) => {
-        if (linkValue !== NavigationLinkType.UNLINKED) return;
-        context.registerDisposer(
-          new PlaybackManager(
-            this.layerSpecification.root.display,
-            this.viewerNavigationState.position.value,
-            this.viewerNavigationState.velocity.velocity,
-          ),
-        );
-      }, this.viewerNavigationState.position.link),
-    );
-    if (!(this.layerSpecification instanceof LayerSubsetSpecification)) {
-      this.state.add("layers", {
-        changed: this.layerSpecification.changed,
-        toJSON: () =>
-          this.layerSpecification.layerManager.managedLayers.map((x) => x.name),
-        reset: () => {
-          throw new Error("not implemented");
-        },
-        restoreState: () => {
-          throw new Error("not implemented");
-        },
-      });
-    } else {
-      this.state.add("layers", this.layerSpecification);
-    }
-    element.classList.add("neuroglancer-layer-group-viewer");
-    this.registerDisposer(new AutomaticallyFocusedElement(element));
 
     this.layout = this.registerDisposer(
       new DataPanelLayoutContainer(this, "xy"),
     );
-    this.state.add("layout", this.layout);
-    this.state.add("toolBindings", this.toolBinder);
-    this.registerActionBindings();
+
     this.registerDisposer(this.layerManager.useDirectly());
-    this.registerDisposer(
-      setupPositionDropHandlers(element, this.navigationState.position),
-    );
-    this.registerDisposer(
-      this.options.showLayerPanel.changed.add(
-        this.registerCancellable(debounce(() => this.updateUI(), 0)),
-      ),
-    );
+
     this.makeUI();
   }
 
@@ -515,102 +475,7 @@ export class LayerGroupViewer extends RefCounted {
     this.element.style.display = "flex";
     this.element.style.flexDirection = "column";
     this.element.appendChild(this.layout.element);
-    this.updateUI();
-  }
-
-  private updateUI() {
-    const { options } = this;
-    const showLayerPanel = options.showLayerPanel.value;
-    if (this.layerPanel !== undefined && !showLayerPanel) {
-      this.layerPanel.dispose();
-      this.layerPanel = undefined;
-      return;
-    }
-    if (showLayerPanel && this.layerPanel === undefined) {
-      const layerPanel = (this.layerPanel = new LayerBar(
-        this,
-        () => this.layout.toJSON(),
-        this.options.showLayerHoverValues,
-      ));
-      if (options.showViewerMenu) {
-        layerPanel.registerDisposer(makeViewerMenu(layerPanel.element, this));
-        layerPanel.element.title =
-          "Right click for options, drag to move/copy layer group.";
-      } else {
-        layerPanel.element.title = "Drag to move/copy layer group.";
-      }
-
-      if (
-        typeof NEUROGLANCER_SHOW_LAYER_BAR_EXTRA_BUTTONS !== "undefined" &&
-        NEUROGLANCER_SHOW_LAYER_BAR_EXTRA_BUTTONS === true
-      ) {
-        {
-          const button = document.createElement("button");
-          button.textContent = "Clear segments";
-          button.title = `De-select all objects ("x")`;
-          button.addEventListener("click", (event: MouseEvent) => {
-            dispatchEventAction(event, event, { action: "clear-segments" });
-          });
-          layerPanel.element.appendChild(button);
-        }
-        for (const layout of ["3d", "xy", "xz", "yz"]) {
-          const button = document.createElement("button");
-          button.textContent = layout;
-          button.title = `Switch to ${layout} layout`;
-          button.addEventListener("click", () => {
-            let newLayout: string;
-            if (this.layout.name === layout) {
-              if (layout !== "3d") {
-                newLayout = `${layout}-3d`;
-              } else {
-                newLayout = "4panel";
-              }
-            } else {
-              newLayout = layout;
-            }
-            this.layout.name = newLayout;
-          });
-          layerPanel.element.appendChild(button);
-        }
-      }
-      layerPanel.element.draggable = true;
-      const layerPanelElement = layerPanel.element;
-      layerPanelElement.addEventListener("dragstart", (event: DragEvent) => {
-        pushDragStatus(
-          layerPanel.element,
-          "drag",
-          "Drag layer group to the left/top/right/bottom edge of a layer group, or to another layer bar/panel (including in another Neuroglancer window)",
-        );
-        startLayerDrag(event, {
-          manager: this.layerSpecification,
-          layers: this.layerManager.managedLayers,
-          layoutSpec: this.layout.toJSON(),
-        });
-        const disposer = () => {
-          if (dragSource && dragSource.viewer === this) {
-            dragSource = undefined;
-          }
-          this.unregisterDisposer(disposer);
-        };
-        dragSource = { viewer: this, disposer };
-        this.registerDisposer(disposer);
-        const dragData = this.toJSON();
-        dragData.layers = undefined;
-        event.dataTransfer!.setData(viewerDragType, JSON.stringify(dragData));
-        layerPanel.element.style.backgroundColor = "black";
-        setTimeout(() => {
-          layerPanel.element.style.backgroundColor = "";
-        }, 0);
-      });
-      layerPanel.element.addEventListener("dragend", () => {
-        popDragStatus(layerPanelElement, "drag");
-        endLayerDrag();
-        if (dragSource !== undefined && dragSource.viewer === this) {
-          dragSource.disposer();
-        }
-      });
-      this.element.insertBefore(layerPanelElement, this.element.firstChild);
-    }
+    // this.updateUI();
   }
 
   disposed() {

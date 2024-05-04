@@ -17,18 +17,12 @@
 import "#src/sliceview/chunk_format_handlers.js";
 
 import { DisplayContext } from "#src/display_context.js";
-import type { ViewerOptions } from "#src/viewer.js";
 import { Viewer } from "#src/viewer.js";
 
-export interface MinimalViewerOptions extends ViewerOptions {
-  target: HTMLElement;
-}
-
-// export function makeMinimalViewer() {
-export function makeMinimalViewer(options: Partial<MinimalViewerOptions> = {}) {
+export function makeMinimalViewer() {
   const target = document.createElement("div");
   target.id = "neuroglancer-container";
   document.body.appendChild(target);
   const display = new DisplayContext(target);
-  return new Viewer(display, {});
+  return new Viewer(display);
 }

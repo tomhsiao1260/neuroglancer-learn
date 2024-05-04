@@ -517,12 +517,9 @@ export class Viewer extends RefCounted implements ViewerState {
 
   visible = true;
 
-  constructor(
-    public display: DisplayContext,
-    options: Partial<ViewerOptions> = {},
-  ) {
+  constructor(public display: DisplayContext) {
     super();
-    // const options = {};
+    const options = {};
 
     const dataContext = new DataManagementContext(display.gl, display);
     const visibility = new WatchableVisibilityPriority(
@@ -545,17 +542,7 @@ export class Viewer extends RefCounted implements ViewerState {
     this.dataSourceProvider = dataSourceProvider;
     this.uiConfiguration = uiConfiguration;
 
-    this.registerDisposer(
-      observeWatchable((value) => {
-        this.display.applyWindowedViewportToElement(element, value);
-      }, this.partialViewport),
-    );
-
-    this.registerDisposer(() => removeFromParent(this.element));
-
     this.dataContext = this.registerDisposer(dataContext);
-
-    setViewerUiConfiguration(uiConfiguration, options);
 
     const optionsWithDefaults = { ...defaultViewerOptions, ...options };
     const { resetStateWhenEmpty, showLayerDialog } = optionsWithDefaults;
@@ -563,11 +550,6 @@ export class Viewer extends RefCounted implements ViewerState {
     for (const key of VIEWER_UI_CONTROL_CONFIG_OPTIONS) {
       this.uiControlVisibility[key] = this.makeUiControlVisibilityState(key);
     }
-    this.registerDisposer(
-      this.uiConfiguration.showPanelBorders.changed.add(() => {
-        this.updateShowBorders();
-      }),
-    );
 
     this.showLayerDialog = showLayerDialog;
     this.resetStateWhenEmpty = resetStateWhenEmpty;
@@ -582,18 +564,6 @@ export class Viewer extends RefCounted implements ViewerState {
       this.navigationState.coordinateSpace,
       this.navigationState.pose.position,
       this.globalToolBinder,
-    );
-
-    this.registerDisposer(
-      display.updateStarted.add(() => {
-        this.onUpdateDisplay();
-      }),
-    );
-
-    this.registerDisposer(
-      this.navigationState.changed.add(() => {
-        this.handleNavigationStateChanged();
-      }),
     );
 
     // Debounce this call to ensure that a transient state does not result in the layer dialog being
@@ -622,20 +592,6 @@ export class Viewer extends RefCounted implements ViewerState {
     );
     this.layerManager.layersChanged.add(maybeResetState);
     maybeResetState();
-
-    this.registerDisposer(
-      this.dataContext.chunkQueueManager.visibleChunksChanged.add(() => {
-        this.layerSelectedValues.handleLayerChange();
-      }),
-    );
-
-    this.registerDisposer(
-      this.dataContext.chunkQueueManager.visibleChunksChanged.add(() => {
-        if (this.visible) {
-          display.scheduleRedraw();
-        }
-      }),
-    );
 
     this.makeUI();
     this.poc();
@@ -693,18 +649,8 @@ export class Viewer extends RefCounted implements ViewerState {
     this.layout = this.registerDisposer(
       new RootLayoutContainer(this, "4panel"),
     );
-    this.sidePanelManager = this.registerDisposer(
-      new SidePanelManager(this.display, this.layout.element, this.visibility),
-    );
 
-    // this.registerDisposer(
-    //   new LayerSidePanelManager(
-    //     this.sidePanelManager,
-    //     this.selectedLayer.addRef(),
-    //   ),
-    // );
-
-    gridContainer.appendChild(this.sidePanelManager.element);
+    gridContainer.appendChild(this.layout.element);
   }
 
   /**
