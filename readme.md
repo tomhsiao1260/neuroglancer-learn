@@ -11,3 +11,7 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 ## minimal_viewer
 
 創建 ui 的地方，會先產生一個 `neuroglancer-container` div，裡面包一個由 `display_context.ts` 初始化產生的 canvas，和一個 `viewer` 初始化產生的 div (透過 `makeCanvasOverlayElement`)。
+
+## viewer
+
+當 viewer 產生 div 後，會透過 `RootLayoutContainer` 產生一個內部的 div，用來渲染內部的 ui 細節 (位於 `layer_groups_layout.ts`)。
