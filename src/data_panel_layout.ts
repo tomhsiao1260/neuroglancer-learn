@@ -359,12 +359,64 @@ export class FourPanelLayout extends RefCounted {
       const panel = this.registerDisposer(
         new SliceViewPanel(display, element, sliceViews.get(axes)!, state),
       );
-      if (displayDimensionsWidget) {
-        addDisplayDimensionsWidget(this, panel);
-      }
-      registerRelatedLayouts(this, panel, [axes, `${axes}-3d`]);
+      // if (displayDimensionsWidget) {
+      //   addDisplayDimensionsWidget(this, panel);
+      // }
+      // registerRelatedLayouts(this, panel, [axes, `${axes}-3d`]);
       return panel;
     };
+    // const mainDisplayContents = [
+    //   L.withFlex(
+    //     1,
+    //     L.box("column", [
+    //       L.withFlex(
+    //         1,
+    //         L.box("row", [
+    //           L.withFlex(1, (element) => {
+    //             makeSliceViewPanel("xy", element, sliceViewerState, true);
+    //           }),
+    //           L.withFlex(1, (element) => {
+    //             makeSliceViewPanel(
+    //               "xz",
+    //               element,
+    //               sliceViewerStateWithoutScaleBar,
+    //               false,
+    //             );
+    //           }),
+    //         ]),
+    //       ),
+    //       L.withFlex(
+    //         1,
+    //         L.box("row", [
+    //           L.withFlex(1, (element) => {
+    //             const panel = this.registerDisposer(
+    //               new PerspectivePanel(
+    //                 display,
+    //                 element,
+    //                 perspectiveViewerState,
+    //               ),
+    //             );
+    //             for (const sliceView of sliceViews.values()) {
+    //               panel.sliceViews.set(sliceView.addRef(), false);
+    //             }
+    //             addDisplayDimensionsWidget(this, panel);
+    //             addUnconditionalSliceViews(viewer, panel, crossSections);
+    //             registerRelatedLayouts(this, panel, ["3d"]);
+    //           }),
+    //           L.withFlex(1, (element) => {
+    //             makeSliceViewPanel(
+    //               "yz",
+    //               element,
+    //               sliceViewerStateWithoutScaleBar,
+    //               false,
+    //             );
+    //           }),
+    //         ]),
+    //       ),
+    //     ]),
+    //   ),
+    // ];
+
     const mainDisplayContents = [
       L.withFlex(
         1,
@@ -374,42 +426,6 @@ export class FourPanelLayout extends RefCounted {
             L.box("row", [
               L.withFlex(1, (element) => {
                 makeSliceViewPanel("xy", element, sliceViewerState, true);
-              }),
-              L.withFlex(1, (element) => {
-                makeSliceViewPanel(
-                  "xz",
-                  element,
-                  sliceViewerStateWithoutScaleBar,
-                  false,
-                );
-              }),
-            ]),
-          ),
-          L.withFlex(
-            1,
-            L.box("row", [
-              L.withFlex(1, (element) => {
-                const panel = this.registerDisposer(
-                  new PerspectivePanel(
-                    display,
-                    element,
-                    perspectiveViewerState,
-                  ),
-                );
-                for (const sliceView of sliceViews.values()) {
-                  panel.sliceViews.set(sliceView.addRef(), false);
-                }
-                addDisplayDimensionsWidget(this, panel);
-                addUnconditionalSliceViews(viewer, panel, crossSections);
-                registerRelatedLayouts(this, panel, ["3d"]);
-              }),
-              L.withFlex(1, (element) => {
-                makeSliceViewPanel(
-                  "yz",
-                  element,
-                  sliceViewerStateWithoutScaleBar,
-                  false,
-                );
               }),
             ]),
           ),
@@ -739,6 +755,7 @@ export class DataPanelLayoutSpecification
     this.crossSections = this.registerDisposer(
       new CrossSectionSpecificationMap(parentNavigationState.addRef()),
     );
+
     // this.crossSections.changed.add(this.changed.dispatch);
     // this.orthographicProjection.changed.add(this.changed.dispatch);
     // this.registerDisposer(parentNavigationState);
@@ -751,22 +768,8 @@ export class DataPanelLayoutSpecification
   }
 
   restoreState(obj: any) {
-    this.crossSections.clear();
-    this.orthographicProjection.reset();
-    if (typeof obj === "string") {
-      this.type.restoreState(obj);
-    } else {
-      verifyObject(obj);
-      verifyObjectProperty(obj, "type", (x) => this.type.restoreState(x));
-      verifyObjectProperty(obj, "orthographicProjection", (x) =>
-        this.orthographicProjection.restoreState(x),
-      );
-      verifyObjectProperty(
-        obj,
-        "crossSections",
-        (x) => x !== undefined && this.crossSections.restoreState(x),
-      );
-    }
+    // obj: "4panel"
+    this.type.restoreState(obj);
   }
 
   toJSON() {
@@ -843,8 +846,7 @@ export class DataPanelLayoutContainer extends RefCounted {
     }
   }
   private updateLayout() {
-    this.disposeLayout();
-    this.layout = getLayoutByName(this.name).factory(
+    new FourPanelLayout(
       this,
       this.element,
       this.viewer,

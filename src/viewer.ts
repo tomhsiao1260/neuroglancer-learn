@@ -566,6 +566,7 @@ export class Viewer extends RefCounted implements ViewerState {
       this.globalToolBinder,
     );
 
+    // comment 0
     // Debounce this call to ensure that a transient state does not result in the layer dialog being
     // shown.
     const maybeResetState = this.registerCancellable(
@@ -594,6 +595,7 @@ export class Viewer extends RefCounted implements ViewerState {
     maybeResetState();
 
     this.makeUI();
+    // comment 0
     this.poc();
   }
 
@@ -639,12 +641,6 @@ export class Viewer extends RefCounted implements ViewerState {
     gridContainer.classList.add("neuroglancer-noselect");
     gridContainer.style.display = "flex";
     gridContainer.style.flexDirection = "column";
-
-    const topRow = document.createElement("div");
-    topRow.classList.add("neuroglancer-viewer-top-row");
-    topRow.style.display = "flex";
-    topRow.style.flexDirection = "row";
-    topRow.style.alignItems = "stretch";
 
     this.layout = this.registerDisposer(
       new RootLayoutContainer(this, "4panel"),

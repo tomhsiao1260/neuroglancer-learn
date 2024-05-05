@@ -168,57 +168,6 @@ export class SliceViewPanel extends RenderedDataPanel {
   ) {
     super(context, element, viewer);
     viewer.wireFrame.changed.add(() => this.scheduleRedraw());
-    registerActionListener(
-      element,
-      "rotate-via-mouse-drag",
-      (e: ActionEvent<MouseEvent>) => {
-        const { mouseState } = this.viewer;
-        if (mouseState.updateUnconditionally()) {
-          const initialPosition = Float32Array.from(mouseState.position);
-          startRelativeMouseDrag(e.detail, (_event, deltaX, deltaY) => {
-            const { pose } = this.navigationState;
-            const xAxis = vec3.transformQuat(
-              tempVec3,
-              kAxes[0],
-              pose.orientation.orientation,
-            );
-            const yAxis = vec3.transformQuat(
-              tempVec3b,
-              kAxes[1],
-              pose.orientation.orientation,
-            );
-            this.viewer.navigationState.pose.rotateAbsolute(
-              yAxis,
-              ((-deltaX / 4.0) * Math.PI) / 180.0,
-              initialPosition,
-            );
-            this.viewer.navigationState.pose.rotateAbsolute(
-              xAxis,
-              ((-deltaY / 4.0) * Math.PI) / 180.0,
-              initialPosition,
-            );
-          });
-        }
-      },
-    );
-
-    registerActionListener(
-      element,
-      "rotate-in-plane-via-touchrotate",
-      (e: ActionEvent<TouchRotateInfo>) => {
-        const { detail } = e;
-        const { mouseState } = this.viewer;
-        this.handleMouseMove(detail.centerX, detail.centerY);
-        if (mouseState.updateUnconditionally()) {
-          this.navigationState.pose.rotateAbsolute(
-            this.sliceView.projectionParameters.value
-              .viewportNormalInCanonicalCoordinates,
-            detail.angle - detail.prevAngle,
-            mouseState.position,
-          );
-        }
-      },
-    );
 
     this.registerDisposer(sliceView);
     // Create visible layer tracker after registering SliceView, to ensure it is destroyed before
@@ -230,12 +179,8 @@ export class SliceViewPanel extends RenderedDataPanel {
       this,
     );
 
-    this.registerDisposer(
-      viewer.crossSectionBackgroundColor.changed.add(() =>
-        this.scheduleRedraw(),
-      ),
-    );
     this.registerDisposer(sliceView.visibility.add(this.visibility));
+
     this.registerDisposer(
       sliceView.viewChanged.add(() => {
         if (this.visible) {
@@ -243,28 +188,13 @@ export class SliceViewPanel extends RenderedDataPanel {
         }
       }),
     );
-    this.registerDisposer(
-      viewer.showAxisLines.changed.add(() => {
-        if (this.visible) {
-          this.scheduleRedraw();
-        }
-      }),
-    );
 
-    this.registerDisposer(
-      viewer.showScaleBar.changed.add(() => {
-        if (this.visible) {
-          this.context.scheduleRedraw();
-        }
-      }),
-    );
-    this.registerDisposer(
-      viewer.scaleBarOptions.changed.add(() => {
-        if (this.visible) {
-          this.context.scheduleRedraw();
-        }
-      }),
-    );
+    //   viewer.scaleBarOptions.changed.add(() => {
+    //     if (this.visible) {
+    //       this.context.scheduleRedraw();
+    //     }
+    //   }),
+    // );
   }
 
   translateByViewportPixels(deltaX: number, deltaY: number): void {

@@ -385,7 +385,6 @@ export class DataSourceProviderRegistry extends RefCounted {
     const redirectLog = new Set<string>();
     const { cancellationToken = uncancelableToken } = options;
     let url: string = options.url;
-    // return 1;
     while (true) {
       const [provider, providerUrl, providerProtocol] = this.getProvider(
         options.url,
