@@ -18,6 +18,13 @@ export interface Handler {
   (element: HTMLElement): void;
 }
 
+export function withFlex(value: any, handler: Handler) {
+  return (element: HTMLElement) => {
+    element.style.flex = value;
+    handler(element);
+  };
+}
+
 export function box(flexDirection: string, spec: Handler[]) {
   return (container: HTMLElement) => {
     container.style.display = "flex";

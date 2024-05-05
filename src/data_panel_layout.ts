@@ -5,7 +5,24 @@ export class FourPanelLayout extends RefCounted {
   constructor(public rootElement: HTMLElement) {
     super();
 
-    const mainDisplayContents = [];
+    const mainDisplayContents = [
+      L.withFlex(
+        1,
+        L.box("column", [
+          L.withFlex(
+            1,
+            L.box("row", [
+              L.withFlex(1, (element) => {
+                element.style.backgroundColor = "blue";
+              }),
+              L.withFlex(1, (element) => {
+                element.style.backgroundColor = "yellow";
+              }),
+            ])
+          ),
+        ])
+      ),
+    ];
     L.box("row", mainDisplayContents)(rootElement);
   }
 }

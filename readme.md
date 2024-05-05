@@ -22,4 +22,6 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 
 ## ui
 
-viewer 的 ui 中間會透過許多中間 component 傳遞，但在我們的應用裡相對不重要，主要的 ui 是從 `FourPanelLayout` 這個 class 渲染出來的，感覺用 react 可以寫得更簡潔
+viewer 的 ui 中間會透過許多中間 component 傳遞，但在我們的應用裡相對不重要，主要的 ui 是從 `FourPanelLayout` 這個 class 渲染出來的，感覺用 react 可以寫得更簡潔。
+
+更進一步來說，內部透過 `layout.ts` 自動化排版
