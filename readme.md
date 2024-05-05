@@ -8,6 +8,10 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 
 當執行 `npm run dev-serve` 時，會先透過 `./build_tools/cli.ts` 把 `webpack.config.js` 的 config 進行擴充，然後再透過 webpack cli 打包並產生伺服器。更詳細來說，首先會透過 yargs 產生一系列的參數配置 (有點像 python 的 argparse)，並透過 `setConfig` 方法將 config 寫入 webpack，最後再透過 `runWebpack` 執行 webpack cli 指令來開啟伺服器。
 
+## RefCounted
+
+實作了 dispose 方法，所有繼承此 class 的類別可以呼叫 `registerDisposer` 方法，來註冊之後要捨棄項目
+
 ## minimal_viewer
 
 創建 ui 的地方，會先產生一個 `neuroglancer-container` div，裡面包一個由 `display_context.ts` 初始化產生的 canvas，和一個 `viewer` 初始化產生的 div (透過 `makeCanvasOverlayElement`)。

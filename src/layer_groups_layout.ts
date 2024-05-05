@@ -1,4 +1,5 @@
 import { Viewer } from "#src/viewer.ts";
+import { RefCounted } from "#src/util/disposable.ts";
 
 /**
  * Container for a LayoutComponent.  The contained LayoutComponent may change.
@@ -15,7 +16,7 @@ export class LayoutComponentContainer {
   }
 }
 
-export class RootLayoutContainer {
+export class RootLayoutContainer extends RefCounted {
   container = new LayoutComponentContainer(
     this.viewer,
     this.defaultSpecification
@@ -25,5 +26,7 @@ export class RootLayoutContainer {
     return this.container.element;
   }
 
-  constructor(public viewer: Viewer, public defaultSpecification: any) {}
+  constructor(public viewer: Viewer, public defaultSpecification: any) {
+    super();
+  }
 }

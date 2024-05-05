@@ -1,7 +1,10 @@
-export class DisplayContext {
+import { RefCounted } from "#src/util/disposable.ts";
+
+export class DisplayContext extends RefCounted {
   canvas = document.createElement("canvas");
 
   constructor(public container: HTMLElement) {
+    super();
     const { canvas } = this;
     container.style.position = "relative";
     canvas.style.position = "absolute";
