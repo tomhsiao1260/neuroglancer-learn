@@ -19,3 +19,7 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 ## viewer
 
 當 viewer 產生 div 後，會透過 `RootLayoutContainer` 產生一個內部的 div，用來渲染內部的 ui 細節 (位於 `layer_groups_layout.ts`)。
+
+## ui
+
+viewer 的 ui 中間會透過許多中間 component 傳遞，但在我們的應用裡相對不重要，主要的 ui 是從 `DataPanelLayoutContainer` 這個 class 渲染出來的
