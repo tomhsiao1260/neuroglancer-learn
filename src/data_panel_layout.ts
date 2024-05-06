@@ -334,21 +334,21 @@ export class FourPanelLayout extends RefCounted {
     const sliceViews = makeOrthogonalSliceViews(viewer);
     const { display } = viewer;
 
-    const perspectiveViewerState = {
-      ...getCommonPerspectiveViewerState(container),
-      showSliceViews: viewer.showPerspectiveSliceViews,
-      showSliceViewsCheckbox: true,
-    };
+    // const perspectiveViewerState = {
+    //   ...getCommonPerspectiveViewerState(container),
+    //   showSliceViews: viewer.showPerspectiveSliceViews,
+    //   showSliceViewsCheckbox: true,
+    // };
 
     const sliceViewerState = {
       ...getCommonSliceViewerState(viewer),
       showScaleBar: viewer.showScaleBar,
     };
 
-    const sliceViewerStateWithoutScaleBar = {
-      ...getCommonSliceViewerState(viewer),
-      showScaleBar: new TrackableBoolean(false, false),
-    };
+    // const sliceViewerStateWithoutScaleBar = {
+    //   ...getCommonSliceViewerState(viewer),
+    //   showScaleBar: new TrackableBoolean(false, false),
+    // };
 
     const makeSliceViewPanel = (
       axes: NamedAxes,
@@ -426,6 +426,9 @@ export class FourPanelLayout extends RefCounted {
             L.box("row", [
               L.withFlex(1, (element) => {
                 makeSliceViewPanel("xy", element, sliceViewerState, true);
+              }),
+              L.withFlex(1, (element) => {
+                makeSliceViewPanel("yz", element, sliceViewerState, false);
               }),
             ]),
           ),

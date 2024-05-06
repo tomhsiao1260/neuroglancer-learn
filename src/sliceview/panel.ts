@@ -167,9 +167,7 @@ export class SliceViewPanel extends RenderedDataPanel {
     viewer: SliceViewerState,
   ) {
     super(context, element, viewer);
-    viewer.wireFrame.changed.add(() => this.scheduleRedraw());
 
-    this.registerDisposer(sliceView);
     // Create visible layer tracker after registering SliceView, to ensure it is destroyed before
     // SliceView backend is destroyed.
     this.visibleLayerTracker = makeRenderedPanelVisibleLayerTracker(
@@ -188,13 +186,6 @@ export class SliceViewPanel extends RenderedDataPanel {
         }
       }),
     );
-
-    //   viewer.scaleBarOptions.changed.add(() => {
-    //     if (this.visible) {
-    //       this.context.scheduleRedraw();
-    //     }
-    //   }),
-    // );
   }
 
   translateByViewportPixels(deltaX: number, deltaY: number): void {

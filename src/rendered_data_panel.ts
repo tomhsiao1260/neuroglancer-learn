@@ -455,92 +455,12 @@ export abstract class RenderedDataPanel extends RenderedPanel {
     element.classList.add("neuroglancer-rendered-data-panel");
     element.classList.add("neuroglancer-panel");
     element.classList.add("neuroglancer-noselect");
-    if (
-      typeof NEUROGLANCER_SHOW_OBJECT_SELECTION_TOOLTIP !== "undefined" &&
-      NEUROGLANCER_SHOW_OBJECT_SELECTION_TOOLTIP === true
-    ) {
-      element.title =
-        "Double click to toggle display of object under mouse pointer.  Control+rightclick to pin/unpin selection.";
-    }
 
-    this.registerDisposer(new AutomaticallyFocusedElement(element));
-    this.registerDisposer(new KeyboardEventBinder(element, this.inputEventMap));
     this.registerDisposer(
       new MouseEventBinder(element, this.inputEventMap, (event) => {
         this.onMousemove(event);
       }),
     );
-    this.registerDisposer(new TouchEventBinder(element, this.inputEventMap));
-
-    this.registerEventListener(
-      element,
-      "mousemove",
-      this.onMousemove.bind(this),
-    );
-    this.registerEventListener(
-      element,
-      "touchstart",
-      this.onTouchstart.bind(this),
-    );
-    this.registerEventListener(element, "mouseleave", () => this.onMouseout());
-    this.registerEventListener(
-      element,
-      "mouseover",
-      (event) => {
-        if (event.target !== element) {
-          this.onMouseout();
-        }
-      },
-      /*capture=*/ true,
-    );
-
-    registerActionListener(element, "select-position", () => {
-      this.viewer.selectionDetailsState.select();
-    });
-
-    registerActionListener(element, "snap", () => {
-      this.navigationState.pose.snap();
-    });
-
-    registerActionListener(element, "zoom-in", () => {
-      this.navigationState.zoomBy(0.5);
-    });
-
-    registerActionListener(element, "zoom-out", () => {
-      this.navigationState.zoomBy(2.0);
-    });
-
-    registerActionListener(element, "depth-range-decrease", () => {
-      this.navigationState.depthRange.value *= 0.5;
-    });
-
-    registerActionListener(element, "depth-range-increase", () => {
-      this.navigationState.depthRange.value *= 2;
-    });
-
-    for (let axis = 0; axis < 3; ++axis) {
-      const axisName = AXES_NAMES[axis];
-      for (const sign of [-1, +1]) {
-        const signStr = sign < 0 ? "-" : "+";
-        registerActionListener(
-          element,
-          `rotate-relative-${axisName}${signStr}`,
-          () => {
-            this.navigationState.pose.rotateRelative(kAxes[axis], sign * 0.1);
-          },
-        );
-        const tempOffset = vec3.create();
-        registerActionListener(element, `${axisName}${signStr}`, () => {
-          const { navigationState } = this;
-          const offset = tempOffset;
-          offset[0] = 0;
-          offset[1] = 0;
-          offset[2] = 0;
-          offset[axis] = sign;
-          navigationState.pose.translateVoxelsRelative(offset);
-        });
-      }
-    }
 
     registerActionListener(
       element,
@@ -554,43 +474,11 @@ export abstract class RenderedDataPanel extends RenderedPanel {
 
     registerActionListener(
       element,
-      "adjust-depth-range-via-wheel",
-      (event: ActionEvent<WheelEvent>) => {
-        const e = event.detail;
-        this.navigationState.depthRange.value *= getWheelZoomAmount(e);
-      },
-    );
-
-    registerActionListener(
-      element,
       "translate-via-mouse-drag",
       (e: ActionEvent<MouseEvent>) => {
         startRelativeMouseDrag(e.detail, (_event, deltaX, deltaY) => {
           this.translateByViewportPixels(deltaX, deltaY);
         });
-      },
-    );
-
-    registerActionListener(
-      element,
-      "translate-in-plane-via-touchtranslate",
-      (e: ActionEvent<TouchTranslateInfo>) => {
-        const { detail } = e;
-        this.translateByViewportPixels(detail.deltaX, detail.deltaY);
-      },
-    );
-
-    registerActionListener(
-      element,
-      "translate-z-via-touchtranslate",
-      (e: ActionEvent<TouchTranslateInfo>) => {
-        const { detail } = e;
-        const { navigationState } = this;
-        const offset = tempVec3;
-        offset[0] = 0;
-        offset[1] = 0;
-        offset[2] = detail.deltaY + detail.deltaX;
-        navigationState.pose.translateVoxelsRelative(offset);
       },
     );
 
@@ -610,30 +498,6 @@ export abstract class RenderedDataPanel extends RenderedPanel {
         },
       );
     }
-
-    registerActionListener(element, "move-to-mouse-position", () => {
-      const { mouseState } = this.viewer;
-      if (mouseState.updateUnconditionally()) {
-        this.navigationState.position.value = mouseState.position;
-      }
-    });
-
-    registerActionListener(element, "snap", () =>
-      this.navigationState.pose.snap(),
-    );
-
-    registerActionListener(
-      element,
-      "zoom-via-touchpinch",
-      (e: ActionEvent<TouchPinchInfo>) => {
-        const { detail } = e;
-        this.handleMouseMove(detail.centerX, detail.centerY);
-        const ratio = detail.prevDistance / detail.distance;
-        if (ratio > 0.1 && ratio < 10) {
-          this.zoomByMouse(ratio);
-        }
-      },
-    );
   }
 
   abstract translateDataPointByViewportPixels(
