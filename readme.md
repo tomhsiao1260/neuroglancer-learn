@@ -2,6 +2,22 @@
 
 Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step.
 
+# Run it
+
+Make sure there's a `scroll.zarr` data in root directory.
+
+Then, run a python server to serve `zarr` data.
+
+```bash
+python cors_webserver.py
+```
+
+And run the application server.
+
+```bash
+npm run dev-server
+```
+
 ## 打包
 
 程式碼的切入點在 `./src/main.bundle.js`，透過 webpack 打包，開發階段可執行 `npm run dev-server` 開啟 localhost:8080，但有別於傳統的 `webpack serve` 指令，這個專案用了比較客製化的打包方式：
@@ -10,11 +26,11 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 
 ## RefCounted
 
-實作了 dispose 方法，所有繼承此 class 的類別可以呼叫 `registerDisposer` 方法，來註冊之後要捨棄項目
+實作了 dispose 方法，所有繼承此 class 的類別可以呼叫 `registerDisposer` 方法，來註冊之後要捨棄項目。大多都是手動釋放資源的，所以看起來會有點雜，另外在 `disposable.ts` 還實作其他釋放資源的方法，好比說事件監聽。
 
 ## minimal_viewer
 
-創建 ui 的地方，會先產生一個 `neuroglancer-container` div，裡面包一個由 `display_context.ts` 初始化產生的 canvas，和一個 `viewer` 初始化產生的 div (透過 `makeCanvasOverlayElement`)。
+創建 ui 的地方，會先產生一個 `neuroglancer-container` div，裡面包一個由 `display_context.ts` 初始化產生的 canvas，和一個 `viewer` 初始化產生的 div (透過 `makeCanvasOverlayElement`)。其中 canvas 負責渲染資料、座標軸、比例尺，`viewer` 的 div 負責監聽綁定的事件，例如縮放、平移、拖曳。
 
 ## viewer
 
