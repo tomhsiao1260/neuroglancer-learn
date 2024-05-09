@@ -36,7 +36,6 @@ import {
   LayerManager,
   LayerSelectedValues,
   MouseSelectionState,
-  SelectedLayerState,
   TopLevelLayerListSpecification,
   TrackableDataSelectionState,
   UserLayer,
@@ -55,7 +54,6 @@ import {
   TrackableRelativeDisplayScales,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
-import { overlaysOpen } from "#src/overlay.js";
 import { allRenderLayerRoles } from "#src/renderlayer.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
@@ -70,8 +68,6 @@ import { NullarySignal } from "#src/util/signal.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
-
-declare let NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS: any;
 
 export class DataManagementContext extends RefCounted {
   worker: Worker;
@@ -167,14 +163,6 @@ export function makeViewerUIConfiguration(): ViewerUIConfiguration {
     VIEWER_UI_CONFIG_OPTIONS.map((key) => [key, new TrackableBoolean(true)]),
   ) as ViewerUIConfiguration;
 }
-
-const defaultViewerOptions =
-  "undefined" !== typeof NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS
-    ? NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS
-    : {
-        showLayerDialog: true,
-        resetStateWhenEmpty: true,
-      };
 
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
@@ -282,7 +270,6 @@ export class Viewer extends RefCounted {
 
   constructor(public display: DisplayContext) {
     super();
-    const options = {};
 
     const dataContext = new DataManagementContext(display.gl, display);
     const visibility = new WatchableVisibilityPriority(
@@ -304,11 +291,7 @@ export class Viewer extends RefCounted {
     this.element = element;
     this.dataSourceProvider = dataSourceProvider;
     this.uiConfiguration = uiConfiguration;
-
     this.dataContext = this.registerDisposer(dataContext);
-
-    const optionsWithDefaults = { ...defaultViewerOptions, ...options };
-    const { resetStateWhenEmpty, showLayerDialog } = optionsWithDefaults;
 
     for (const key of VIEWER_UI_CONTROL_CONFIG_OPTIONS) {
       this.uiControlVisibility[key] = this.makeUiControlVisibilityState(key);
@@ -320,37 +303,26 @@ export class Viewer extends RefCounted {
       this.layerManager,
       this.chunkManager,
       this.selectionDetailsState,
-      this.selectedLayer,
       this.navigationState.coordinateSpace,
-      this.navigationState.pose.position,
-      this.globalToolBinder,
     );
 
-    // Debounce this call to ensure that a transient state does not result in the layer dialog being
-    // shown.
-    const maybeResetState = this.registerCancellable(
-      debounce(() => {
-        if (
-          !this.wasDisposed &&
-          this.layerManager.managedLayers.length === 0 &&
-          resetStateWhenEmpty
-        ) {
-          // No layers, reset state.
-          this.navigationState.reset();
-          this.perspectiveNavigationState.pose.orientation.reset();
-          this.perspectiveNavigationState.zoomFactor.reset();
-          this.resetInitiated.dispatch();
-          if (!overlaysOpen && showLayerDialog && this.visibility.visible) {
-            addNewLayer(this.layerSpecification, this.selectedLayer);
-          }
-        }
-      }),
-    );
-    this.layerManager.layersChanged.add(maybeResetState);
-    maybeResetState();
+    addNewLayer(this.layerSpecification);
 
     this.makeUI();
     this.poc();
+  }
+
+  private makeUI() {
+    const gridContainer = this.element;
+    gridContainer.classList.add("neuroglancer-viewer");
+    gridContainer.classList.add("neuroglancer-noselect");
+    gridContainer.style.display = "flex";
+    gridContainer.style.flexDirection = "column";
+
+    this.layout = this.registerDisposer(
+      new RootLayoutContainer(this, "4panel"),
+    );
+    gridContainer.appendChild(this.layout.element);
   }
 
   private async poc() {
@@ -360,7 +332,6 @@ export class Viewer extends RefCounted {
 
     const layer = this.layerManager.managedLayers[0].layer;
     if (layer === null) return;
-
     this.changeLayerTypeToDetected(layer);
   }
 
@@ -377,19 +348,5 @@ export class Viewer extends RefCounted {
       }
     }
     return false;
-  }
-
-  private makeUI() {
-    const gridContainer = this.element;
-    gridContainer.classList.add("neuroglancer-viewer");
-    gridContainer.classList.add("neuroglancer-noselect");
-    gridContainer.style.display = "flex";
-    gridContainer.style.flexDirection = "column";
-
-    this.layout = this.registerDisposer(
-      new RootLayoutContainer(this, "4panel"),
-    );
-
-    gridContainer.appendChild(this.layout.element);
   }
 }

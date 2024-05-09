@@ -417,8 +417,6 @@ export class LayerGroupViewer extends RefCounted {
       new DataPanelLayoutContainer(this, "xy"),
     );
 
-    this.registerDisposer(this.layerManager.useDirectly());
-
     this.makeUI();
   }
 

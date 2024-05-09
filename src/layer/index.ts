@@ -653,10 +653,6 @@ export class ManagedUserLayer extends RefCounted {
     new CoordinateSpacePlaybackVelocity(this.localCoordinateSpace),
   );
 
-  // Index of layer within root layer manager, counting only non-archived layers.  This is the layer
-  // number shown in the layer bar and layer list panel.
-  nonArchivedLayerIndex = -1;
-
   readyStateChanged = new NullarySignal();
   layerChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
@@ -712,33 +708,6 @@ export class ManagedUserLayer extends RefCounted {
   visible = true;
   archived = false;
 
-  get supportsPickOption() {
-    const userLayer = this.layer;
-    return (
-      userLayer !== null &&
-      (userLayer.constructor as typeof UserLayer).supportsPickOption
-    );
-  }
-
-  get pickEnabled() {
-    const userLayer = this.layer;
-    return (
-      userLayer !== null &&
-      (userLayer.constructor as typeof UserLayer).supportsPickOption &&
-      userLayer.pick.value
-    );
-  }
-
-  set pickEnabled(value: boolean) {
-    const userLayer = this.layer;
-    if (
-      userLayer !== null &&
-      (userLayer.constructor as typeof UserLayer).supportsPickOption
-    ) {
-      userLayer.pick.value = value;
-    }
-  }
-
   /**
    * If layer is not null, tranfers ownership of a reference.
    */
@@ -748,60 +717,10 @@ export class ManagedUserLayer extends RefCounted {
   ) {
     super();
     this.name_ = name;
-    this.registerDisposer(
-      new PlaybackManager(
-        this.manager.root.display,
-        this.localPosition,
-        this.localVelocity,
-      ),
-    );
-  }
-
-  toJSON() {
-    const userLayer = this.layer;
-    if (userLayer === null) {
-      return undefined;
-    }
-    const layerSpec = userLayer.toJSON();
-    layerSpec.name = this.name;
-    if (!this.visible) {
-      if (this.archived) {
-        layerSpec.archived = true;
-      } else {
-        layerSpec.visible = false;
-      }
-    }
-    return layerSpec;
   }
 
   setVisible(value: boolean) {
-    if (value === this.visible) return;
-    if (value && this.archived) {
-      this.visible = true;
-      this.setArchived(false);
-      return;
-    }
-    this.visible = value;
-    this.layerChanged.dispatch();
-  }
-
-  setArchived(value: boolean) {
-    if (this.archived === value) return;
-    if (value === true) {
-      this.visible = false;
-      this.archived = true;
-      for (const { layerManager } of this.manager.root.subsets) {
-        if (!layerManager.has(this)) continue;
-        layerManager.removeManagedLayer(this);
-      }
-    } else {
-      for (const { layerManager } of this.manager.root.subsets) {
-        if (layerManager.has(this)) continue;
-        layerManager.addManagedLayer(this.addRef());
-      }
-      this.archived = false;
-    }
-    this.layerChanged.dispatch();
+    return;
   }
 
   disposed() {
@@ -816,91 +735,9 @@ export class LayerManager extends RefCounted {
   layersChanged = new NullarySignal();
   readyStateChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
-  boundPositions = new WeakSet<Position>();
-  numDirectUsers = 0;
-  nonArchivedLayerIndexGeneration = -1;
-  private renderLayerToManagedLayerMapGeneration = -1;
-  private renderLayerToManagedLayerMap_ = new Map<
-    RenderLayer,
-    ManagedUserLayer
-  >();
 
   constructor() {
     super();
-    this.layersChanged.add(this.scheduleRemoveLayersWithSingleRef);
-  }
-
-  private scheduleRemoveLayersWithSingleRef = this.registerCancellable(
-    debounce(() => this.removeLayersWithSingleRef(), 0),
-  );
-
-  updateNonArchivedLayerIndices() {
-    const generation = this.layersChanged.count;
-    if (generation === this.nonArchivedLayerIndexGeneration) return;
-    this.nonArchivedLayerIndexGeneration = generation;
-    let index = 0;
-    for (const layer of this.managedLayers) {
-      if (!layer.archived) {
-        layer.nonArchivedLayerIndex = index++;
-      }
-    }
-    for (const layer of this.managedLayers) {
-      if (layer.archived) {
-        layer.nonArchivedLayerIndex = index++;
-      }
-    }
-  }
-
-  getLayerByNonArchivedIndex(index: number): ManagedUserLayer | undefined {
-    let i = 0;
-    for (const layer of this.managedLayers) {
-      if (!layer.archived) {
-        if (i === index) return layer;
-        ++i;
-      }
-    }
-    return undefined;
-  }
-
-  get renderLayerToManagedLayerMap() {
-    const generation = this.layersChanged.count;
-    const map = this.renderLayerToManagedLayerMap_;
-    if (this.renderLayerToManagedLayerMapGeneration !== generation) {
-      this.renderLayerToManagedLayerMapGeneration = generation;
-      map.clear();
-      for (const managedLayer of this.managedLayers) {
-        const userLayer = managedLayer.layer;
-        if (userLayer !== null) {
-          for (const renderLayer of userLayer.renderLayers) {
-            map.set(renderLayer, managedLayer);
-          }
-        }
-      }
-    }
-    return map;
-  }
-
-  filter(predicate: (layer: ManagedUserLayer) => boolean) {
-    let changed = false;
-    this.managedLayers = this.managedLayers.filter((layer) => {
-      if (!predicate(layer)) {
-        this.unbindManagedLayer(layer);
-        this.layerSet.delete(layer);
-        changed = true;
-        return false;
-      }
-      return true;
-    });
-    if (changed) {
-      this.layersChanged.dispatch();
-    }
-  }
-
-  private removeLayersWithSingleRef() {
-    if (this.numDirectUsers > 0) {
-      return;
-    }
-    this.filter((layer) => layer.refCount !== 1 || layer.archived);
   }
 
   private updateSignalBindings(
@@ -910,18 +747,6 @@ export class LayerManager extends RefCounted {
     callback(layer.layerChanged, this.layersChanged.dispatch);
     callback(layer.readyStateChanged, this.readyStateChanged.dispatch);
     callback(layer.specificationChanged, this.specificationChanged.dispatch);
-  }
-
-  useDirectly() {
-    if (++this.numDirectUsers === 1) {
-      this.layersChanged.remove(this.scheduleRemoveLayersWithSingleRef);
-    }
-    return () => {
-      if (--this.numDirectUsers === 0) {
-        this.layersChanged.add(this.scheduleRemoveLayersWithSingleRef);
-        this.scheduleRemoveLayersWithSingleRef();
-      }
-    };
   }
 
   /**
@@ -949,59 +774,7 @@ export class LayerManager extends RefCounted {
     }
   }
 
-  unbindManagedLayer(managedLayer: ManagedUserLayer) {
-    this.updateSignalBindings(managedLayer, removeSignalBinding);
-    managedLayer.containers.delete(this);
-    // Also notify the root LayerManager, to ensures the layer is removed if this is the last direct
-    // reference.
-    managedLayer.manager.rootLayers.layersChanged.dispatch();
-    managedLayer.dispose();
-  }
-
-  clear() {
-    for (const managedLayer of this.managedLayers) {
-      this.unbindManagedLayer(managedLayer);
-    }
-    this.managedLayers.length = 0;
-    this.layerSet.clear();
-    this.layersChanged.dispatch();
-  }
-
-  remove(index: number) {
-    const layer = this.managedLayers[index];
-    this.unbindManagedLayer(layer);
-    this.managedLayers.splice(index, 1);
-    this.layerSet.delete(layer);
-    this.layersChanged.dispatch();
-  }
-
-  removeManagedLayer(managedLayer: ManagedUserLayer) {
-    const index = this.managedLayers.indexOf(managedLayer);
-    if (index === -1) {
-      throw new Error("Internal error: invalid managed layer.");
-    }
-    this.remove(index);
-  }
-
-  reorderManagedLayer(oldIndex: number, newIndex: number) {
-    const numLayers = this.managedLayers.length;
-    if (
-      oldIndex === newIndex ||
-      oldIndex < 0 ||
-      oldIndex >= numLayers ||
-      newIndex < 0 ||
-      newIndex >= numLayers
-    ) {
-      // Don't do anything.
-      return;
-    }
-    const [oldLayer] = this.managedLayers.splice(oldIndex, 1);
-    this.managedLayers.splice(newIndex, 0, oldLayer);
-    this.layersChanged.dispatch();
-  }
-
   disposed() {
-    this.clear();
     super.disposed();
   }
 
@@ -1020,55 +793,6 @@ export class LayerManager extends RefCounted {
 
   has(layer: Borrowed<ManagedUserLayer>) {
     return this.layerSet.has(layer);
-  }
-
-  get renderLayers() {
-    const layerManager = this;
-    return {
-      *[Symbol.iterator]() {
-        for (const managedLayer of layerManager.managedLayers) {
-          if (managedLayer.layer === null) {
-            continue;
-          }
-          for (const renderLayer of managedLayer.layer.renderLayers) {
-            yield renderLayer;
-          }
-        }
-      },
-    };
-  }
-
-  get visibleRenderLayers() {
-    const layerManager = this;
-    return {
-      *[Symbol.iterator]() {
-        for (const managedLayer of layerManager.managedLayers) {
-          if (managedLayer.layer === null || !managedLayer.visible) {
-            continue;
-          }
-          for (const renderLayer of managedLayer.layer.renderLayers) {
-            yield renderLayer;
-          }
-        }
-      },
-    };
-  }
-
-  invokeAction(action: string) {
-    const context = new LayerActionContext();
-    for (const managedLayer of this.managedLayers) {
-      if (managedLayer.layer === null || !managedLayer.visible) {
-        continue;
-      }
-      const userLayer = managedLayer.layer;
-      userLayer.handleAction(action, context);
-      for (const renderLayer of userLayer.renderLayers) {
-        renderLayer.handleAction(action);
-      }
-    }
-    for (const callback of context.callbacks) {
-      callback();
-    }
   }
 }
 
@@ -1992,64 +1716,25 @@ export class LinkedLayerGroup extends RefCounted implements Trackable {
   }
 }
 
-function initializeLayerFromSpecNoRestoreState(
-  managedLayer: ManagedUserLayer,
-  spec: any,
-) {
-  const layerType = verifyOptionalObjectProperty(
-    spec,
-    "type",
-    verifyString,
-    "auto",
-  );
-  managedLayer.archived = verifyOptionalObjectProperty(
-    spec,
-    "archived",
-    verifyBoolean,
-    false,
-  );
-  if (!managedLayer.archived) {
-    managedLayer.visible = verifyOptionalObjectProperty(
-      spec,
-      "visible",
-      verifyBoolean,
-      true,
-    );
-  } else {
-    managedLayer.visible = false;
-  }
-  const layerConstructor = layerTypes.get(layerType) || NewUserLayer;
-  managedLayer.layer = new layerConstructor(managedLayer);
-  return spec;
-}
-
 function completeUserLayerInitialization(
   managedLayer: Borrowed<ManagedUserLayer>,
   spec: any,
 ) {
-  try {
-    const userLayer = managedLayer.layer;
-    if (userLayer === null) return;
-    userLayer.restoreState(spec);
-    userLayer.initializationDone();
-  } catch (e) {
-    deleteLayer(managedLayer);
-    throw e;
-  }
+  const userLayer = managedLayer.layer;
+  if (userLayer === null) return;
+  userLayer.restoreState(spec);
+  // userLayer.initializationDone();
 }
 
 export function initializeLayerFromSpec(
   managedLayer: Borrowed<ManagedUserLayer>,
   spec: any,
 ) {
-  try {
-    verifyObject(spec);
-    initializeLayerFromSpecNoRestoreState(managedLayer, spec);
-    completeUserLayerInitialization(managedLayer, spec);
-  } catch (e) {
-    deleteLayer(managedLayer);
-    throw e;
-  }
+  managedLayer.archived = false;
+  managedLayer.visible = true;
+  managedLayer.layer = new NewUserLayer(managedLayer);
+
+  completeUserLayerInitialization(managedLayer, spec);
 }
 
 export function initializeLayerFromSpecShowErrorStatus(
@@ -2077,8 +1762,6 @@ export function makeLayer(
 export abstract class LayerListSpecification extends RefCounted {
   changed = new NullarySignal();
 
-  abstract rpc: RPC;
-
   abstract dataSourceProviderRegistry: Borrowed<DataSourceProviderRegistry>;
   abstract layerManager: Borrowed<LayerManager>;
   abstract chunkManager: Borrowed<ChunkManager>;
@@ -2090,15 +1773,9 @@ export abstract class LayerListSpecification extends RefCounted {
     layer: Owned<ManagedUserLayer>,
     index?: number | undefined,
   ): void;
-
-  abstract rootLayers: Borrowed<LayerManager>;
 }
 
 export class TopLevelLayerListSpecification extends LayerListSpecification {
-  get rpc() {
-    return this.chunkManager.rpc!;
-  }
-
   get root() {
     return this;
   }
@@ -2107,7 +1784,6 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
     this.coordinateSpace,
     isGlobalDimension,
   );
-  subsets = new Set<LayerSubsetSpecification>();
 
   layerSelectedValues = this.selectionState.layerSelectedValues;
 
@@ -2117,74 +1793,9 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
     public layerManager: LayerManager,
     public chunkManager: ChunkManager,
     public selectionState: Borrowed<TrackableDataSelectionState>,
-    public selectedLayer: Borrowed<SelectedLayerState>,
     public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
-    public globalPosition: Borrowed<Position>,
-    public toolBinder: Borrowed<GlobalToolBinder>,
   ) {
     super();
-    // this.registerDisposer(
-    //   layerManager.layersChanged.add(this.changed.dispatch),
-    // );
-    // this.registerDisposer(
-    //   layerManager.specificationChanged.add(this.changed.dispatch),
-    // );
-  }
-
-  reset() {
-    this.layerManager.clear();
-  }
-
-  restoreState(x: any) {
-    this.layerManager.clear();
-    let layerSpecs: any[];
-    if (!Array.isArray(x)) {
-      verifyObject(x);
-      layerSpecs = Object.entries(x).map(([name, layerSpec]) => {
-        if (typeof layerSpec === "string") {
-          return { name, source: layerSpec };
-        }
-        verifyObject(layerSpec);
-        return { ...(layerSpec as any), name };
-      });
-    } else {
-      layerSpecs = x;
-    }
-    const layersToRestore: { managedLayer: ManagedUserLayer; spec: any }[] = [];
-    for (const layerSpec of layerSpecs) {
-      verifyObject(layerSpec);
-      const name = this.layerManager.getUniqueLayerName(
-        verifyObjectProperty(layerSpec, "name", verifyString),
-      );
-      const managedLayer = new ManagedUserLayer(name, this);
-      try {
-        initializeLayerFromSpecNoRestoreState(managedLayer, layerSpec);
-        this.layerManager.addManagedLayer(managedLayer);
-        layersToRestore.push({ managedLayer, spec: layerSpec });
-      } catch (e) {
-        managedLayer.dispose();
-        const msg = new StatusMessage();
-        msg.setErrorMessage(
-          `Error creating layer ${JSON.stringify(name)}: ` +
-            (e instanceof Error)
-            ? e.message
-            : "" + e,
-        );
-      }
-    }
-    for (const { managedLayer, spec } of layersToRestore) {
-      try {
-        completeUserLayerInitialization(managedLayer, spec);
-      } catch (e) {
-        const msg = new StatusMessage();
-        msg.setErrorMessage(
-          `Error creating layer ${JSON.stringify(name)}: ` +
-            (e instanceof Error)
-            ? e.message
-            : "" + e,
-        );
-      }
-    }
   }
 
   add(layer: ManagedUserLayer, index?: number | undefined) {
@@ -2193,28 +1804,6 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
     }
     this.layerManager.addManagedLayer(layer, index);
   }
-
-  toJSON() {
-    const result = [];
-    let numResults = 0;
-    for (const managedLayer of this.layerManager.managedLayers) {
-      const layerJson = managedLayer.toJSON();
-      // A `null` layer specification is used to indicate a transient drag target, and should not be
-      // serialized.
-      if (layerJson != null) {
-        result.push(layerJson);
-        ++numResults;
-      }
-    }
-    if (numResults === 0) {
-      return undefined;
-    }
-    return result;
-  }
-
-  get rootLayers() {
-    return this.layerManager;
-  }
 }
 
 /**
@@ -2222,9 +1811,7 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
  */
 export class LayerSubsetSpecification extends LayerListSpecification {
   changed = new NullarySignal();
-  get rpc() {
-    return this.master.rpc;
-  }
+
   get dataSourceProviderRegistry() {
     return this.master.dataSourceProviderRegistry;
   }
@@ -2251,16 +1838,10 @@ export class LayerSubsetSpecification extends LayerListSpecification {
     this.registerDisposer(
       layerManager.specificationChanged.add(this.changed.dispatch),
     );
-    master.subsets.add(this);
   }
 
   disposed() {
     super.disposed();
-    this.master.subsets.delete(this);
-  }
-
-  reset() {
-    this.layerManager.clear();
   }
 
   restoreState(x: any) {
@@ -2294,10 +1875,6 @@ export class LayerSubsetSpecification extends LayerListSpecification {
       this.master.layerManager.addManagedLayer(layer.addRef());
     }
     this.layerManager.addManagedLayer(layer, index);
-  }
-
-  get rootLayers() {
-    return this.master.rootLayers;
   }
 }
 
@@ -2368,13 +1945,6 @@ export function changeLayerName(
     return true;
   }
   return false;
-}
-
-export function deleteLayer(managedLayer: Borrowed<ManagedUserLayer>) {
-  if (managedLayer.wasDisposed) return;
-  for (const layerManager of managedLayer.containers) {
-    layerManager.removeManagedLayer(managedLayer);
-  }
 }
 
 function getMaxPriorityGuess(
@@ -2471,14 +2041,16 @@ export class AutoUserLayer extends UserLayer {
   }
 }
 
-export function addNewLayer(
-  manager: Borrowed<LayerListSpecification>,
-  selectedLayer: Borrowed<SelectedLayerState>,
-) {
-  const layer = makeLayer(manager, "new layer", { type: "new" });
-  manager.add(layer);
-  selectedLayer.layer = layer;
-  selectedLayer.visible = true;
+export function addNewLayer(manager: Borrowed<LayerListSpecification>) {
+  const managedLayer = new ManagedUserLayer("new layer", manager);
+  managedLayer.layer = new NewUserLayer(managedLayer);
+  managedLayer.archived = false;
+  managedLayer.visible = true;
+
+  const layer = managedLayer.layer;
+  if (layer !== null) layer.restoreState({ type: "new" });
+
+  manager.add(managedLayer);
 }
 
 registerLayerType(NewUserLayer);
