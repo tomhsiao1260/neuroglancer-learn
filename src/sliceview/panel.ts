@@ -245,6 +245,103 @@ export class SliceViewPanel extends RenderedDataPanel {
     if (!sliceView.valid) {
       return false;
     }
+
+    sliceView.updateRendering();
+    const { width, height } = sliceView.projectionParameters.value;
+    const { gl } = this;
+
+    this.offscreenFramebuffer.bind(width, height);
+    gl.disable(WebGL2RenderingContext.SCISSOR_TEST);
+    this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT);
+
+    const backgroundColor = tempVec4;
+    const crossSectionBackgroundColor =
+      this.viewer.crossSectionBackgroundColor.value;
+    backgroundColor[0] = crossSectionBackgroundColor[0];
+    backgroundColor[1] = crossSectionBackgroundColor[1];
+    backgroundColor[2] = crossSectionBackgroundColor[2];
+    backgroundColor[3] = 1;
+
+    this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+    this.sliceViewRenderHelper.draw(
+      sliceView.offscreenFramebuffer.colorBuffers[0].texture,
+      identityMat4,
+      this.colorFactor,
+      backgroundColor,
+      0,
+      0,
+      1,
+      1,
+    );
+
+    gl.disable(WebGL2RenderingContext.BLEND);
+    this.offscreenFramebuffer.unbind();
+
+    // Draw the texture over the whole viewport.
+    this.setGLClippedViewport();
+    this.offscreenCopyHelper.draw(
+      this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture,
+    );
+    return true;
+  }
+
+  drawWithPicking1(pickingData: FramePickingData): boolean {
+    const { sliceView } = this;
+    if (!sliceView.valid) {
+      return false;
+    }
+    const projectionParameters = sliceView.projectionParameters.value;
+    const { width, height } = projectionParameters;
+    const { gl } = this;
+
+    this.offscreenFramebuffer.bind(width, height);
+    this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT);
+
+    this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+
+    const axisLength =
+      (Math.min(
+        projectionParameters.logicalWidth,
+        projectionParameters.logicalHeight,
+      ) /
+        4) *
+      1.5;
+
+    const {
+      zoomFactor: { value: zoom },
+    } = this.viewer.navigationState;
+
+    this.axesLineHelper.draw(
+      disableZProjection(
+        computeAxisLineMatrix(projectionParameters, axisLength * zoom),
+      ),
+    );
+
+    this.scaleBars.draw(
+      projectionParameters,
+      this.navigationState.displayDimensionRenderInfo.value,
+      this.navigationState.relativeDisplayScales.value,
+      this.navigationState.zoomFactor.value,
+      this.viewer.scaleBarOptions.value,
+    );
+
+    this.offscreenFramebuffer.unbind();
+
+    // Draw the texture over the whole viewport.
+    this.setGLClippedViewport();
+    this.offscreenCopyHelper.draw(
+      this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture,
+    );
+    return true;
+  }
+
+  drawWithPicking_(pickingData: FramePickingData): boolean {
+    const { sliceView } = this;
+    if (!sliceView.valid) {
+      return false;
+    }
     sliceView.updateRendering();
     const projectionParameters = sliceView.projectionParameters.value;
     const { width, height, invViewProjectionMat } = projectionParameters;
@@ -342,7 +439,7 @@ export class SliceViewPanel extends RenderedDataPanel {
         gl.disable(WebGL2RenderingContext.BLEND);
       }
     }
-
+    1;
     this.offscreenFramebuffer.unbind();
 
     // Draw the texture over the whole viewport.

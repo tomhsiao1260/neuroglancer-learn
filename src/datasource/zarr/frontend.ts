@@ -394,61 +394,31 @@ async function getMetadata(
     explicitDimensionSeparator?: DimensionSeparator | undefined;
   },
 ): Promise<Metadata | undefined> {
-  if (options.zarrVersion === 2) {
-    const [zarray, zattrs] = await Promise.all([
-      getJsonResource(chunkManager, credentialsProvider, `${url}/.zarray`),
-      getJsonResource(chunkManager, credentialsProvider, `${url}/.zattrs`),
-    ]);
-    if (zarray === undefined) {
-      if (zattrs === undefined) {
-        return undefined;
-      }
-      if (options.expectedNodeType === "array") {
-        return undefined;
-      }
-      return {
-        zarrVersion: 2,
-        nodeType: "group",
-        userAttributes: verifyObject(zattrs),
-      };
-    }
-    if (options.expectedNodeType === "group") {
+  const [zarray, zattrs] = await Promise.all([
+    getJsonResource(chunkManager, credentialsProvider, `${url}/.zarray`),
+    getJsonResource(chunkManager, credentialsProvider, `${url}/.zattrs`),
+  ]);
+  if (zarray === undefined) {
+    if (zattrs === undefined) {
       return undefined;
     }
-    return parseV2Metadata(
-      zarray,
-      zattrs ?? {},
-      options.explicitDimensionSeparator,
-    );
-  }
-  if (options.zarrVersion === 3) {
-    const zarrJson = await getJsonResource(
-      chunkManager,
-      credentialsProvider,
-      `${url}/zarr.json`,
-    );
-    if (zarrJson === undefined) return undefined;
-    if (options.explicitDimensionSeparator !== undefined) {
-      throw new Error(
-        "dimension_separator query parameter not supported for zarr v3",
-      );
+    if (options.expectedNodeType === "array") {
+      return undefined;
     }
-    return parseV3Metadata(zarrJson, options.expectedNodeType);
-  }
-  const [v2Result, v3Result] = await Promise.all([
-    getMetadata(chunkManager, credentialsProvider, url, {
-      ...options,
+    return {
       zarrVersion: 2,
-    }),
-    getMetadata(chunkManager, credentialsProvider, url, {
-      ...options,
-      zarrVersion: 3,
-    }),
-  ]);
-  if (v2Result !== undefined && v3Result !== undefined) {
-    throw new Error("Both zarr v2 and v3 metadata found");
+      nodeType: "group",
+      userAttributes: verifyObject(zattrs),
+    };
   }
-  return v2Result ?? v3Result;
+  if (options.expectedNodeType === "group") {
+    return undefined;
+  }
+  return parseV2Metadata(
+    zarray,
+    zattrs ?? {},
+    options.explicitDimensionSeparator,
+  );
 }
 
 export class ZarrDataSource extends DataSourceProvider {
@@ -529,7 +499,7 @@ export class ZarrDataSource extends DataSourceProvider {
               default: true,
               url: undefined,
               subsource: { volume },
-            }
+            },
           ],
         };
       },

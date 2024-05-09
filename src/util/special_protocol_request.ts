@@ -24,8 +24,6 @@ import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
 import type { ResponseTransform } from "#src/util/http_request.js";
 import { parseUrl } from "#src/util/http_request.js";
-import { getRandomHexString } from "#src/util/random.js";
-import { cancellableFetchS3Ok } from "#src/util/s3.js";
 
 export type SpecialProtocolCredentials = any;
 export type SpecialProtocolCredentialsProvider =
@@ -138,60 +136,11 @@ export async function cancellableFetchSpecialOk<T>(
   transformResponse: ResponseTransform<T>,
   cancellationToken: CancellationToken = uncancelableToken,
 ): Promise<T> {
-  const u = parseUrl(url);
-  switch (u.protocol) {
-    case "gs":
-      // Include random query string parameter (ignored by GCS) to bypass GCS cache and ensure a
-      // cached response is never used.
-      //
-      // This addresses two issues related to GCS:
-      //
-      // 1. GCS fails to send an updated `Access-Control-Allow-Origin` header in 304 responses to
-      //    cache revalidation requests.
-      //
-      //    https://bugs.chromium.org/p/chromium/issues/detail?id=1214563#c2
-      //
-      //    The random query string parameter ensures cached responses are never used.
-      //
-      //    Note: This issue does not apply to gs+xml because with the XML API, the
-      //    Access-Control-Allow-Origin response header does not vary with the Origin.
-      //
-      // 2. If the object does not prohibit caching (e.g. public bucket and default `cache-control`
-      //    metadata value), GCS may return stale responses.
-      //
-      return fetchWithOAuth2Credentials(
-        credentialsProvider,
-        `https://www.googleapis.com/storage/v1/b/${u.host}/o/` +
-          `${encodeURIComponent(u.path.substring(1))}?alt=media` +
-          `&neuroglancer=${getRandomHexString()}`,
-        init,
-        transformResponse,
-        cancellationToken,
-      );
-    case "gs+xml":
-      return fetchWithOAuth2Credentials(
-        credentialsProvider,
-        `https://storage.googleapis.com/${u.host}${u.path}` +
-          `?neuroglancer=${getRandomHexString()}`,
-        init,
-        transformResponse,
-        cancellationToken,
-      );
-    case "s3":
-      return cancellableFetchS3Ok(
-        u.host,
-        u.path,
-        init,
-        transformResponse,
-        cancellationToken,
-      );
-    default:
-      return fetchWithOAuth2Credentials(
-        credentialsProvider,
-        url,
-        init,
-        transformResponse,
-        cancellationToken,
-      );
-  }
+  return fetchWithOAuth2Credentials(
+    credentialsProvider,
+    url,
+    init,
+    transformResponse,
+    cancellationToken,
+  );
 }

@@ -672,6 +672,8 @@ void main() {
             );
           }
           newSource = false;
+          // view shader code here
+          // console.log(shader);
           drawChunk(gl, shader!, chunkPosition, wireFrame);
           ++presentCount;
         } else {

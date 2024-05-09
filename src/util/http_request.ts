@@ -107,7 +107,8 @@ export async function fetchOk(
     }
     let response: Response;
     try {
-      response = await fetch(input, init);
+      response = await fetch(input);
+      // response = await fetch(input, init);
     } catch (error) {
       throw HttpError.fromRequestError(input, error);
     }
@@ -155,23 +156,8 @@ export async function cancellableFetchOk<T>(
   transformResponse: ResponseTransform<T>,
   cancellationToken: CancellationToken = uncancelableToken,
 ): Promise<T> {
-  if (cancellationToken === uncancelableToken) {
-    const response = await fetchOk(input, init);
-    return await transformResponse(response);
-  }
-  const abortController = new AbortController();
-  const unregisterCancellation = cancellationToken.add(() =>
-    abortController.abort(),
-  );
-  try {
-    const response = await fetchOk(input, {
-      ...init,
-      signal: abortController.signal,
-    });
-    return await transformResponse(response);
-  } finally {
-    unregisterCancellation();
-  }
+  const response = await fetchOk(input, init);
+  return await transformResponse(response);
 }
 
 const tempUint64 = new Uint64();

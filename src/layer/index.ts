@@ -2123,12 +2123,12 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
     public toolBinder: Borrowed<GlobalToolBinder>,
   ) {
     super();
-    this.registerDisposer(
-      layerManager.layersChanged.add(this.changed.dispatch),
-    );
-    this.registerDisposer(
-      layerManager.specificationChanged.add(this.changed.dispatch),
-    );
+    // this.registerDisposer(
+    //   layerManager.layersChanged.add(this.changed.dispatch),
+    // );
+    // this.registerDisposer(
+    //   layerManager.specificationChanged.add(this.changed.dispatch),
+    // );
   }
 
   reset() {

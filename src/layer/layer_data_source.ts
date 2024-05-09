@@ -401,6 +401,7 @@ export class LayerDataSource extends RefCounted {
     this.spec_ = spec;
     const chunkManager = layer.manager.chunkManager;
     const registry = layer.manager.dataSourceProviderRegistry;
+    console.log(registry);
     const cancellationToken = new CancellationTokenSource();
     this.messages.addMessage({
       severity: MessageSeverity.info,

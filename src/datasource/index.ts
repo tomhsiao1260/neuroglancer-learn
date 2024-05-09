@@ -352,7 +352,7 @@ class LocalDataSourceProvider extends DataSourceProvider {
 const protocolPattern = /^(?:([a-zA-Z][a-zA-Z0-9-+_]*):\/\/)?(.*)$/;
 
 export class DataSourceProviderRegistry extends RefCounted {
-  constructor(public credentialsManager: CredentialsManager) {
+  constructor() {
     super();
   }
   dataSources = new Map<string, Owned<DataSourceProvider>>([

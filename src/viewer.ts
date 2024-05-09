@@ -25,17 +25,12 @@ import {
   ChunkManager,
   ChunkQueueManager,
 } from "#src/chunk_manager/frontend.js";
-import {
-  makeCoordinateSpace,
-  TrackableCoordinateSpace,
-} from "#src/coordinate_transform.js";
+import { TrackableCoordinateSpace } from "#src/coordinate_transform.js";
 import { defaultCredentialsManager } from "#src/credentials_provider/default_manager.js";
 import { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import type { DisplayContext } from "#src/display_context.js";
-import { TrackableWindowedViewport } from "#src/display_context.js";
-import { HelpPanelState } from "#src/help/input_event_bindings.js";
 import {
   addNewLayer,
   LayerManager,
@@ -46,14 +41,12 @@ import {
   TrackableDataSelectionState,
   UserLayer,
 } from "#src/layer/index.js";
-import { LayerGroupViewer } from "#src/layer_group_viewer.js";
 import { RootLayoutContainer } from "#src/layer_groups_layout.js";
 import {
   CoordinateSpacePlaybackVelocity,
   DisplayPose,
   NavigationState,
   OrientationState,
-  PlaybackManager,
   Position,
   TrackableCrossSectionZoom,
   TrackableDepthRange,
@@ -63,79 +56,22 @@ import {
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import { overlaysOpen } from "#src/overlay.js";
-import { allRenderLayerRoles, RenderLayerRole } from "#src/renderlayer.js";
-import { StatusMessage } from "#src/status.js";
-import {
-  ElementVisibilityFromTrackableBoolean,
-  TrackableBoolean,
-} from "#src/trackable_boolean.js";
+import { allRenderLayerRoles } from "#src/renderlayer.js";
+import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import {
-  makeDerivedWatchableValue,
-  observeWatchable,
-  TrackableValue,
-} from "#src/trackable_value.js";
-import {
-  LayerArchiveCountWidget,
-  LayerListPanel,
-  LayerListPanelState,
-} from "#src/ui/layer_list_panel.js";
+import { makeDerivedWatchableValue } from "#src/trackable_value.js";
 import { SidePanelManager } from "#src/ui/side_panel.js";
-import { StateEditorDialog } from "#src/ui/state_editor.js";
-import { StatisticsDisplayState, StatisticsPanel } from "#src/ui/statistics.js";
-import { GlobalToolBinder, LocalToolBinder } from "#src/ui/tool.js";
-import {
-  ViewerSettingsPanel,
-  ViewerSettingsPanelState,
-} from "#src/ui/viewer_settings.js";
-import { AutomaticallyFocusedElement } from "#src/util/automatic_focus.js";
 import { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { removeFromParent } from "#src/util/dom.js";
-import type { ActionEvent } from "#src/util/event_action_map.js";
-import { registerActionListener } from "#src/util/event_action_map.js";
 import { vec3 } from "#src/util/geom.js";
-import {
-  parseFixedLengthArray,
-  verifyFinitePositiveFloat,
-  verifyObject,
-  verifyOptionalObjectProperty,
-  verifyString,
-} from "#src/util/json.js";
-import {
-  EventActionMap,
-  KeyboardEventBinder,
-} from "#src/util/keyboard_bindings.js";
+import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { NullarySignal } from "#src/util/signal.js";
-import {
-  CompoundTrackable,
-  optionallyRestoreFromJsonMember,
-} from "#src/util/trackable.js";
-import type {
-  ViewerState,
-  VisibilityPrioritySpecification,
-} from "#src/viewer_state.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import {
-  MousePositionWidget,
-  PositionWidget,
-  registerDimensionToolForLayerGroupViewer,
-  registerDimensionToolForUserLayer,
-  registerDimensionToolForViewer,
-} from "#src/widget/position_widget.js";
-import { TrackableScaleBarOptions } from "#src/widget/scale_bar.js";
 import { RPC } from "#src/worker_rpc.js";
 
 declare let NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS: any;
-
-interface CreditLink {
-  url: string;
-  text: string;
-}
-
-declare let NEUROGLANCER_CREDIT_LINK: CreditLink | CreditLink[] | undefined;
 
 export class DataManagementContext extends RefCounted {
   worker: Worker;
@@ -232,30 +168,6 @@ export function makeViewerUIConfiguration(): ViewerUIConfiguration {
   ) as ViewerUIConfiguration;
 }
 
-function setViewerUiConfiguration(
-  config: ViewerUIConfiguration,
-  options: Partial<ViewerUIOptions>,
-) {
-  for (const key of VIEWER_UI_CONFIG_OPTIONS) {
-    const value = options[key];
-    if (value !== undefined) {
-      config[key].value = value;
-    }
-  }
-}
-
-export interface ViewerOptions
-  extends ViewerUIOptions,
-    VisibilityPrioritySpecification {
-  dataContext: Owned<DataManagementContext>;
-  element: HTMLElement;
-  dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
-  uiConfiguration: ViewerUIConfiguration;
-  showLayerDialog: boolean;
-  inputEventBindings: InputEventBindings;
-  resetStateWhenEmpty: boolean;
-}
-
 const defaultViewerOptions =
   "undefined" !== typeof NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS
     ? NEUROGLANCER_OVERRIDE_DEFAULT_VIEWER_OPTIONS
@@ -264,127 +176,7 @@ const defaultViewerOptions =
         resetStateWhenEmpty: true,
       };
 
-class TrackableViewerState extends CompoundTrackable {
-  constructor(public viewer: Borrowed<Viewer>) {
-    super();
-    this.add("title", viewer.title);
-    this.add("dimensions", viewer.coordinateSpace);
-    this.add("relativeDisplayScales", viewer.relativeDisplayScales);
-    this.add("displayDimensions", viewer.displayDimensions);
-    this.add("position", viewer.position);
-    this.add("velocity", viewer.velocity);
-    this.add("crossSectionOrientation", viewer.crossSectionOrientation);
-    this.add("crossSectionScale", viewer.crossSectionScale);
-    this.add("crossSectionDepth", viewer.crossSectionDepthRange);
-    this.add("projectionOrientation", viewer.projectionOrientation);
-    this.add("projectionScale", viewer.projectionScale);
-    this.add("projectionDepth", viewer.projectionDepthRange);
-    this.add("layers", viewer.layerSpecification);
-    this.add("showAxisLines", viewer.showAxisLines);
-    this.add("wireFrame", viewer.wireFrame);
-    this.add("showScaleBar", viewer.showScaleBar);
-    this.add("showDefaultAnnotations", viewer.showDefaultAnnotations);
-
-    this.add("showSlices", viewer.showPerspectiveSliceViews);
-    this.add(
-      "gpuMemoryLimit",
-      viewer.dataContext.chunkQueueManager.capacities.gpuMemory.sizeLimit,
-    );
-    this.add("prefetch", viewer.dataContext.chunkQueueManager.enablePrefetch);
-    this.add(
-      "systemMemoryLimit",
-      viewer.dataContext.chunkQueueManager.capacities.systemMemory.sizeLimit,
-    );
-    this.add(
-      "concurrentDownloads",
-      viewer.dataContext.chunkQueueManager.capacities.download.itemLimit,
-    );
-    this.add("selectedLayer", viewer.selectedLayer);
-    this.add("crossSectionBackgroundColor", viewer.crossSectionBackgroundColor);
-    this.add(
-      "projectionBackgroundColor",
-      viewer.perspectiveViewBackgroundColor,
-    );
-    this.add("layout", viewer.layout);
-    this.add("statistics", viewer.statisticsDisplayState);
-    this.add("helpPanel", viewer.helpPanelState);
-    this.add("settingsPanel", viewer.settingsPanelState);
-    this.add("selection", viewer.selectionDetailsState);
-    this.add("layerListPanel", viewer.layerListPanelState);
-    this.add("partialViewport", viewer.partialViewport);
-    this.add("selectedStateServer", viewer.selectedStateServer);
-    this.add("toolBindings", viewer.toolBinder);
-  }
-
-  restoreState(obj: any) {
-    const { viewer } = this;
-    super.restoreState(obj);
-    // Handle legacy properties
-    verifyOptionalObjectProperty(obj, "navigation", (navObj) => {
-      verifyObject(navObj);
-      verifyOptionalObjectProperty(navObj, "pose", (poseObj) => {
-        verifyObject(poseObj);
-        verifyOptionalObjectProperty(poseObj, "position", (positionObj) => {
-          verifyObject(positionObj);
-          optionallyRestoreFromJsonMember(
-            positionObj,
-            "voxelCoordinates",
-            viewer.position,
-          );
-          verifyOptionalObjectProperty(
-            positionObj,
-            "voxelSize",
-            (voxelSizeObj) => {
-              // Handle legacy voxelSize representation
-              const voxelSize = parseFixedLengthArray(
-                new Float64Array(3),
-                voxelSizeObj,
-                verifyFinitePositiveFloat,
-              );
-              for (let i = 0; i < 3; ++i) {
-                voxelSize[i] *= 1e-9;
-              }
-              viewer.coordinateSpace.value = makeCoordinateSpace({
-                valid: false,
-                names: ["x", "y", "z"],
-                units: ["m", "m", "m"],
-                scales: voxelSize,
-              });
-            },
-          );
-        });
-        optionallyRestoreFromJsonMember(
-          poseObj,
-          "orientation",
-          viewer.crossSectionOrientation,
-        );
-      });
-      optionallyRestoreFromJsonMember(
-        navObj,
-        "zoomFactor",
-        viewer.crossSectionScale.legacyJsonView,
-      );
-    });
-    optionallyRestoreFromJsonMember(
-      obj,
-      "perspectiveOrientation",
-      viewer.projectionOrientation,
-    );
-    optionallyRestoreFromJsonMember(
-      obj,
-      "perspectiveZoom",
-      viewer.projectionScale.legacyJsonView,
-    );
-    optionallyRestoreFromJsonMember(
-      obj,
-      "perspectiveViewBackgroundColor",
-      viewer.perspectiveViewBackgroundColor,
-    );
-  }
-}
-
-export class Viewer extends RefCounted implements ViewerState {
-  title = new TrackableValue<string | undefined>(undefined, verifyString);
+export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   position = this.registerDisposer(new Position(this.coordinateSpace));
   velocity = this.registerDisposer(
@@ -440,24 +232,11 @@ export class Viewer extends RefCounted implements ViewerState {
   );
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
-  selectedLayer = this.registerDisposer(
-    new SelectedLayerState(this.layerManager.addRef()),
-  );
-  showAxisLines = new TrackableBoolean(true, true);
   wireFrame = new TrackableBoolean(false, false);
-  showScaleBar = new TrackableBoolean(true, true);
-  showPerspectiveSliceViews = new TrackableBoolean(true, true);
   visibleLayerRoles = allRenderLayerRoles();
-  showDefaultAnnotations = new TrackableBoolean(true, true);
   crossSectionBackgroundColor = new TrackableRGB(
     vec3.fromValues(0.5, 0.5, 0.5),
   );
-  perspectiveViewBackgroundColor = new TrackableRGB(vec3.fromValues(0, 0, 0));
-  scaleBarOptions = new TrackableScaleBarOptions();
-  partialViewport = new TrackableWindowedViewport();
-  statisticsDisplayState = new StatisticsDisplayState();
-  helpPanelState = new HelpPanelState();
-  settingsPanelState = new ViewerSettingsPanelState();
   layerSelectedValues = this.registerDisposer(
     new LayerSelectedValues(this.layerManager, this.mouseState),
   );
@@ -467,23 +246,16 @@ export class Viewer extends RefCounted implements ViewerState {
       this.layerSelectedValues,
     ),
   );
-  selectedStateServer = new TrackableValue<string>("", verifyString);
-  layerListPanelState = new LayerListPanelState();
 
   resetInitiated = new NullarySignal();
 
   get chunkManager() {
     return this.dataContext.chunkManager;
   }
-  get chunkQueueManager() {
-    return this.dataContext.chunkQueueManager;
-  }
 
   layerSpecification: TopLevelLayerListSpecification;
   layout: RootLayoutContainer;
   sidePanelManager: SidePanelManager;
-
-  state: TrackableViewerState;
 
   dataContext: Owned<DataManagementContext>;
   visibility: WatchableVisibilityPriority;
@@ -507,15 +279,6 @@ export class Viewer extends RefCounted implements ViewerState {
   uiControlVisibility: {
     [key in (typeof VIEWER_UI_CONTROL_CONFIG_OPTIONS)[number]]: WatchableValueInterface<boolean>;
   } = <any>{};
-
-  showLayerDialog: boolean;
-  resetStateWhenEmpty: boolean;
-
-  get inputEventMap() {
-    return this.inputEventBindings.global;
-  }
-
-  visible = true;
 
   constructor(public display: DisplayContext) {
     super();
@@ -551,9 +314,6 @@ export class Viewer extends RefCounted implements ViewerState {
       this.uiControlVisibility[key] = this.makeUiControlVisibilityState(key);
     }
 
-    this.showLayerDialog = showLayerDialog;
-    this.resetStateWhenEmpty = resetStateWhenEmpty;
-
     this.layerSpecification = new TopLevelLayerListSpecification(
       this.display,
       this.dataSourceProvider,
@@ -566,7 +326,6 @@ export class Viewer extends RefCounted implements ViewerState {
       this.globalToolBinder,
     );
 
-    // comment 0
     // Debounce this call to ensure that a transient state does not result in the layer dialog being
     // shown.
     const maybeResetState = this.registerCancellable(
@@ -574,18 +333,14 @@ export class Viewer extends RefCounted implements ViewerState {
         if (
           !this.wasDisposed &&
           this.layerManager.managedLayers.length === 0 &&
-          this.resetStateWhenEmpty
+          resetStateWhenEmpty
         ) {
           // No layers, reset state.
           this.navigationState.reset();
           this.perspectiveNavigationState.pose.orientation.reset();
           this.perspectiveNavigationState.zoomFactor.reset();
           this.resetInitiated.dispatch();
-          if (
-            !overlaysOpen &&
-            this.showLayerDialog &&
-            this.visibility.visible
-          ) {
+          if (!overlaysOpen && showLayerDialog && this.visibility.visible) {
             addNewLayer(this.layerSpecification, this.selectedLayer);
           }
         }
@@ -595,7 +350,6 @@ export class Viewer extends RefCounted implements ViewerState {
     maybeResetState();
 
     this.makeUI();
-    // comment 0
     this.poc();
   }
 
@@ -625,16 +379,6 @@ export class Viewer extends RefCounted implements ViewerState {
     return false;
   }
 
-  private updateShowBorders() {
-    const { element } = this;
-    const className = "neuroglancer-show-panel-borders";
-    if (this.uiConfiguration.showPanelBorders.value) {
-      element.classList.add(className);
-    } else {
-      element.classList.remove(className);
-    }
-  }
-
   private makeUI() {
     const gridContainer = this.element;
     gridContainer.classList.add("neuroglancer-viewer");
@@ -648,183 +392,4 @@ export class Viewer extends RefCounted implements ViewerState {
 
     gridContainer.appendChild(this.layout.element);
   }
-
-  /**
-   * Called once by the constructor to set up event handlers.
-   */
-  private registerEventActionBindings() {
-    const { element } = this;
-    this.registerDisposer(new KeyboardEventBinder(element, this.inputEventMap));
-    this.registerDisposer(new AutomaticallyFocusedElement(element));
-  }
-
-  bindAction<Data>(
-    action: string,
-    handler: (event: ActionEvent<Data>) => void,
-  ) {
-    this.registerDisposer(
-      registerActionListener(this.element, action, handler),
-    );
-  }
-
-  /**
-   * Called once by the constructor to register the action listeners.
-   */
-  private registerActionListeners() {
-    for (const action of ["recolor", "clear-segments"]) {
-      this.bindAction(action, () => {
-        this.layerManager.invokeAction(action);
-      });
-    }
-
-    for (const action of ["select", "star"]) {
-      this.bindAction(action, () => {
-        this.mouseState.updateUnconditionally();
-        this.layerManager.invokeAction(action);
-      });
-    }
-
-    this.bindAction("help", () => this.toggleHelpPanel());
-
-    for (let i = 1; i <= 9; ++i) {
-      this.bindAction(`toggle-layer-${i}`, () => {
-        const layer = this.layerManager.getLayerByNonArchivedIndex(i - 1);
-        if (layer !== undefined) {
-          layer.setVisible(!layer.visible);
-        }
-      });
-      this.bindAction(`toggle-pick-layer-${i}`, () => {
-        const layer = this.layerManager.getLayerByNonArchivedIndex(i - 1);
-        if (layer !== undefined) {
-          layer.pickEnabled = !layer.pickEnabled;
-        }
-      });
-      this.bindAction(`select-layer-${i}`, () => {
-        const layer = this.layerManager.getLayerByNonArchivedIndex(i - 1);
-        if (layer !== undefined) {
-          this.selectedLayer.layer = layer;
-          this.selectedLayer.visible = true;
-        }
-      });
-    }
-
-    for (let i = 0; i < 26; ++i) {
-      const uppercase = String.fromCharCode(65 + i);
-      this.bindAction(`tool-${uppercase}`, () => {
-        this.activateTool(uppercase);
-      });
-    }
-
-    this.bindAction("annotate", () => {
-      const selectedLayer = this.selectedLayer.layer;
-      if (selectedLayer === undefined) {
-        StatusMessage.showTemporaryMessage(
-          "The annotate command requires a layer to be selected.",
-        );
-        return;
-      }
-      const userLayer = selectedLayer.layer;
-      if (userLayer === null || userLayer.tool.value === undefined) {
-        StatusMessage.showTemporaryMessage(
-          `The selected layer (${JSON.stringify(
-            selectedLayer.name,
-          )}) does not have an active annotation tool.`,
-        );
-        return;
-      }
-      userLayer.tool.value.trigger(this.mouseState);
-    });
-
-    this.bindAction("toggle-axis-lines", () => this.showAxisLines.toggle());
-    this.bindAction("toggle-scale-bar", () => this.showScaleBar.toggle());
-    this.bindAction("toggle-default-annotations", () =>
-      this.showDefaultAnnotations.toggle(),
-    );
-    this.bindAction("toggle-show-slices", () =>
-      this.showPerspectiveSliceViews.toggle(),
-    );
-    this.bindAction("toggle-show-statistics", () => this.showStatistics());
-  }
-
-  toggleHelpPanel() {
-    this.helpPanelState.location.visible =
-      !this.helpPanelState.location.visible;
-  }
-
-  private toolInputEventMapBinder = (
-    inputEventMap: EventActionMap,
-    context: RefCounted,
-  ) => {
-    context.registerDisposer(
-      this.inputEventBindings.sliceView.addParent(
-        inputEventMap,
-        Number.POSITIVE_INFINITY,
-      ),
-    );
-    context.registerDisposer(
-      this.inputEventBindings.perspectiveView.addParent(
-        inputEventMap,
-        Number.POSITIVE_INFINITY,
-      ),
-    );
-  };
-
-  private globalToolBinder = this.registerDisposer(
-    new GlobalToolBinder(this.toolInputEventMapBinder),
-  );
-
-  public toolBinder = this.registerDisposer(
-    new LocalToolBinder(this, this.globalToolBinder),
-  );
-
-  activateTool(uppercase: string) {
-    this.globalToolBinder.activate(uppercase);
-  }
-
-  editJsonState() {
-    new StateEditorDialog(this);
-  }
-
-  showStatistics(value: boolean | undefined = undefined) {
-    if (value === undefined) {
-      value = !this.statisticsDisplayState.location.visible;
-    }
-    this.statisticsDisplayState.location.visible = value;
-  }
-
-  get gl() {
-    return this.display.gl;
-  }
-
-  onUpdateDisplay() {
-    if (this.visible) {
-      this.dataContext.chunkQueueManager.chunkUpdateDeadline = null;
-    }
-  }
-
-  private handleNavigationStateChanged() {
-    if (this.visible) {
-      const { chunkQueueManager } = this.dataContext;
-      if (chunkQueueManager.chunkUpdateDeadline === null) {
-        chunkQueueManager.chunkUpdateDeadline = Date.now() + 10;
-      }
-    }
-  }
-
-  isReady() {
-    this.chunkQueueManager.flushPendingChunkUpdates();
-    if (!this.display.isReady()) {
-      return false;
-    }
-    for (const layer of this.layerManager.managedLayers) {
-      if (!layer.isReady()) {
-        return false;
-      }
-    }
-    return true;
-  }
 }
-
-registerDimensionToolForViewer(Viewer);
-registerDimensionToolForLayerGroupViewer(LayerGroupViewer);
-registerDimensionToolForUserLayer(UserLayer);

@@ -37,7 +37,7 @@ export function registerProvider(name: string, factory: ProviderFactory) {
 }
 
 export function getDefaultDataSourceProvider(options: ProviderOptions) {
-  const provider = new DataSourceProviderRegistry(options.credentialsManager);
+  const provider = new DataSourceProviderRegistry();
   for (const [name, factory] of providerFactories) {
     try {
       provider.register(name, factory(options));
@@ -45,5 +45,6 @@ export function getDefaultDataSourceProvider(options: ProviderOptions) {
       console.warn(`Skipping ${name} data source: ${e}`);
     }
   }
+  console.log(options, provider);
   return provider;
 }

@@ -739,59 +739,23 @@ export class CrossSectionSpecificationMap extends WatchableMap<
   }
 }
 
-export class DataPanelLayoutSpecification
-  extends RefCounted
-  implements Trackable
-{
-  changed = new NullarySignal();
+export class DataPanelLayoutSpecification extends RefCounted {
   type: TrackableValue<string>;
-  crossSections: CrossSectionSpecificationMap;
-  orthographicProjection = new TrackableBoolean(false);
 
-  constructor(
-    parentNavigationState: Owned<NavigationState>,
-    defaultLayout: string,
-  ) {
+  constructor(defaultLayout: string) {
     super();
     this.type = new TrackableValue<string>(defaultLayout, validateLayoutName);
-    this.type.changed.add(this.changed.dispatch);
-    this.crossSections = this.registerDisposer(
-      new CrossSectionSpecificationMap(parentNavigationState.addRef()),
-    );
-
-    // this.crossSections.changed.add(this.changed.dispatch);
-    // this.orthographicProjection.changed.add(this.changed.dispatch);
-    // this.registerDisposer(parentNavigationState);
   }
 
-  reset() {
-    this.crossSections.clear();
-    this.orthographicProjection.reset();
-    this.type.reset();
-  }
-
+  // obj: "4panel"
   restoreState(obj: any) {
-    // obj: "4panel"
     this.type.restoreState(obj);
-  }
-
-  toJSON() {
-    const { type, crossSections, orthographicProjection } = this;
-    const orthographicProjectionJson = orthographicProjection.toJSON();
-    if (crossSections.size === 0 && orthographicProjectionJson === undefined) {
-      return type.value;
-    }
-    return {
-      type: type.value,
-      crossSections: crossSections.toJSON(),
-      orthographicProjection: orthographicProjectionJson,
-    };
   }
 }
 
 export class DataPanelLayoutContainer extends RefCounted {
   element = document.createElement("div");
-  specification: Owned<DataPanelLayoutSpecification>;
+  specification: any;
 
   private layout: DataDisplayLayout | undefined;
 
@@ -808,27 +772,13 @@ export class DataPanelLayoutContainer extends RefCounted {
   ) {
     super();
     this.specification = this.registerDisposer(
-      new DataPanelLayoutSpecification(
-        this.viewer.navigationState.addRef(),
-        defaultLayout,
-      ),
+      new DataPanelLayoutSpecification(defaultLayout),
     );
+
     this.element.style.flex = "1";
-    const scheduleUpdateLayout = this.registerCancellable(
-      debounce(() => this.updateLayout(), 0),
-    );
-    this.specification.type.changed.add(scheduleUpdateLayout);
-
-    // registerActionListener(this.element, "toggle-orthographic-projection", () =>
-    //   this.specification.orthographicProjection.toggle(),
-    // );
-
-    // // Ensure the layout is updated before drawing begins to avoid flicker.
-    // this.registerDisposer(
-    //   this.viewer.display.updateStarted.add(() => scheduleUpdateLayout.flush()),
-    // );
-    // scheduleUpdateLayout();
+    this.updateLayout();
   }
+
   get changed() {
     return this.specification.changed;
   }
