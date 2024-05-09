@@ -12,3 +12,9 @@ export async function fetchOk(input) {
 
   return response;
 }
+
+export async function cancellableFetchOk(input, transformResponse) {
+  const response = await fetchOk(input);
+  const body = await transformResponse(response);
+  return body;
+}
