@@ -16,7 +16,6 @@
 
 import "#src/data_panel_layout.css";
 
-import { debounce } from "lodash-es";
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import type { DisplayContext } from "#src/display_context.js";
 import type {
@@ -36,7 +35,6 @@ import {
   NavigationState,
   OrientationState,
 } from "#src/navigation_state.js";
-import { PerspectivePanel } from "#src/perspective_view/panel.js";
 import type { RenderedDataPanel } from "#src/rendered_data_panel.js";
 import type { RenderLayerRole } from "#src/renderlayer.js";
 import { SliceView } from "#src/sliceview/frontend.js";
@@ -290,38 +288,6 @@ function makeSliceViewFromSpecification(
   return sliceView;
 }
 
-function addUnconditionalSliceViews(
-  viewer: SliceViewViewerState,
-  panel: PerspectivePanel,
-  crossSections: Borrowed<CrossSectionSpecificationMap>,
-) {
-  const previouslyAdded = new Map<
-    Borrowed<CrossSectionSpecification>,
-    Borrowed<SliceView>
-  >();
-  const update = () => {
-    const currentCrossSections = new Set<Borrowed<CrossSectionSpecification>>();
-    // Add missing cross sections.
-    for (const crossSection of crossSections.values()) {
-      currentCrossSections.add(crossSection);
-      if (previouslyAdded.has(crossSection)) {
-        continue;
-      }
-      const sliceView = makeSliceViewFromSpecification(viewer, crossSection);
-      panel.sliceViews.set(sliceView, true);
-      previouslyAdded.set(crossSection, sliceView);
-    }
-    // Remove extra cross sections.
-    for (const [crossSection, sliceView] of previouslyAdded) {
-      if (currentCrossSections.has(crossSection)) {
-        continue;
-      }
-      panel.sliceViews.delete(sliceView);
-    }
-  };
-  update();
-}
-
 export class FourPanelLayout extends RefCounted {
   constructor(
     public container: DataPanelLayoutContainer,
@@ -365,57 +331,6 @@ export class FourPanelLayout extends RefCounted {
       // registerRelatedLayouts(this, panel, [axes, `${axes}-3d`]);
       return panel;
     };
-    // const mainDisplayContents = [
-    //   L.withFlex(
-    //     1,
-    //     L.box("column", [
-    //       L.withFlex(
-    //         1,
-    //         L.box("row", [
-    //           L.withFlex(1, (element) => {
-    //             makeSliceViewPanel("xy", element, sliceViewerState, true);
-    //           }),
-    //           L.withFlex(1, (element) => {
-    //             makeSliceViewPanel(
-    //               "xz",
-    //               element,
-    //               sliceViewerStateWithoutScaleBar,
-    //               false,
-    //             );
-    //           }),
-    //         ]),
-    //       ),
-    //       L.withFlex(
-    //         1,
-    //         L.box("row", [
-    //           L.withFlex(1, (element) => {
-    //             const panel = this.registerDisposer(
-    //               new PerspectivePanel(
-    //                 display,
-    //                 element,
-    //                 perspectiveViewerState,
-    //               ),
-    //             );
-    //             for (const sliceView of sliceViews.values()) {
-    //               panel.sliceViews.set(sliceView.addRef(), false);
-    //             }
-    //             addDisplayDimensionsWidget(this, panel);
-    //             addUnconditionalSliceViews(viewer, panel, crossSections);
-    //             registerRelatedLayouts(this, panel, ["3d"]);
-    //           }),
-    //           L.withFlex(1, (element) => {
-    //             makeSliceViewPanel(
-    //               "yz",
-    //               element,
-    //               sliceViewerStateWithoutScaleBar,
-    //               false,
-    //             );
-    //           }),
-    //         ]),
-    //       ),
-    //     ]),
-    //   ),
-    // ];
 
     const mainDisplayContents = [
       L.withFlex(
@@ -436,60 +351,6 @@ export class FourPanelLayout extends RefCounted {
       ),
     ];
     L.box("row", mainDisplayContents)(rootElement);
-  }
-
-  disposed() {
-    removeChildren(this.rootElement);
-    super.disposed();
-  }
-}
-
-export class SliceViewPerspectiveTwoPanelLayout extends RefCounted {
-  constructor(
-    public container: DataPanelLayoutContainer,
-    public rootElement: HTMLElement,
-    public viewer: ViewerUIState,
-    public direction: "row" | "column",
-    axes: NamedAxes,
-    crossSections: Borrowed<CrossSectionSpecificationMap>,
-  ) {
-    super();
-
-    const sliceView = makeNamedSliceView(viewer, axes);
-    const { display } = viewer;
-
-    const perspectiveViewerState = {
-      ...getCommonPerspectiveViewerState(container),
-      showSliceViews: viewer.showPerspectiveSliceViews,
-      showSliceViewsCheckbox: true,
-    };
-
-    const sliceViewerState = {
-      ...getCommonSliceViewerState(viewer),
-      showScaleBar: viewer.showScaleBar,
-    };
-
-    L.withFlex(
-      1,
-      L.box(direction, [
-        L.withFlex(1, (element) => {
-          const panel = this.registerDisposer(
-            new SliceViewPanel(display, element, sliceView, sliceViewerState),
-          );
-          addDisplayDimensionsWidget(this, panel);
-          registerRelatedLayouts(this, panel, [axes, "4panel"]);
-        }),
-        L.withFlex(1, (element) => {
-          const panel = this.registerDisposer(
-            new PerspectivePanel(display, element, perspectiveViewerState),
-          );
-          panel.sliceViews.set(sliceView.addRef(), false);
-          addUnconditionalSliceViews(viewer, panel, crossSections);
-          addDisplayDimensionsWidget(this, panel);
-          registerRelatedLayouts(this, panel, ["3d", "4panel"]);
-        }),
-      ]),
-    )(rootElement);
   }
 
   disposed() {
@@ -534,37 +395,6 @@ export class SinglePanelLayout extends RefCounted {
   }
 }
 
-export class SinglePerspectiveLayout extends RefCounted {
-  constructor(
-    public container: DataPanelLayoutContainer,
-    public rootElement: HTMLElement,
-    public viewer: ViewerUIState,
-    crossSections: Borrowed<CrossSectionSpecificationMap>,
-  ) {
-    super();
-    const perspectiveViewerState = {
-      ...getCommonPerspectiveViewerState(container),
-      showSliceViews: new TrackableBoolean(false, false),
-    };
-
-    L.box("row", [
-      L.withFlex(1, (element) => {
-        const panel = this.registerDisposer(
-          new PerspectivePanel(viewer.display, element, perspectiveViewerState),
-        );
-        addUnconditionalSliceViews(viewer, panel, crossSections);
-        addDisplayDimensionsWidget(this, panel);
-        registerRelatedLayouts(this, panel, ["4panel"]);
-      }),
-    ])(rootElement);
-  }
-
-  disposed() {
-    removeChildren(this.rootElement);
-    super.disposed();
-  }
-}
-
 export const LAYOUTS = new Map<
   string,
   {
@@ -583,35 +413,7 @@ export const LAYOUTS = new Map<
         new FourPanelLayout(container, element, viewer, crossSections),
     },
   ],
-  [
-    "3d",
-    {
-      factory: (container, element, viewer, crossSections) =>
-        new SinglePerspectiveLayout(container, element, viewer, crossSections),
-    },
-  ],
 ]);
-
-for (const axes of AXES_RELATIVE_ORIENTATION.keys()) {
-  LAYOUTS.set(axes, {
-    factory: (container, element, viewer) =>
-      new SinglePanelLayout(container, element, viewer, <NamedAxes>axes),
-  });
-  const splitLayout = `${axes}-3d`;
-  LAYOUT_SYMBOLS.set(axes, oneSquareSymbol);
-  LAYOUT_SYMBOLS.set(splitLayout, "◫");
-  LAYOUTS.set(splitLayout, {
-    factory: (container, element, viewer, crossSections) =>
-      new SliceViewPerspectiveTwoPanelLayout(
-        container,
-        element,
-        viewer,
-        "row",
-        <NamedAxes>axes,
-        crossSections,
-      ),
-  });
-}
 
 export function getLayoutByName(obj: any) {
   const layout = LAYOUTS.get(obj);

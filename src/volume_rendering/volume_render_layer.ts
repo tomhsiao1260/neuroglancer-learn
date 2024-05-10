@@ -18,12 +18,7 @@ import { ChunkState } from "#src/chunk_manager/base.js";
 import { ChunkRenderLayerFrontend } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
 import type { VisibleLayerInfo } from "#src/layer/index.js";
-import type { PerspectivePanel } from "#src/perspective_view/panel.js";
-import type {
-  PerspectiveViewReadyRenderContext,
-  PerspectiveViewRenderContext,
-} from "#src/perspective_view/render_layer.js";
-import { PerspectiveViewRenderLayer } from "#src/perspective_view/render_layer.js";
+import { UserLayer } from "#src/layer/index.js";
 import type { RenderLayerTransformOrError } from "#src/render_coordinate_transform.js";
 import type { RenderScaleHistogram } from "#src/render_scale_statistics.js";
 import {
@@ -159,7 +154,7 @@ function clampAndRoundResolutionTargetValue(value: number) {
   return clampToInterval(depthSamplesBounds, Math.round(value)) as number;
 }
 
-export class VolumeRenderingRenderLayer extends PerspectiveViewRenderLayer {
+export class VolumeRenderingRenderLayer extends UserLayer {
   gain: WatchableValueInterface<number>;
   multiscaleSource: MultiscaleVolumeChunkSource;
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
@@ -278,7 +273,7 @@ void emitRGBA(vec4 rgba) {
             glsl_handleMaxProjectionUpdate = `
   float newIntensity = getIntensity();
   bool intensityChanged = newIntensity > savedIntensity;
-  savedIntensity = intensityChanged ? newIntensity : savedIntensity; 
+  savedIntensity = intensityChanged ? newIntensity : savedIntensity;
   savedDepth = intensityChanged ? depthAtRayPosition : savedDepth;
   outputColor = intensityChanged ? newColor : outputColor;
   emit(outputColor, savedDepth, savedIntensity);
@@ -485,12 +480,7 @@ void main() {
     return this.multiscaleSource.dataType;
   }
 
-  attach(
-    attachment: VisibleLayerInfo<
-      PerspectivePanel,
-      VolumeRenderingAttachmentState
-    >,
-  ) {
+  attach(attachment: VisibleLayerInfo<any, VolumeRenderingAttachmentState>) {
     super.attach(attachment);
     attachment.state = {
       sources: attachment.registerDisposer(
@@ -532,11 +522,8 @@ void main() {
   }
 
   draw(
-    renderContext: PerspectiveViewRenderContext,
-    attachment: VisibleLayerInfo<
-      PerspectivePanel,
-      VolumeRenderingAttachmentState
-    >,
+    renderContext: any,
+    attachment: VisibleLayerInfo<any, VolumeRenderingAttachmentState>,
   ) {
     if (!renderContext.emitColor) return;
     const allSources = attachment.state!.sources.value;
@@ -811,11 +798,8 @@ void main() {
   }
 
   isReady(
-    renderContext: PerspectiveViewReadyRenderContext,
-    attachment: VisibleLayerInfo<
-      PerspectivePanel,
-      VolumeRenderingAttachmentState
-    >,
+    renderContext: any,
+    attachment: VisibleLayerInfo<any, VolumeRenderingAttachmentState>,
   ) {
     const allSources = attachment.state!.sources.value;
     if (allSources.length === 0) return true;
