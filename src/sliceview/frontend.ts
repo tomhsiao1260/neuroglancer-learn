@@ -181,10 +181,6 @@ export class SliceView extends Base {
   histogramInputTextures: TextureBuffer[] = [];
   offscreenFramebuffersWithHistograms = [this.offscreenFramebuffer];
 
-  get displayDimensionRenderInfo() {
-    return this.navigationState.displayDimensionRenderInfo;
-  }
-
   private histogramGenerator = TextureHistogramGenerator.get(this.gl);
 
   computeHistograms(
@@ -223,6 +219,7 @@ export class SliceView extends Base {
         parametersConstructor: SliceViewProjectionParameters,
         navigationState,
         update: (out, navigationState) => {
+          // console.log("updating ...");
           const { invViewMatrix, centerDataPosition } = out;
           navigationState.toMat4(invViewMatrix);
           const { canonicalVoxelFactors, voxelPhysicalScales } =
@@ -237,7 +234,7 @@ export class SliceView extends Base {
             viewportNormalInGlobalCoordinates,
             viewportNormalInCanonicalCoordinates,
           } = out;
-          const { relativeDepthRange } = navigationState;
+          const relativeDepthRange = 10;
           mat4.ortho(
             projectionMat,
             -logicalWidth / 2,
@@ -276,7 +273,6 @@ export class SliceView extends Base {
         },
       }),
     );
-    this.registerDisposer(navigationState);
     this.registerDisposer(this.projectionParameters);
     this.registerDisposer(
       this.projectionParameters.changed.add((oldValue, newValue) => {
@@ -332,34 +328,6 @@ export class SliceView extends Base {
     );
   }
 
-  isReady() {
-    if (!this.navigationState.valid) {
-      return false;
-    }
-    this.updateVisibleLayers.flush();
-    this.updateVisibleSources();
-    let numValidChunks = 0;
-    let totalChunks = 0;
-    for (const { visibleSources } of this.visibleLayers.values()) {
-      for (const tsource of visibleSources) {
-        const chunkLayout = getNormalizedChunkLayout(
-          this.projectionParameters.value,
-          tsource.chunkLayout,
-        );
-        const { source } = tsource;
-        const { chunks } = source;
-        this.forEachVisibleChunk(tsource, chunkLayout, (key) => {
-          const chunk = chunks.get(key);
-          ++totalChunks;
-          if (chunk && chunk.state === ChunkState.GPU_MEMORY) {
-            ++numValidChunks;
-          }
-        });
-      }
-    }
-    return numValidChunks === totalChunks;
-  }
-
   private updateVisibleLayers = this.registerCancellable(
     debounce(() => {
       this.updateVisibleLayersNow();
@@ -402,7 +370,6 @@ export class SliceView extends Base {
     if (this.wasDisposed) {
       return false;
     }
-    if (!this.navigationState.valid) return false;
     // Used to determine which layers are no longer visible.
     const curUpdateGeneration = Date.now();
     const { visibleLayers, visibleLayerList } = this;

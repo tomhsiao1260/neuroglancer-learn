@@ -49,7 +49,6 @@ import type {
 } from "#src/navigation_state.js";
 import {
   CoordinateSpacePlaybackVelocity,
-  PlaybackManager,
   Position,
 } from "#src/navigation_state.js";
 import type { RenderLayerTransform } from "#src/render_coordinate_transform.js";
@@ -79,7 +78,6 @@ import {
   DEFAULT_SIDE_PANEL_LOCATION,
   TrackableSidePanelLocation,
 } from "#src/ui/side_panel_location.js";
-import type { GlobalToolBinder } from "#src/ui/tool.js";
 import { LocalToolBinder, SelectedLegacyTool } from "#src/ui/tool.js";
 import { gatherUpdate } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
@@ -88,7 +86,6 @@ import {
   emptyToUndefined,
   parseArray,
   parseFixedLengthArray,
-  verifyBoolean,
   verifyFiniteFloat,
   verifyInt,
   verifyObject,
@@ -101,10 +98,7 @@ import { MessageList } from "#src/util/message_list.js";
 import type { AnyConstructor } from "#src/util/mixin.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
-import {
-  addSignalBinding,
-  removeSignalBinding,
-} from "#src/util/signal_binding_updater.js";
+import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import type { Trackable } from "#src/util/trackable.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
@@ -1785,14 +1779,12 @@ export class TopLevelLayerListSpecification extends LayerListSpecification {
     isGlobalDimension,
   );
 
-  layerSelectedValues = this.selectionState.layerSelectedValues;
-
   constructor(
     public display: DisplayContext,
     public dataSourceProviderRegistry: DataSourceProviderRegistry,
     public layerManager: LayerManager,
     public chunkManager: ChunkManager,
-    public selectionState: Borrowed<TrackableDataSelectionState>,
+    public layerSelectedValues: any,
     public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
     super();

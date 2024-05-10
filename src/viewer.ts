@@ -18,7 +18,6 @@ import { changeLayerType, NewUserLayer } from "#src/layer/index.js";
 
 import "#src/viewer.css";
 import "#src/noselect.css";
-import { debounce } from "lodash-es";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
   CapacitySpecification,
@@ -228,12 +227,6 @@ export class Viewer extends RefCounted {
   layerSelectedValues = this.registerDisposer(
     new LayerSelectedValues(this.layerManager, this.mouseState),
   );
-  selectionDetailsState = this.registerDisposer(
-    new TrackableDataSelectionState(
-      this.coordinateSpace,
-      this.layerSelectedValues,
-    ),
-  );
 
   resetInitiated = new NullarySignal();
 
@@ -302,7 +295,7 @@ export class Viewer extends RefCounted {
       this.dataSourceProvider,
       this.layerManager,
       this.chunkManager,
-      this.selectionDetailsState,
+      this.layerSelectedValues,
       this.navigationState.coordinateSpace,
     );
 
@@ -319,9 +312,7 @@ export class Viewer extends RefCounted {
     gridContainer.style.display = "flex";
     gridContainer.style.flexDirection = "column";
 
-    this.layout = this.registerDisposer(
-      new RootLayoutContainer(this, "4panel"),
-    );
+    this.layout = this.registerDisposer(new RootLayoutContainer(this));
     gridContainer.appendChild(this.layout.element);
   }
 
@@ -332,21 +323,6 @@ export class Viewer extends RefCounted {
 
     const layer = this.layerManager.managedLayers[0].layer;
     if (layer === null) return;
-    this.changeLayerTypeToDetected(layer);
-  }
-
-  private async changeLayerTypeToDetected(userLayer: UserLayer) {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1000);
-    });
-
-    if (userLayer instanceof NewUserLayer) {
-      const layerConstructor = userLayer.detectedLayerConstructor;
-      if (layerConstructor !== undefined) {
-        changeLayerType(userLayer.managedLayer, layerConstructor);
-        return true;
-      }
-    }
-    return false;
+    changeLayerType(layer.managedLayer, layer.detectedLayerConstructor);
   }
 }

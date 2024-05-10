@@ -19,7 +19,6 @@
  */
 
 import "#src/layer_group_viewer.css";
-import { debounce } from "lodash-es";
 import type { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { DataPanelLayoutContainer } from "#src/data_panel_layout.js";
 import type { DisplayContext } from "#src/display_context.js";
@@ -28,11 +27,9 @@ import type {
   MouseSelectionState,
   SelectedLayerState,
 } from "#src/layer/index.js";
-import { LayerSubsetSpecification } from "#src/layer/index.js";
 import type {
   CoordinateSpacePlaybackVelocity,
   TrackableCrossSectionZoom,
-  TrackableNavigationLink,
   TrackableProjectionZoom,
 } from "#src/navigation_state.js";
 import {
@@ -43,48 +40,18 @@ import {
   LinkedOrientationState,
   LinkedPosition,
   LinkedRelativeDisplayScales,
-  linkedStateLegacyJsonView,
   LinkedZoomState,
-  NavigationLinkType,
   NavigationState,
-  PlaybackManager,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import type { RenderLayerRole } from "#src/renderlayer.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
-import type {
-  WatchableSet,
-  WatchableValueInterface,
-} from "#src/trackable_value.js";
-import { registerNested } from "#src/trackable_value.js";
-import { ContextMenu } from "#src/ui/context_menu.js";
-import { popDragStatus, pushDragStatus } from "#src/ui/drag_and_drop.js";
-import { LayerBar } from "#src/ui/layer_bar.js";
-import {
-  endLayerDrag,
-  getDropEffectFromModifiers,
-  startLayerDrag,
-} from "#src/ui/layer_drag_and_drop.js";
-import { setupPositionDropHandlers } from "#src/ui/position_drag_and_drop.js";
-import { LocalToolBinder } from "#src/ui/tool.js";
-import { AutomaticallyFocusedElement } from "#src/util/automatic_focus.js";
+import type { WatchableSet } from "#src/trackable_value.js";
 import type { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { removeChildren } from "#src/util/dom.js";
-import {
-  dispatchEventAction,
-  registerActionListener,
-} from "#src/util/event_action_map.js";
-import {
-  CompoundTrackable,
-  optionallyRestoreFromJsonMember,
-} from "#src/util/trackable.js";
 import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
-import { EnumSelectWidget } from "#src/widget/enum_widget.js";
 import type { TrackableScaleBarOptions } from "#src/widget/scale_bar.js";
-
-declare let NEUROGLANCER_SHOW_LAYER_BAR_EXTRA_BUTTONS: boolean | undefined;
 
 export interface LayerGroupViewerState {
   display: Borrowed<DisplayContext>;
@@ -104,55 +71,6 @@ export interface LayerGroupViewerState {
   visibleLayerRoles: WatchableSet<RenderLayerRole>;
   crossSectionBackgroundColor: TrackableRGB;
   perspectiveViewBackgroundColor: TrackableRGB;
-}
-
-export interface LayerGroupViewerOptions {
-  showLayerPanel: WatchableValueInterface<boolean>;
-  showViewerMenu: boolean;
-  showLayerHoverValues: WatchableValueInterface<boolean>;
-}
-
-export const viewerDragType = "neuroglancer-layer-group-viewer";
-
-export function hasViewerDrag(event: DragEvent) {
-  return event.dataTransfer!.types.indexOf(viewerDragType) !== -1;
-}
-
-let dragSource: { viewer: LayerGroupViewer; disposer: () => void } | undefined;
-
-export function getCompatibleViewerDragSource(
-  manager: Borrowed<LayerListSpecification>,
-): LayerGroupViewer | undefined {
-  if (
-    dragSource &&
-    dragSource.viewer.layerSpecification.rootLayers === manager.rootLayers
-  ) {
-    return dragSource.viewer;
-  }
-  return undefined;
-}
-
-export function getViewerDropEffect(
-  event: DragEvent,
-  manager: Borrowed<LayerListSpecification>,
-): { dropEffect: "move" | "copy"; dropEffectMessage: string } {
-  const source = getCompatibleViewerDragSource(manager);
-  let defaultDropEffect: "move" | "copy";
-  let moveAllowed = false;
-  if (
-    source === undefined ||
-    source.layerSpecification === source.layerSpecification.root
-  ) {
-    // Either drag source is from another window, or there is only a single layer group.  If the
-    // drag source is from another window, move is not supported because we cannot reliably
-    // communicate the drop effect back to the source window anyway.  If there is only a single
-    // layer group, move is not supported since it would be a no-op.
-    defaultDropEffect = "copy";
-  } else {
-    moveAllowed = true;
-    defaultDropEffect = "move";
-  }
-  return getDropEffectFromModifiers(event, defaultDropEffect, moveAllowed);
 }
 
 export class LinkedViewerNavigationState extends RefCounted {
@@ -186,12 +104,6 @@ export class LinkedViewerNavigationState extends RefCounted {
     this.position = new LinkedPosition(
       parent.navigationState.position.addRef(),
     );
-    this.velocity = this.registerDisposer(
-      new LinkedCoordinateSpacePlaybackVelocity(
-        parent.velocity,
-        this.position.link,
-      ),
-    );
     this.crossSectionOrientation = new LinkedOrientationState(
       parent.navigationState.pose.orientation.addRef(),
     );
@@ -209,10 +121,6 @@ export class LinkedViewerNavigationState extends RefCounted {
       parent.navigationState.depthRange.addRef(),
       this.displayDimensionRenderInfo,
     );
-    this.projectionDepthRange = new LinkedDepthRange(
-      parent.perspectiveNavigationState.depthRange.addRef(),
-      this.displayDimensionRenderInfo,
-    );
     this.navigationState = this.registerDisposer(
       new NavigationState(
         new DisplayPose(
@@ -224,124 +132,23 @@ export class LinkedViewerNavigationState extends RefCounted {
         this.crossSectionDepthRange.value,
       ),
     );
-    this.projectionOrientation = new LinkedOrientationState(
-      parent.perspectiveNavigationState.pose.orientation.addRef(),
-    );
-    this.projectionScale = new LinkedZoomState(
-      parent.perspectiveNavigationState.zoomFactor.addRef() as TrackableProjectionZoom,
-      this.displayDimensionRenderInfo.addRef(),
-    );
-    this.projectionNavigationState = this.registerDisposer(
-      new NavigationState(
-        new DisplayPose(
-          this.position.value.addRef(),
-          this.displayDimensionRenderInfo.addRef(),
-          this.projectionOrientation.value,
-        ),
-        this.projectionScale.value,
-        this.projectionDepthRange.value,
-      ),
-    );
   }
-
-  copyToParent() {
-    for (const x of [
-      this.relativeDisplayScales,
-      this.displayDimensions,
-      this.position,
-      this.velocity,
-      this.crossSectionOrientation,
-      this.crossSectionScale,
-      this.projectionOrientation,
-      this.projectionScale,
-    ]) {
-      x.copyToPeer();
-    }
-  }
-
-  register(state: CompoundTrackable) {
-    state.add("dimensionRenderScales", this.relativeDisplayScales);
-    state.add("displayDimensions", this.displayDimensions);
-    state.add("position", linkedStateLegacyJsonView(this.position));
-    state.add("velocity", this.velocity);
-    state.add("crossSectionOrientation", this.crossSectionOrientation);
-    state.add("crossSectionScale", this.crossSectionScale);
-    state.add("crossSectionDepth", this.crossSectionDepthRange);
-    state.add("projectionOrientation", this.projectionOrientation);
-    state.add("projectionScale", this.projectionScale);
-    state.add("projectionDepth", this.projectionDepthRange);
-  }
-}
-
-function makeViewerMenu(parent: HTMLElement, viewer: LayerGroupViewer) {
-  const contextMenu = new ContextMenu(parent);
-  const menu = contextMenu.element;
-  menu.classList.add("neuroglancer-layer-group-viewer-context-menu");
-  const closeButton = document.createElement("button");
-  closeButton.textContent = "Remove layer group";
-  menu.appendChild(closeButton);
-  contextMenu.registerEventListener(closeButton, "click", () => {
-    viewer.layerSpecification.layerManager.clear();
-  });
-  const { viewerNavigationState } = viewer;
-  for (const [name, model] of <[string, TrackableNavigationLink][]>[
-    ["Render scale factors", viewerNavigationState.relativeDisplayScales.link],
-    ["Render dimensions", viewerNavigationState.displayDimensions.link],
-    ["Position", viewerNavigationState.position.link],
-    [
-      "Cross-section orientation",
-      viewerNavigationState.crossSectionOrientation.link,
-    ],
-    ["Cross-section zoom", viewerNavigationState.crossSectionScale.link],
-    [
-      "Cross-section depth range",
-      viewerNavigationState.crossSectionDepthRange.link,
-    ],
-    [
-      "3-D projection orientation",
-      viewerNavigationState.projectionOrientation.link,
-    ],
-    ["3-D projection zoom", viewerNavigationState.projectionScale.link],
-    [
-      "3-D projection depth range",
-      viewerNavigationState.projectionDepthRange.link,
-    ],
-  ]) {
-    const widget = contextMenu.registerDisposer(new EnumSelectWidget(model));
-    const label = document.createElement("label");
-    label.style.display = "flex";
-    label.style.flexDirection = "row";
-    label.style.whiteSpace = "nowrap";
-    label.textContent = name;
-    label.appendChild(widget.element);
-    menu.appendChild(label);
-  }
-  return contextMenu;
 }
 
 export class LayerGroupViewer extends RefCounted {
   layerSpecification: LayerListSpecification;
   viewerNavigationState: LinkedViewerNavigationState;
-  get perspectiveNavigationState() {
-    return this.viewerNavigationState.projectionNavigationState;
-  }
-  get navigationState() {
-    return this.viewerNavigationState.navigationState;
-  }
-
-  get selectionDetailsState() {
-    return this.layerSpecification.root.selectionState;
-  }
+  layout: DataPanelLayoutContainer;
 
   // FIXME: don't make viewerState a property, just make these things properties directly
   get display() {
     return this.viewerState.display;
   }
-  get selectedLayer() {
-    return this.viewerState.selectedLayer;
-  }
   get layerManager() {
     return this.layerSpecification.layerManager;
+  }
+  get navigationState() {
+    return this.viewerNavigationState.navigationState;
   }
 
   get chunkManager() {
@@ -350,17 +157,8 @@ export class LayerGroupViewer extends RefCounted {
   get mouseState() {
     return this.viewerState.mouseState;
   }
-  get showAxisLines() {
-    return this.viewerState.showAxisLines;
-  }
   get wireFrame() {
     return this.viewerState.wireFrame;
-  }
-  get showScaleBar() {
-    return this.viewerState.showScaleBar;
-  }
-  get showPerspectiveSliceViews() {
-    return this.viewerState.showPerspectiveSliceViews;
   }
   get inputEventBindings() {
     return this.viewerState.inputEventBindings;
@@ -374,36 +172,12 @@ export class LayerGroupViewer extends RefCounted {
   get crossSectionBackgroundColor() {
     return this.viewerState.crossSectionBackgroundColor;
   }
-  get perspectiveViewBackgroundColor() {
-    return this.viewerState.perspectiveViewBackgroundColor;
-  }
-  get scaleBarOptions() {
-    return this.viewerState.scaleBarOptions;
-  }
-  layerPanel: LayerBar | undefined;
-  layout: DataPanelLayoutContainer;
-  toolBinder: LocalToolBinder<this>;
-
-  options: LayerGroupViewerOptions;
-
-  state = new CompoundTrackable();
-
-  get changed() {
-    return this.state.changed;
-  }
 
   constructor(
     public element: HTMLElement,
     public viewerState: LayerGroupViewerState,
-    options: Partial<LayerGroupViewerOptions> = {},
   ) {
     super();
-    this.options = {
-      showLayerPanel: new TrackableBoolean(true),
-      showViewerMenu: false,
-      showLayerHoverValues: new TrackableBoolean(true),
-      ...options,
-    };
 
     this.layerSpecification = this.registerDisposer(
       viewerState.layerSpecification,
@@ -420,69 +194,10 @@ export class LayerGroupViewer extends RefCounted {
     this.makeUI();
   }
 
-  bindAction(action: string, handler: () => void) {
-    this.registerDisposer(
-      registerActionListener(this.element, action, handler),
-    );
-  }
-
-  private registerActionBindings() {
-    this.bindAction("add-layer", () => {
-      if (this.layerPanel) {
-        this.layerPanel.addLayerMenu();
-      }
-    });
-    this.bindAction("t-", () => {
-      this.navigationState.pose.translateNonDisplayDimension(0, -1);
-    });
-    this.bindAction("t+", () => {
-      this.navigationState.pose.translateNonDisplayDimension(0, +1);
-    });
-  }
-
-  toJSON(): any {
-    return { type: "viewer", ...this.state.toJSON() };
-  }
-
-  reset() {
-    this.state.reset();
-  }
-
-  restoreState(obj: unknown) {
-    this.state.restoreState(obj);
-    // Handle legacy properties
-    optionallyRestoreFromJsonMember(
-      obj,
-      "crossSectionZoom",
-      linkedStateLegacyJsonView(this.viewerNavigationState.crossSectionScale),
-    );
-    optionallyRestoreFromJsonMember(
-      obj,
-      "perspectiveZoom",
-      linkedStateLegacyJsonView(this.viewerNavigationState.projectionScale),
-    );
-    optionallyRestoreFromJsonMember(
-      obj,
-      "perspectiveOrientation",
-      this.viewerNavigationState.projectionOrientation,
-    );
-  }
-
   private makeUI() {
     this.element.style.flex = "1";
     this.element.style.display = "flex";
     this.element.style.flexDirection = "column";
     this.element.appendChild(this.layout.element);
-    // this.updateUI();
-  }
-
-  disposed() {
-    removeChildren(this.element);
-    const { layerPanel } = this;
-    if (layerPanel !== undefined) {
-      layerPanel.dispose();
-      this.layerPanel = undefined;
-    }
-    super.disposed();
   }
 }

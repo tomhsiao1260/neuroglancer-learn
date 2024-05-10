@@ -339,7 +339,7 @@ export class PerspectivePanel extends RenderedDataPanel {
             out;
           const widthOverHeight = logicalWidth / logicalHeight;
           const fovy = Math.PI / 4.0;
-          let { relativeDepthRange } = navigationState;
+          let relativeDepthRange = 10;
           const baseZoomFactor = navigationState.zoomFactor.value;
           let zoomFactor = baseZoomFactor / 2;
           if (this.viewer.orthographicProjection.value) {

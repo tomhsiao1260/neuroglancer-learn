@@ -259,16 +259,6 @@ export abstract class RenderedDataPanel extends RenderedPanel {
       pickBufferContents,
     );
     gl.bindBuffer(WebGL2RenderingContext.PIXEL_PACK_BUFFER, null);
-    const { pickingData } = this;
-    const { frameNumber } = pickRequest;
-    this.completePickRequest(
-      pickRequest.glWindowX,
-      pickRequest.glWindowY,
-      pickBufferContents,
-      pickingData[0].frameNumber === frameNumber
-        ? pickingData[0]
-        : pickingData[1],
-    );
   }
 
   private scheduleCheckForPickRequestCompletion() {
@@ -461,6 +451,8 @@ export abstract class RenderedDataPanel extends RenderedPanel {
         this.onMousemove(event);
       }),
     );
+
+    // console.log("control event here");
 
     registerActionListener(
       element,

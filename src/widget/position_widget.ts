@@ -32,7 +32,6 @@ import {
   makeCoordinateSpace,
 } from "#src/coordinate_transform.js";
 import type { MouseSelectionState, UserLayer } from "#src/layer/index.js";
-import type { LayerGroupViewer } from "#src/layer_group_viewer.js";
 import type {
   CoordinateSpacePlaybackVelocity,
   Position,
@@ -1560,23 +1559,6 @@ export function registerDimensionToolForUserLayer(
         velocity: layer.localVelocity,
         coordinateSpaceCombiner: layer.localCoordinateSpaceCombiner,
         toolBinder: layer.toolBinder,
-      },
-      obj,
-    ),
-  );
-}
-
-export function registerDimensionToolForLayerGroupViewer(
-  contextType: typeof LayerGroupViewer,
-) {
-  registerTool(contextType, DIMENSION_TOOL_ID, (layerGroupViewer, obj) =>
-    makeDimensionTool(
-      {
-        position: layerGroupViewer.viewerNavigationState.position.value,
-        velocity: layerGroupViewer.viewerNavigationState.velocity.velocity,
-        coordinateSpaceCombiner:
-          layerGroupViewer.layerSpecification.root.coordinateSpaceCombiner,
-        toolBinder: layerGroupViewer.toolBinder,
       },
       obj,
     ),

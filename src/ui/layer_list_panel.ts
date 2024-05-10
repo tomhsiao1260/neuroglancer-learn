@@ -18,22 +18,14 @@ import "#src/ui/layer_list_panel.css";
 import svg_controls_alt from "ikonate/icons/controls-alt.svg?raw";
 import svg_eye_crossed from "ikonate/icons/eye-crossed.svg?raw";
 import svg_eye from "ikonate/icons/eye.svg?raw";
-import type {
-  LayerManager,
-  ManagedUserLayer,
-  TopLevelLayerListSpecification,
-} from "#src/layer/index.js";
+import type { LayerManager, ManagedUserLayer } from "#src/layer/index.js";
 import { deleteLayer } from "#src/layer/index.js";
 import { TrackableBooleanCheckbox } from "#src/trackable_boolean.js";
-import type { DropLayers } from "#src/ui/layer_drag_and_drop.js";
 import {
-  registerLayerBarDragLeaveHandler,
   registerLayerBarDropHandlers,
   registerLayerDragHandlers,
 } from "#src/ui/layer_drag_and_drop.js";
 import { LayerNameWidget } from "#src/ui/layer_side_panel.js";
-import type { SidePanelManager } from "#src/ui/side_panel.js";
-import { SidePanel } from "#src/ui/side_panel.js";
 import type { SidePanelLocation } from "#src/ui/side_panel_location.js";
 import {
   DEFAULT_SIDE_PANEL_LOCATION,
@@ -41,7 +33,6 @@ import {
 } from "#src/ui/side_panel_location.js";
 import { animationFrameDebounce } from "#src/util/animation_frame_debounce.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { updateChildren } from "#src/util/dom.js";
 import { emptyToUndefined } from "#src/util/json.js";
 import type { Trackable } from "#src/util/trackable.js";
 import { CheckboxIcon } from "#src/widget/checkbox_icon.js";
@@ -208,122 +199,6 @@ class LayerListItem extends RefCounted {
       event.stopPropagation();
       event.preventDefault();
     });
-  }
-}
-
-export class LayerListPanel extends SidePanel {
-  private items = new Map<ManagedUserLayer, LayerListItem>();
-  itemContainer = document.createElement("div");
-  layerDropZone = document.createElement("div");
-  titleElement: HTMLElement;
-  get layerManager() {
-    return this.manager.layerManager;
-  }
-  get selectedLayer() {
-    return this.manager.selectedLayer;
-  }
-  dropLayers: DropLayers | undefined;
-  dragEnterCount = 0;
-  private generation = -1;
-  constructor(
-    sidePanelManager: SidePanelManager,
-    public manager: TopLevelLayerListSpecification,
-    public state: LayerListPanelState,
-  ) {
-    super(sidePanelManager, state.location);
-    const { itemContainer, layerDropZone } = this;
-    const { titleElement } = this.addTitleBar({ title: "" });
-    this.titleElement = titleElement!;
-    itemContainer.classList.add("neuroglancer-layer-list-panel-items");
-    this.addBody(itemContainer);
-    layerDropZone.style.flex = "1";
-    const debouncedUpdateView = this.registerCancellable(
-      animationFrameDebounce(() => this.render()),
-    );
-    this.visibility.changed.add(debouncedUpdateView);
-    this.registerDisposer(
-      this.layerManager.layersChanged.add(debouncedUpdateView),
-    );
-    this.registerDisposer(this.selectedLayer.changed.add(debouncedUpdateView));
-    registerLayerBarDragLeaveHandler(this);
-    registerLayerBarDropHandlers(
-      this,
-      layerDropZone,
-      undefined,
-      /*allowArchived=*/ true,
-    );
-    this.render();
-  }
-
-  render() {
-    const self = this;
-    const selectedLayer = this.selectedLayer.layer;
-    const generation = ++this.generation;
-    let numVisible = 0;
-    let numHidden = 0;
-    let numArchived = 0;
-    this.layerManager.updateNonArchivedLayerIndices();
-    function* getItems() {
-      const { items } = self;
-      let numNonArchivedLayers = 0;
-      for (const layer of self.layerManager.managedLayers) {
-        if (!layer.archived) ++numNonArchivedLayers;
-      }
-      const numberElementWidth = `${
-        (numNonArchivedLayers + 1).toString().length
-      }ch`;
-      for (const layer of self.layerManager.managedLayers) {
-        if (layer.visible) {
-          ++numVisible;
-        } else if (!layer.archived) {
-          ++numHidden;
-        } else {
-          ++numArchived;
-        }
-        let item = items.get(layer);
-        if (item === undefined) {
-          item = self.registerDisposer(new LayerListItem(self, layer));
-          items.set(layer, item);
-          item.generation = generation;
-        } else {
-          item.generation = generation;
-        }
-        const { nonArchivedLayerIndex } = layer;
-        item.numberElement.style.width = numberElementWidth;
-        if (nonArchivedLayerIndex === -1) {
-          item.numberElement.style.visibility = "hidden";
-        } else {
-          item.numberElement.style.visibility = "";
-          item.numberElement.textContent = `${nonArchivedLayerIndex + 1}`;
-        }
-        item.element.dataset.selected = (layer === selectedLayer).toString();
-        item.element.dataset.archived = layer.archived.toString();
-        yield item.element;
-      }
-      for (const [userLayer, item] of items) {
-        if (generation !== item.generation) {
-          items.delete(userLayer);
-          self.unregisterDisposer(item);
-          item.dispose();
-        }
-      }
-      yield self.layerDropZone;
-    }
-    updateChildren(this.itemContainer, getItems());
-    let title = "Layers";
-    if (numVisible || numHidden || numArchived) {
-      title += " (";
-      let sep = "";
-      if (numVisible + numHidden) {
-        title += `${numVisible}/${numHidden + numVisible} visible`;
-        sep = ", ";
-      }
-      if (numArchived) {
-        title += `${sep}${numArchived} archived`;
-      }
-      title += ")";
-    }
-    this.titleElement.textContent = title;
   }
 }
 
