@@ -55,11 +55,7 @@ import {
   registerActionListener,
 } from "#src/util/event_action_map.js";
 import { quat } from "#src/util/geom.js";
-import {
-  verifyObject,
-  verifyObjectProperty,
-  verifyPositiveInt,
-} from "#src/util/json.js";
+import { verifyObject, verifyPositiveInt } from "#src/util/json.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { Trackable } from "#src/util/trackable.js";
 import { optionallyRestoreFromJsonMember } from "#src/util/trackable.js";
@@ -179,18 +175,6 @@ export function getCommonViewerState(viewer: ViewerUIState) {
   };
 }
 
-function getCommonPerspectiveViewerState(container: DataPanelLayoutContainer) {
-  const { viewer } = container;
-  return {
-    ...getCommonViewerState(viewer),
-    navigationState: viewer.perspectiveNavigationState,
-    inputEventMap: viewer.inputEventBindings.perspectiveView,
-    orthographicProjection: container.specification.orthographicProjection,
-    showScaleBar: viewer.showScaleBar,
-    rpc: viewer.chunkManager.rpc!,
-  };
-}
-
 function getCommonSliceViewerState(viewer: ViewerUIState) {
   return {
     ...getCommonViewerState(viewer),
@@ -252,42 +236,6 @@ function registerRelatedLayouts(
   panel.element.appendChild(controls);
 }
 
-function makeSliceViewFromSpecification(
-  viewer: SliceViewViewerState,
-  specification: Borrowed<CrossSectionSpecification>,
-) {
-  const sliceView = new SliceView(
-    viewer.chunkManager,
-    viewer.layerManager,
-    specification.navigationState.addRef(),
-    viewer.wireFrame,
-  );
-  const updateViewportSize = () => {
-    const {
-      width: { value: width },
-      height: { value: height },
-    } = specification;
-    sliceView.projectionParameters.setViewport({
-      width,
-      height,
-      logicalWidth: width,
-      logicalHeight: height,
-      visibleLeftFraction: 0,
-      visibleTopFraction: 0,
-      visibleWidthFraction: 1,
-      visibleHeightFraction: 1,
-    });
-  };
-  sliceView.registerDisposer(
-    specification.width.changed.add(updateViewportSize),
-  );
-  sliceView.registerDisposer(
-    specification.height.changed.add(updateViewportSize),
-  );
-  updateViewportSize();
-  return sliceView;
-}
-
 export class FourPanelLayout extends RefCounted {
   constructor(
     public container: DataPanelLayoutContainer,
@@ -300,35 +248,19 @@ export class FourPanelLayout extends RefCounted {
     const sliceViews = makeOrthogonalSliceViews(viewer);
     const { display } = viewer;
 
-    // const perspectiveViewerState = {
-    //   ...getCommonPerspectiveViewerState(container),
-    //   showSliceViews: viewer.showPerspectiveSliceViews,
-    //   showSliceViewsCheckbox: true,
-    // };
-
     const sliceViewerState = {
       ...getCommonSliceViewerState(viewer),
       showScaleBar: viewer.showScaleBar,
     };
 
-    // const sliceViewerStateWithoutScaleBar = {
-    //   ...getCommonSliceViewerState(viewer),
-    //   showScaleBar: new TrackableBoolean(false, false),
-    // };
-
     const makeSliceViewPanel = (
       axes: NamedAxes,
       element: HTMLElement,
       state: SliceViewerState,
-      displayDimensionsWidget: boolean,
     ) => {
       const panel = this.registerDisposer(
         new SliceViewPanel(display, element, sliceViews.get(axes)!, state),
       );
-      // if (displayDimensionsWidget) {
-      //   addDisplayDimensionsWidget(this, panel);
-      // }
-      // registerRelatedLayouts(this, panel, [axes, `${axes}-3d`]);
       return panel;
     };
 
@@ -340,10 +272,10 @@ export class FourPanelLayout extends RefCounted {
             1,
             L.box("row", [
               L.withFlex(1, (element) => {
-                makeSliceViewPanel("xy", element, sliceViewerState, true);
+                makeSliceViewPanel("xy", element, sliceViewerState);
               }),
               L.withFlex(1, (element) => {
-                makeSliceViewPanel("yz", element, sliceViewerState, false);
+                makeSliceViewPanel("yz", element, sliceViewerState);
               }),
             ]),
           ),

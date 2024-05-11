@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { changeLayerType, NewUserLayer } from "#src/layer/index.js";
+import { changeLayerType } from "#src/layer/index.js";
 
 import "#src/viewer.css";
 import "#src/noselect.css";

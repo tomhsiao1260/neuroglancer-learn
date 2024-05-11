@@ -2290,14 +2290,12 @@ export class LinkedDepthRange extends SimpleLinkedBase<TrackableDepthRange> {
   }
 }
 
-export class NavigationState<
-  Zoom extends TrackableZoomInterface = TrackableZoomInterface,
-> extends RefCounted {
+export class NavigationState extends RefCounted {
   changed = new NullarySignal();
 
   constructor(
     public pose: Owned<DisplayPose>,
-    public zoomFactor: Owned<Zoom>,
+    public zoomFactor: any,
     public depthRange: Owned<TrackableDepthRange>,
   ) {
     super();
@@ -2308,6 +2306,7 @@ export class NavigationState<
     this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
     this.registerDisposer(this.depthRange.changed.add(this.changed.dispatch));
   }
+
   get coordinateSpace() {
     return this.pose.position.coordinateSpace;
   }

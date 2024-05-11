@@ -25,25 +25,8 @@ import type { DisplayContext } from "#src/display_context.js";
 import type {
   LayerListSpecification,
   MouseSelectionState,
-  SelectedLayerState,
 } from "#src/layer/index.js";
-import type {
-  CoordinateSpacePlaybackVelocity,
-  TrackableCrossSectionZoom,
-  TrackableProjectionZoom,
-} from "#src/navigation_state.js";
-import {
-  DisplayPose,
-  LinkedCoordinateSpacePlaybackVelocity,
-  LinkedDepthRange,
-  LinkedDisplayDimensions,
-  LinkedOrientationState,
-  LinkedPosition,
-  LinkedRelativeDisplayScales,
-  LinkedZoomState,
-  NavigationState,
-  WatchableDisplayDimensionRenderInfo,
-} from "#src/navigation_state.js";
+import { NavigationState } from "#src/navigation_state.js";
 import type { RenderLayerRole } from "#src/renderlayer.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableSet } from "#src/trackable_value.js";
@@ -51,93 +34,21 @@ import type { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
-import type { TrackableScaleBarOptions } from "#src/widget/scale_bar.js";
 
 export interface LayerGroupViewerState {
   display: Borrowed<DisplayContext>;
   navigationState: Owned<NavigationState>;
-  perspectiveNavigationState: Owned<NavigationState>;
-  velocity: Owned<CoordinateSpacePlaybackVelocity>;
   mouseState: MouseSelectionState;
-  showAxisLines: TrackableBoolean;
   wireFrame: TrackableBoolean;
-  showScaleBar: TrackableBoolean;
-  scaleBarOptions: TrackableScaleBarOptions;
-  showPerspectiveSliceViews: TrackableBoolean;
   layerSpecification: Owned<LayerListSpecification>;
   inputEventBindings: DataPanelInputEventBindings;
   visibility: WatchableVisibilityPriority;
-  selectedLayer: SelectedLayerState;
   visibleLayerRoles: WatchableSet<RenderLayerRole>;
   crossSectionBackgroundColor: TrackableRGB;
-  perspectiveViewBackgroundColor: TrackableRGB;
-}
-
-export class LinkedViewerNavigationState extends RefCounted {
-  position: LinkedPosition;
-  velocity: LinkedCoordinateSpacePlaybackVelocity;
-  relativeDisplayScales: LinkedRelativeDisplayScales;
-  displayDimensions: LinkedDisplayDimensions;
-  displayDimensionRenderInfo: WatchableDisplayDimensionRenderInfo;
-  crossSectionOrientation: LinkedOrientationState;
-  crossSectionScale: LinkedZoomState<TrackableCrossSectionZoom>;
-  projectionOrientation: LinkedOrientationState;
-  projectionScale: LinkedZoomState<TrackableProjectionZoom>;
-  crossSectionDepthRange: LinkedDepthRange;
-  projectionDepthRange: LinkedDepthRange;
-
-  navigationState: NavigationState;
-  projectionNavigationState: NavigationState;
-
-  constructor(parent: {
-    navigationState: Borrowed<NavigationState>;
-    velocity: Borrowed<CoordinateSpacePlaybackVelocity>;
-    perspectiveNavigationState: Borrowed<NavigationState>;
-  }) {
-    super();
-    this.relativeDisplayScales = new LinkedRelativeDisplayScales(
-      parent.navigationState.pose.relativeDisplayScales.addRef(),
-    );
-    this.displayDimensions = new LinkedDisplayDimensions(
-      parent.navigationState.pose.displayDimensions.addRef(),
-    );
-    this.position = new LinkedPosition(
-      parent.navigationState.position.addRef(),
-    );
-    this.crossSectionOrientation = new LinkedOrientationState(
-      parent.navigationState.pose.orientation.addRef(),
-    );
-    this.displayDimensionRenderInfo = this.registerDisposer(
-      new WatchableDisplayDimensionRenderInfo(
-        this.relativeDisplayScales.value,
-        this.displayDimensions.value,
-      ),
-    );
-    this.crossSectionScale = new LinkedZoomState(
-      parent.navigationState.zoomFactor.addRef() as TrackableCrossSectionZoom,
-      this.displayDimensionRenderInfo.addRef(),
-    );
-    this.crossSectionDepthRange = new LinkedDepthRange(
-      parent.navigationState.depthRange.addRef(),
-      this.displayDimensionRenderInfo,
-    );
-    this.navigationState = this.registerDisposer(
-      new NavigationState(
-        new DisplayPose(
-          this.position.value,
-          this.displayDimensionRenderInfo.addRef(),
-          this.crossSectionOrientation.value,
-        ),
-        this.crossSectionScale.value,
-        this.crossSectionDepthRange.value,
-      ),
-    );
-  }
 }
 
 export class LayerGroupViewer extends RefCounted {
   layerSpecification: LayerListSpecification;
-  viewerNavigationState: LinkedViewerNavigationState;
   layout: DataPanelLayoutContainer;
 
   // FIXME: don't make viewerState a property, just make these things properties directly
@@ -148,7 +59,7 @@ export class LayerGroupViewer extends RefCounted {
     return this.layerSpecification.layerManager;
   }
   get navigationState() {
-    return this.viewerNavigationState.navigationState;
+    return this.viewerState.navigationState;
   }
 
   get chunkManager() {
@@ -181,10 +92,6 @@ export class LayerGroupViewer extends RefCounted {
 
     this.layerSpecification = this.registerDisposer(
       viewerState.layerSpecification,
-    );
-
-    this.viewerNavigationState = this.registerDisposer(
-      new LinkedViewerNavigationState(viewerState),
     );
 
     this.layout = this.registerDisposer(

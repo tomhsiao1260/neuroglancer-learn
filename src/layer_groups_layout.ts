@@ -42,26 +42,6 @@ export class LayoutComponentContainer extends RefCounted {
   }
 }
 
-function getCommonViewerState(viewer: Viewer) {
-  return {
-    mouseState: viewer.mouseState,
-    showAxisLines: viewer.showAxisLines,
-    wireFrame: viewer.wireFrame,
-    showScaleBar: viewer.showScaleBar,
-    scaleBarOptions: viewer.scaleBarOptions,
-    showPerspectiveSliceViews: viewer.showPerspectiveSliceViews,
-    inputEventBindings: viewer.inputEventBindings,
-    visibility: viewer.visibility,
-    selectedLayer: viewer.selectedLayer,
-    visibleLayerRoles: viewer.visibleLayerRoles,
-    navigationState: viewer.navigationState.addRef(),
-    perspectiveNavigationState: viewer.perspectiveNavigationState.addRef(),
-    velocity: viewer.velocity.addRef(),
-    crossSectionBackgroundColor: viewer.crossSectionBackgroundColor,
-    perspectiveViewBackgroundColor: viewer.perspectiveViewBackgroundColor,
-  };
-}
-
 export class SingletonLayerGroupViewer extends RefCounted {
   layerGroupViewer: LayerGroupViewer;
 
@@ -74,7 +54,13 @@ export class SingletonLayerGroupViewer extends RefCounted {
       new LayerGroupViewer(element, {
         display: viewer.display,
         layerSpecification: viewer.layerSpecification.addRef(),
-        ...getCommonViewerState(viewer),
+        mouseState: viewer.mouseState,
+        wireFrame: viewer.wireFrame,
+        inputEventBindings: viewer.inputEventBindings,
+        visibility: viewer.visibility,
+        visibleLayerRoles: viewer.visibleLayerRoles,
+        navigationState: viewer.navigationState.addRef(),
+        crossSectionBackgroundColor: viewer.crossSectionBackgroundColor,
       }),
     );
   }
