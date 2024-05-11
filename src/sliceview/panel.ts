@@ -95,8 +95,6 @@ void emit(vec4 color, highp uint pickId) {
 `);
 }
 
-const tempVec3 = vec3.create();
-const tempVec3b = vec3.create();
 const tempVec4 = vec4.create();
 
 export class SliceViewPanel extends RenderedDataPanel {
@@ -289,6 +287,13 @@ export class SliceViewPanel extends RenderedDataPanel {
       pickDiameter,
     );
   }
+
+  completePickRequest(
+    glWindowX: number,
+    glWindowY: number,
+    data: Float32Array,
+    pickingData: FramePickingData,
+  ) {}
 
   /**
    * Zooms by the specified factor, maintaining the data position that projects to the current mouse

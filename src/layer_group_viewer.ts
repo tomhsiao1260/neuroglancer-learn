@@ -48,7 +48,6 @@ export interface LayerGroupViewerState {
 }
 
 export class LayerGroupViewer extends RefCounted {
-  layerSpecification: LayerListSpecification;
   layout: DataPanelLayoutContainer;
 
   // FIXME: don't make viewerState a property, just make these things properties directly
@@ -61,7 +60,6 @@ export class LayerGroupViewer extends RefCounted {
   get navigationState() {
     return this.viewerState.navigationState;
   }
-
   get chunkManager() {
     return this.layerSpecification.chunkManager;
   }
@@ -83,6 +81,9 @@ export class LayerGroupViewer extends RefCounted {
   get crossSectionBackgroundColor() {
     return this.viewerState.crossSectionBackgroundColor;
   }
+  get layerSpecification() {
+    return this.viewerState.layerSpecification;
+  }
 
   constructor(
     public element: HTMLElement,
@@ -90,21 +91,11 @@ export class LayerGroupViewer extends RefCounted {
   ) {
     super();
 
-    this.layerSpecification = this.registerDisposer(
-      viewerState.layerSpecification,
-    );
+    this.layout = this.registerDisposer(new DataPanelLayoutContainer(this));
 
-    this.layout = this.registerDisposer(
-      new DataPanelLayoutContainer(this, "xy"),
-    );
-
-    this.makeUI();
-  }
-
-  private makeUI() {
-    this.element.style.flex = "1";
-    this.element.style.display = "flex";
-    this.element.style.flexDirection = "column";
-    this.element.appendChild(this.layout.element);
+    element.style.flex = "1";
+    element.style.display = "flex";
+    element.style.flexDirection = "column";
+    element.appendChild(this.layout.element);
   }
 }
