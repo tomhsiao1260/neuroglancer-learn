@@ -99,7 +99,7 @@ export function makeSliceView(
   return new SliceView(
     viewerState.chunkManager,
     viewerState.layerManager,
-    viewerState.navigationState,
+    navigationState,
     viewerState.wireFrame,
   );
 }

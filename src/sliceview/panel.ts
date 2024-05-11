@@ -14,44 +14,15 @@
  * limitations under the License.
  */
 
-import { AxesLineHelper, computeAxisLineMatrix } from "#src/axes_lines.js";
 import type { DisplayContext } from "#src/display_context.js";
-import type { VisibleRenderLayerTracker } from "#src/layer/index.js";
-import { makeRenderedPanelVisibleLayerTracker } from "#src/layer/index.js";
-import { PickIDManager } from "#src/object_picking.js";
-import type {
-  FramePickingData,
-  RenderedDataViewerState,
-} from "#src/rendered_data_panel.js";
-import {
-  clearOutOfBoundsPickData,
-  pickDiameter,
-  pickOffsetSequence,
-  pickRadius,
-  RenderedDataPanel,
-} from "#src/rendered_data_panel.js";
+import type { RenderedDataViewerState } from "#src/rendered_data_panel.js";
+import { RenderedDataPanel } from "#src/rendered_data_panel.js";
 import type { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
-import type {
-  SliceViewPanelReadyRenderContext,
-  SliceViewPanelRenderContext,
-} from "#src/sliceview/renderlayer.js";
-import { SliceViewPanelRenderLayer } from "#src/sliceview/renderlayer.js";
 import type { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
-import type { ActionEvent } from "#src/util/event_action_map.js";
-import { registerActionListener } from "#src/util/event_action_map.js";
-import {
-  disableZProjection,
-  identityMat4,
-  kAxes,
-  mat4,
-  vec3,
-  vec4,
-} from "#src/util/geom.js";
-import { startRelativeMouseDrag } from "#src/util/mouse_drag.js";
-import type { TouchRotateInfo } from "#src/util/touch_bindings.js";
+import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import {
   FramebufferConfiguration,
   OffscreenCopyHelper,
@@ -59,7 +30,6 @@ import {
 } from "#src/webgl/offscreen.js";
 import type { ShaderBuilder } from "#src/webgl/shader.js";
 import type { TrackableScaleBarOptions } from "#src/widget/scale_bar.js";
-import { MultipleScaleBarTextures } from "#src/widget/scale_bar.js";
 
 export interface SliceViewerState extends RenderedDataViewerState {
   showScaleBar: TrackableBoolean;
@@ -72,18 +42,6 @@ export enum OffscreenTextures {
   COLOR = 0,
   PICK = 1,
   NUM_TEXTURES = 2,
-}
-
-function sliceViewPanelEmitColorAndPickID(builder: ShaderBuilder) {
-  builder.addOutputBuffer("vec4", "out_fragColor", 0);
-  builder.addOutputBuffer("highp vec4", "out_pickId", 1);
-  builder.addFragmentCode(`
-void emit(vec4 color, highp uint pickId) {
-  out_fragColor = color;
-  float pickIdFloat = float(pickId);
-  out_pickId = vec4(pickIdFloat, pickIdFloat, pickIdFloat, 1.0);
-}
-`);
 }
 
 function sliceViewPanelEmitColor(builder: ShaderBuilder) {
@@ -100,29 +58,10 @@ const tempVec4 = vec4.create();
 export class SliceViewPanel extends RenderedDataPanel {
   viewer: SliceViewerState;
 
-  private axesLineHelper = this.registerDisposer(AxesLineHelper.get(this.gl));
   private sliceViewRenderHelper = this.registerDisposer(
     SliceViewRenderHelper.get(this.gl, sliceViewPanelEmitColor),
   );
   private colorFactor = vec4.fromValues(1, 1, 1, 1);
-  private pickIDs = new PickIDManager();
-
-  flushBackendProjectionParameters() {
-    this.sliceView.flushBackendProjectionParameters();
-  }
-
-  private visibleLayerTracker: VisibleRenderLayerTracker<
-    SliceViewPanel,
-    SliceViewPanelRenderLayer
-  >;
-
-  // FIXME: use separate backend object for the panel
-  get rpc() {
-    return this.sliceView.rpc!;
-  }
-  get rpcId() {
-    return this.sliceView.rpcId!;
-  }
 
   private offscreenFramebuffer = this.registerDisposer(
     new FramebufferConfiguration(this.gl, {
@@ -145,9 +84,6 @@ export class SliceViewPanel extends RenderedDataPanel {
 
   private offscreenCopyHelper = this.registerDisposer(
     OffscreenCopyHelper.get(this.gl),
-  );
-  private scaleBars = this.registerDisposer(
-    new MultipleScaleBarTextures(this.gl),
   );
 
   get navigationState() {
@@ -185,47 +121,7 @@ export class SliceViewPanel extends RenderedDataPanel {
     });
   }
 
-  translateDataPointByViewportPixels(
-    out: vec3,
-    orig: vec3,
-    deltaX: number,
-    deltaY: number,
-  ): vec3 {
-    const projectionParameters = this.sliceView.projectionParameters.value;
-    vec3.transformMat4(out, orig, projectionParameters.viewMatrix);
-    vec3.set(out, out[0] + deltaX, out[1] + deltaY, out[2]);
-    vec3.transformMat4(out, out, projectionParameters.invViewMatrix);
-    return out;
-  }
-
-  isReady() {
-    if (!this.visible) {
-      return false;
-    }
-
-    const { sliceView } = this;
-
-    this.ensureBoundsUpdated();
-
-    if (!sliceView.isReady()) {
-      return false;
-    }
-
-    const renderContext: SliceViewPanelReadyRenderContext = {
-      projectionParameters: sliceView.projectionParameters.value,
-      sliceView,
-    };
-
-    for (const [renderLayer, attachment] of this.visibleLayerTracker
-      .visibleLayers) {
-      if (!renderLayer.isReady(renderContext, attachment)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  drawWithPicking(pickingData: FramePickingData): boolean {
+  draw(): boolean {
     const { sliceView } = this;
     if (!sliceView.valid) {
       return false;
@@ -275,25 +171,6 @@ export class SliceViewPanel extends RenderedDataPanel {
     super.ensureBoundsUpdated();
     this.sliceView.projectionParameters.setViewport(this.renderViewport);
   }
-
-  issuePickRequest(glWindowX: number, glWindowY: number) {
-    const { offscreenFramebuffer } = this;
-    offscreenFramebuffer.readPixelFloat32IntoBuffer(
-      OffscreenTextures.PICK,
-      glWindowX - pickRadius,
-      glWindowY - pickRadius,
-      0,
-      pickDiameter,
-      pickDiameter,
-    );
-  }
-
-  completePickRequest(
-    glWindowX: number,
-    glWindowY: number,
-    data: Float32Array,
-    pickingData: FramePickingData,
-  ) {}
 
   /**
    * Zooms by the specified factor, maintaining the data position that projects to the current mouse

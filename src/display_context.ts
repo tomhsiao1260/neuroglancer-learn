@@ -15,12 +15,9 @@
  */
 
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
-import { TrackableValue } from "#src/trackable_value.js";
 import { animationFrameDebounce } from "#src/util/animation_frame_debounce.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import type { mat4 } from "#src/util/geom.js";
-import { parseFixedLengthArray, verifyFloat01 } from "#src/util/json.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
@@ -52,34 +49,6 @@ export class RenderViewport {
 
   // Fraction of logical height that is visible, equal to `heightInCanvasPixels / logicalHeight`.
   visibleHeightFraction = 0;
-}
-
-export function applyRenderViewportToProjectionMatrix(
-  viewport: RenderViewport,
-  projectionMatrix: mat4,
-) {
-  const xScale = 1 / viewport.visibleWidthFraction;
-  const yScale = 1 / viewport.visibleHeightFraction;
-  const xOffset = -1 - (-1 + 2 * viewport.visibleLeftFraction) * xScale;
-  let yOffset = -1 - (-1 + 2 * viewport.visibleTopFraction) * yScale;
-  yOffset = -yOffset;
-  projectionMatrix[0] =
-    projectionMatrix[0] * xScale + projectionMatrix[3] * xOffset;
-  projectionMatrix[4] =
-    projectionMatrix[4] * xScale + projectionMatrix[7] * xOffset;
-  projectionMatrix[8] =
-    projectionMatrix[8] * xScale + projectionMatrix[11] * xOffset;
-  projectionMatrix[12] =
-    projectionMatrix[12] * xScale + projectionMatrix[15] * xOffset;
-
-  projectionMatrix[1] =
-    projectionMatrix[1] * yScale + projectionMatrix[3] * yOffset;
-  projectionMatrix[5] =
-    projectionMatrix[5] * yScale + projectionMatrix[7] * yOffset;
-  projectionMatrix[9] =
-    projectionMatrix[9] * yScale + projectionMatrix[11] * yOffset;
-  projectionMatrix[13] =
-    projectionMatrix[13] * yScale + projectionMatrix[15] * yOffset;
 }
 
 export function renderViewportsEqual(a: RenderViewport, b: RenderViewport) {
@@ -343,26 +312,6 @@ export abstract class IndirectRenderedPanel extends RenderedPanel {
       logicalWidth,
       logicalHeight,
     );
-  }
-}
-
-// Specifies a rectangular sub-region of the full viewer area to actually be rendered on the canvas.
-// This is used by the Python integration to produce large screenshots by tiling multiple
-// screenshots.
-//
-// The value is: `[left, top, width, height]` where all values are in [0, 1].
-export class TrackableWindowedViewport extends TrackableValue<Float64Array> {
-  constructor() {
-    super(Float64Array.of(0, 0, 1, 1), (obj) =>
-      parseFixedLengthArray(new Float64Array(4), obj, verifyFloat01),
-    );
-  }
-  toJSON() {
-    const { value } = this;
-    const [left, top, width, height] = value;
-    if (left === 0 && top === 0 && width === 1 && height === 1)
-      return undefined;
-    return Array.from(value);
   }
 }
 

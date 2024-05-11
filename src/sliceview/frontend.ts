@@ -21,7 +21,6 @@ import type {
   ChunkRequesterState,
 } from "#src/chunk_manager/frontend.js";
 import { Chunk, ChunkSource } from "#src/chunk_manager/frontend.js";
-import { applyRenderViewportToProjectionMatrix } from "#src/display_context.js";
 import type { LayerManager } from "#src/layer/index.js";
 import type {
   DisplayDimensionRenderInfo,
@@ -51,7 +50,6 @@ import type {
 } from "#src/sliceview/base.js";
 import {
   forEachPlaneIntersectingVolumetricChunk,
-  getNormalizedChunkLayout,
   SLICEVIEW_ADD_VISIBLE_LAYER_RPC_ID,
   SLICEVIEW_REMOVE_VISIBLE_LAYER_RPC_ID,
   SLICEVIEW_REQUEST_CHUNK_RPC_ID,
@@ -161,8 +159,6 @@ function disposeTransformedSources(
 export class SliceView extends Base {
   gl = this.chunkManager.gl;
   viewChanged = new NullarySignal();
-  rpc: RPC;
-  rpcId: number;
 
   renderingStale = true;
 
@@ -244,7 +240,6 @@ export class SliceView extends Base {
             -relativeDepthRange,
             relativeDepthRange,
           );
-          applyRenderViewportToProjectionMatrix(out, projectionMat);
           updateProjectionParametersFromInverseViewAndProjection(out);
           const { viewMatrix } = out;
           for (let i = 0; i < 3; ++i) {
@@ -298,8 +293,6 @@ export class SliceView extends Base {
         this.updateVisibleLayers();
       }),
     );
-
-    this.wireFrame.changed.add(this.viewChanged.dispatch);
 
     this.viewChanged.add(() => {
       this.renderingStale = true;
@@ -525,16 +518,6 @@ export class SliceView extends Base {
     gl.disable(WebGL2RenderingContext.BLEND);
     gl.disable(WebGL2RenderingContext.DEPTH_TEST);
     offscreenFramebuffer.unbind();
-  }
-
-  disposed() {
-    for (const [renderLayer, layerInfo] of this.visibleLayers) {
-      disposeTransformedSources(renderLayer, layerInfo.allSources);
-      invokeDisposers(layerInfo.disposers);
-      renderLayer.dispose();
-    }
-    this.visibleLayers.clear();
-    this.visibleLayerList.length = 0;
   }
 
   getTransformedSources(
