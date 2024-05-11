@@ -79,8 +79,6 @@ export abstract class RenderedPanel extends RefCounted {
 
   renderViewport = new RenderViewport();
 
-  private monitorState: PanelMonitorState = {};
-
   constructor(
     public context: Borrowed<DisplayContext>,
     public element: HTMLElement,
@@ -100,97 +98,27 @@ export abstract class RenderedPanel extends RefCounted {
   abstract isReady(): boolean;
 
   ensureBoundsUpdated() {
-    const { context } = this;
-    context.ensureBoundsUpdated();
-    const { boundsGeneration } = context;
-    if (boundsGeneration === this.boundsGeneration) return;
-    this.boundsGeneration = boundsGeneration;
-    const { element } = this;
-    const clientRect = element.getBoundingClientRect();
-    context.ensureMonitorPanel(element, this.monitorState, clientRect);
-    const root = context.container;
-    const canvasRect = context.canvasRect!;
-    const { canvas } = context;
-    const { width: canvasPixelWidth, height: canvasPixelHeight } = canvas;
-    const screenToCanvasPixelScaleX = canvasPixelWidth / canvasRect.width;
-    const screenToCanvasPixelScaleY = canvasPixelHeight / canvasRect.height;
-    // Logical bounding rectangle in canvas/WebGL pixels (which may be a different size than screen
-    // pixels when using a fixed canvas size via the Python integration).
-    const canvasLeft = canvasRect.left;
-    const canvasTop = canvasRect.top;
-    const logicalLeft = (this.canvasRelativeLogicalLeft = Math.round(
-      (clientRect.left - canvasLeft) * screenToCanvasPixelScaleX +
-        element.clientLeft,
-    ));
-    const logicalTop = (this.canvasRelativeLogicalTop = Math.round(
-      (clientRect.top - canvasTop) * screenToCanvasPixelScaleY +
-        element.clientTop,
-    ));
-    const logicalWidth = element.clientWidth;
-    const logicalHeight = element.clientHeight;
-    const logicalRight = logicalLeft + logicalWidth;
-    const logicalBottom = logicalTop + logicalHeight;
-    // Clipped bounding rectangle in canvas/WebGL pixels.  The clipped bounding rectangle is the
-    // portion actually visible and overlapping the canvas.
-    let clippedTop = logicalTop;
-    let clippedLeft = logicalLeft;
-    let clippedRight = logicalRight;
-    let clippedBottom = logicalBottom;
-    for (
-      let parent = element.parentElement;
-      parent !== null && parent !== root;
-      parent = parent.parentElement
-    ) {
-      const rect = parent.getBoundingClientRect();
-      if (
-        rect.x === 0 &&
-        rect.y === 0 &&
-        rect.width === 0 &&
-        rect.height === 0
-      ) {
-        // Assume this is a `display: contents;` element.
-        continue;
-      }
-      clippedLeft = Math.max(
-        clippedLeft,
-        (rect.left - canvasLeft) * screenToCanvasPixelScaleX,
-      );
-      clippedTop = Math.max(
-        clippedTop,
-        (rect.top - canvasTop) * screenToCanvasPixelScaleY,
-      );
-      clippedRight = Math.min(
-        clippedRight,
-        (rect.right - canvasLeft) * screenToCanvasPixelScaleX,
-      );
-      clippedBottom = Math.min(
-        clippedBottom,
-        (rect.bottom - canvasTop) * screenToCanvasPixelScaleY,
-      );
-    }
-    clippedTop = this.canvasRelativeClippedTop = Math.round(
-      Math.max(clippedTop, 0),
-    );
-    clippedLeft = this.canvasRelativeClippedLeft = Math.round(
-      Math.max(clippedLeft, 0),
-    );
-    clippedRight = Math.round(Math.min(clippedRight, canvasPixelWidth));
-    clippedBottom = Math.round(Math.min(clippedBottom, canvasPixelHeight));
+    this.context.ensureBoundsUpdated();
+    if (this.context.boundsGeneration === this.boundsGeneration) return;
+    this.boundsGeneration = this.context.boundsGeneration;
+
+    const clientRect = this.element.getBoundingClientRect();
+    const { x, y, width, height } = clientRect;
+
+    this.canvasRelativeClippedTop = y;
+    this.canvasRelativeClippedLeft = x;
+    this.canvasRelativeLogicalTop = y;
+    this.canvasRelativeLogicalLeft = x;
+
     const viewport = this.renderViewport;
-    const clippedWidth = (viewport.width = Math.max(
-      0,
-      clippedRight - clippedLeft,
-    ));
-    const clippedHeight = (viewport.height = Math.max(
-      0,
-      clippedBottom - clippedTop,
-    ));
-    viewport.logicalWidth = logicalWidth;
-    viewport.logicalHeight = logicalHeight;
-    viewport.visibleLeftFraction = (clippedLeft - logicalLeft) / logicalWidth;
-    viewport.visibleTopFraction = (clippedTop - logicalTop) / logicalHeight;
-    viewport.visibleWidthFraction = clippedWidth / logicalWidth;
-    viewport.visibleHeightFraction = clippedHeight / logicalHeight;
+    viewport.width = width - 1;
+    viewport.height = height;
+    viewport.logicalWidth = width - 1;
+    viewport.logicalHeight = height;
+    viewport.visibleLeftFraction = 0;
+    viewport.visibleTopFraction = 0;
+    viewport.visibleWidthFraction = 1;
+    viewport.visibleHeightFraction = 1;
   }
 
   // Sets the viewport to the clipped viewport.  Any drawing must take
@@ -234,12 +162,6 @@ export abstract class RenderedPanel extends RefCounted {
   }
 
   abstract draw(): void;
-
-  disposed() {
-    this.context.unmonitorPanel(this.element, this.monitorState);
-    this.context.removePanel(this);
-    super.disposed();
-  }
 
   get visible() {
     return this.visibility.visible;
