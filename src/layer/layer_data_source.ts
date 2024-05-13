@@ -324,7 +324,7 @@ export class LayerDataSource extends RefCounted {
     if (spec === undefined) {
       this.spec_ = makeEmptyDataSourceSpecification();
     } else {
-      spec.url = "zarr2://http://localhost:9000/scroll.zarr/";
+      // spec.url = "zarr2://http://localhost:9000/scroll.zarr/";
       this.spec = spec;
     }
   }

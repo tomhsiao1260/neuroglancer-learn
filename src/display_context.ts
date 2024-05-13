@@ -164,7 +164,7 @@ export abstract class RenderedPanel extends RefCounted {
   abstract draw(): void;
 
   get visible() {
-    return this.visibility.visible;
+    return true;
   }
 
   getDepthArray(): Float32Array | undefined {

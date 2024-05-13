@@ -34,8 +34,6 @@ import {
   LayerSelectedValues,
   MouseSelectionState,
   TopLevelLayerListSpecification,
-  TrackableDataSelectionState,
-  UserLayer,
 } from "#src/layer/index.js";
 import { RootLayoutContainer } from "#src/layer_groups_layout.js";
 import {
@@ -124,43 +122,6 @@ export class InputEventBindings extends DataPanelInputEventBindings {
   global = new EventActionMap();
 }
 
-export const VIEWER_TOP_ROW_CONFIG_OPTIONS = [
-  "showHelpButton",
-  "showSettingsButton",
-  "showEditStateButton",
-  "showLayerListPanelButton",
-  "showSelectionPanelButton",
-  "showLayerSidePanelButton",
-  "showLocation",
-  "showAnnotationToolStatus",
-] as const;
-
-export const VIEWER_UI_CONTROL_CONFIG_OPTIONS = [
-  ...VIEWER_TOP_ROW_CONFIG_OPTIONS,
-  "showLayerPanel",
-  "showLayerHoverValues",
-] as const;
-
-export const VIEWER_UI_CONFIG_OPTIONS = [
-  ...VIEWER_UI_CONTROL_CONFIG_OPTIONS,
-  "showUIControls",
-  "showPanelBorders",
-] as const;
-
-export type ViewerUIOptions = {
-  [Key in (typeof VIEWER_UI_CONFIG_OPTIONS)[number]]: boolean;
-};
-
-export type ViewerUIConfiguration = {
-  [Key in (typeof VIEWER_UI_CONFIG_OPTIONS)[number]]: TrackableBoolean;
-};
-
-export function makeViewerUIConfiguration(): ViewerUIConfiguration {
-  return Object.fromEntries(
-    VIEWER_UI_CONFIG_OPTIONS.map((key) => [key, new TrackableBoolean(true)]),
-  ) as ViewerUIConfiguration;
-}
-
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   position = this.registerDisposer(new Position(this.coordinateSpace));
@@ -242,23 +203,6 @@ export class Viewer extends RefCounted {
   element: HTMLElement;
   dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
 
-  uiConfiguration: ViewerUIConfiguration;
-
-  private makeUiControlVisibilityState(key: keyof ViewerUIOptions) {
-    const showUIControls = this.uiConfiguration.showUIControls;
-    const option = this.uiConfiguration[key];
-    return this.registerDisposer(
-      makeDerivedWatchableValue((a, b) => a && b, showUIControls, option),
-    );
-  }
-
-  /**
-   * Logical and of each `VIEWER_UI_CONTROL_CONFIG_OPTIONS` option with the value of showUIControls.
-   */
-  uiControlVisibility: {
-    [key in (typeof VIEWER_UI_CONTROL_CONFIG_OPTIONS)[number]]: WatchableValueInterface<boolean>;
-  } = <any>{};
-
   constructor(public display: DisplayContext) {
     super();
 
@@ -275,18 +219,12 @@ export class Viewer extends RefCounted {
     const dataSourceProvider = getDefaultDataSourceProvider({
       credentialsManager: defaultCredentialsManager,
     });
-    const uiConfiguration = makeViewerUIConfiguration();
 
     this.visibility = visibility;
     this.inputEventBindings = inputEventBindings;
     this.element = element;
     this.dataSourceProvider = dataSourceProvider;
-    this.uiConfiguration = uiConfiguration;
     this.dataContext = this.registerDisposer(dataContext);
-
-    for (const key of VIEWER_UI_CONTROL_CONFIG_OPTIONS) {
-      this.uiControlVisibility[key] = this.makeUiControlVisibilityState(key);
-    }
 
     this.layerSpecification = new TopLevelLayerListSpecification(
       this.display,
@@ -298,6 +236,7 @@ export class Viewer extends RefCounted {
     );
 
     addNewLayer(this.layerSpecification);
+
     this.makeUI();
   }
 
