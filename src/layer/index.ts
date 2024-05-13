@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { ImageUserLayer } from "#src/layer/image/index.js";
 import { debounce, throttle } from "lodash-es";
 import type { AnnotationLayerState } from "#src/annotation/annotation_layer_state.js";
 import type { AnnotationType } from "#src/annotation/index.js";
@@ -1912,18 +1913,18 @@ export function registerVolumeLayerType(
   volumeLayerTypes.set(volumeType, layerConstructor);
 }
 
-export function changeLayerType(
-  managedLayer: Borrowed<ManagedUserLayer>,
-  layerConstructor: typeof UserLayer,
-) {
-  const userLayer = managedLayer.layer;
-  if (userLayer === null) return;
-  const spec = userLayer.toJSON();
-  const newUserLayer = new layerConstructor(managedLayer);
-  newUserLayer.restoreState(spec);
-  newUserLayer.initializationDone();
-  managedLayer.layer = newUserLayer;
-}
+// export function changeLayerType(
+//   managedLayer: Borrowed<ManagedUserLayer>,
+//   layerConstructor: typeof UserLayer,
+// ) {
+//   const userLayer = managedLayer.layer;
+//   if (userLayer === null) return;
+//   const spec = userLayer.toJSON();
+//   const newUserLayer = new layerConstructor(managedLayer);
+//   newUserLayer.restoreState(spec);
+//   newUserLayer.initializationDone();
+//   managedLayer.layer = newUserLayer;
+// }
 
 export function changeLayerName(
   managedLayer: Borrowed<ManagedUserLayer>,
@@ -2035,12 +2036,17 @@ export class AutoUserLayer extends UserLayer {
 
 export function addNewLayer(manager: Borrowed<LayerListSpecification>) {
   const managedLayer = new ManagedUserLayer("new layer", manager);
-  managedLayer.layer = new NewUserLayer(managedLayer);
+  managedLayer.layer = new ImageUserLayer(managedLayer);
   managedLayer.archived = false;
   managedLayer.visible = true;
 
+  const spec = {
+    type: "new",
+    source: "zarr2://http://localhost:9000/scroll.zarr/",
+  };
+
   const layer = managedLayer.layer;
-  if (layer !== null) layer.restoreState({ type: "new" });
+  if (layer !== null) layer.restoreState(spec);
 
   manager.add(managedLayer);
 }

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import { changeLayerType } from "#src/layer/index.js";
-
 import "#src/viewer.css";
 import "#src/noselect.css";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
@@ -300,9 +298,7 @@ export class Viewer extends RefCounted {
     );
 
     addNewLayer(this.layerSpecification);
-
     this.makeUI();
-    this.poc();
   }
 
   private makeUI() {
@@ -314,15 +310,5 @@ export class Viewer extends RefCounted {
 
     this.layout = this.registerDisposer(new RootLayoutContainer(this));
     gridContainer.appendChild(this.layout.element);
-  }
-
-  private async poc() {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1000);
-    });
-
-    const layer = this.layerManager.managedLayers[0].layer;
-    if (layer === null) return;
-    changeLayerType(layer.managedLayer, layer.detectedLayerConstructor);
   }
 }
