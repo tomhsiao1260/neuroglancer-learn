@@ -18,6 +18,17 @@
  * @file Main entry point for default neuroglancer viewer.
  */
 import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
-// import "#src/util/google_tag_manager.js";
+import { handleFileBtnOnClick } from "#src/util/file_system.js";
 
-setupDefaultViewer();
+window.dir = undefined;
+
+document.addEventListener("keyup", async (e) => {
+  // load data via python server
+  if (e.code === "Enter") setupDefaultViewer();
+
+  // load data via file system api
+  if (e.code === "Space") {
+    window.dir = await handleFileBtnOnClick();
+    setupDefaultViewer();
+  }
+});

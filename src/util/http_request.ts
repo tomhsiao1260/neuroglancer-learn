@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+// import {handleFileOnClick } from "#src/util/file_system.js";
+
+// const file = window.dir["0"]["0"]["0"]["0"];
+// const arraybuffer = await handleFileOnClick(file);
+// console.log(arraybuffer);
+
 export class HttpError extends Error {
   url: string;
   status: number;
@@ -106,7 +112,7 @@ export async function fetchOk(input: RequestInfo): Promise<Response> {
       if (status === 429 || status === 503 || status === 504) {
         // 429: Too Many Requests.  Retry.
         // 503: Service unavailable.  Retry.
-        // 504: Gateway timeout.  Can occur if the server takes too long to reply.  Retry.
+        // 504: Gateway timeout. Can occur if the server takes too long to reply.  Retry.
         if (++requestAttempt !== maxAttempts) {
           await new Promise((resolve) =>
             setTimeout(resolve, pickDelay(requestAttempt - 1)),
