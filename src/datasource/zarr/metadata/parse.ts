@@ -298,11 +298,7 @@ export function parseV3Metadata(
   }
 }
 
-export function parseV2Metadata(
-  obj: unknown,
-  attrs: Record<string, unknown>,
-  explicitDimensionSeparator: "." | "/" | undefined,
-): ArrayMetadata {
+export function parseV2Metadata(obj: unknown): any {
   try {
     verifyObject(obj);
     verifyObjectProperty(obj, "zarr_format", (value) => {
@@ -324,22 +320,13 @@ export function parseV2Metadata(
     const dimensionSeparator: DimensionSeparator = verifyOptionalObjectProperty(
       obj,
       "dimension_separator",
-      explicitDimensionSeparator === undefined
-        ? parseDimensionSeparator
-        : (value) => verifyConstant(value, explicitDimensionSeparator),
-      explicitDimensionSeparator ?? ".",
+      parseDimensionSeparator,
     );
     const numpyDtype = verifyObjectProperty(obj, "dtype", (dtype) =>
       parseNumpyDtype(verifyString(dtype)),
     );
 
     const dataType = numpyDtype.dataType;
-    const fillValue = verifyObjectProperty(obj, "fill_value", (value) => {
-      if (value === null) {
-        return 0;
-      }
-      return parseFillValue(dataType, value);
-    });
 
     const codecs = [];
     if (order === "F") {
@@ -354,67 +341,6 @@ export function parseV2Metadata(
         endian: numpyDtype.endianness === Endianness.LITTLE ? "little" : "big",
       },
     });
-    verifyObjectProperty(obj, "compressor", (compressor) => {
-      if (compressor === null) return;
-      verifyObject(compressor);
-      const id = verifyObjectProperty(compressor, "id", verifyString);
-      switch (id) {
-        case "blosc":
-          codecs.push({
-            name: "blosc",
-            configuration: {
-              cname: verifyObjectProperty(compressor, "cname", verifyString),
-              clevel: verifyObjectProperty(compressor, "clevel", verifyInt),
-              typesize: DATA_TYPE_BYTES[dataType],
-              shuffle: verifyObjectProperty(
-                compressor,
-                "shuffle",
-                (shuffle) => {
-                  switch (shuffle) {
-                    case -1:
-                      return DATA_TYPE_BYTES[dataType] === 1
-                        ? "bitshuffle"
-                        : "shuffle";
-                    case 0:
-                      return "noshuffle";
-                    case 1:
-                      return "shuffle";
-                    case 2:
-                      return "bitshuffle";
-                  }
-                  throw new Error(`Invalid value: ${JSON.stringify(shuffle)}`);
-                },
-              ),
-              blocksize: verifyOptionalObjectProperty(
-                compressor,
-                "blocksize",
-                verifyInt,
-                0,
-              ),
-            },
-          });
-          break;
-        case "zlib":
-        case "gzip":
-          codecs.push({
-            name: "gzip",
-            configuration: {
-              level: verifyObjectProperty(compressor, "level", verifyInt),
-            },
-          });
-          break;
-        case "zstd":
-          codecs.push({
-            name: "zstd",
-            configuration: {
-              level: verifyObjectProperty(compressor, "level", verifyInt),
-            },
-          });
-          break;
-        default:
-          throw new Error(`Unsupported compressor: ${JSON.stringify(id)}`);
-      }
-    });
 
     const codecChainSpec = parseCodecChainSpec(codecs, {
       dataType,
@@ -428,18 +354,7 @@ export function parseV2Metadata(
       shape,
       chunkShape,
       dataType,
-      fillValue,
-      dimensionNames: verifyObjectProperty(
-        attrs,
-        "_ARRAY_DIMENSIONS",
-        (names) => verifyOptionalFixedLengthArrayOfStringOrNull(names, rank),
-      ),
-      dimensionUnits: verifyObjectProperty(attrs, "dimension_units", (units) =>
-        verifyOptionalFixedLengthArrayOfStringOrNull(units, rank),
-      ),
-      userAttributes: attrs,
       dimensionSeparator,
-      chunkKeyEncoding: ChunkKeyEncoding.V2,
       codecs: codecChainSpec,
     };
   } catch (e) {

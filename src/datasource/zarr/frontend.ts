@@ -260,18 +260,10 @@ function getMultiscaleInfoForSingleArray(
 async function resolveOmeMultiscale(
   chunkManager: ChunkManager,
   multiscale: OmeMultiscaleMetadata,
-  options: {
-    explicitDimensionSeparator: DimensionSeparator | undefined;
-    zarrVersion: 2 | 3;
-  },
 ): Promise<ZarrMultiscaleInfo> {
   const scaleZarrMetadata = await Promise.all(
     multiscale.scales.map(async (scale) => {
-      const metadata = await getMetadata(chunkManager, scale.url, {
-        zarrVersion: options.zarrVersion,
-        expectedNodeType: "array",
-        explicitDimensionSeparator: options.explicitDimensionSeparator,
-      });
+      const metadata = await getMetadataB(chunkManager, scale.url);
       if (metadata === undefined) {
         throw new Error(
           `zarr v{zarrVersion} array metadata not found at ${scale.url}`,
@@ -340,40 +332,28 @@ async function resolveOmeMultiscale(
   };
 }
 
-async function getMetadata(
+async function getMetadataA(
   chunkManager: ChunkManager,
   url: string,
-  options: {
-    zarrVersion?: 2 | 3 | undefined;
-    expectedNodeType?: NodeType | undefined;
-    explicitDimensionSeparator?: DimensionSeparator | undefined;
-  },
 ): Promise<Metadata | undefined> {
-  const [zarray, zattrs] = await Promise.all([
-    getJsonResource(chunkManager, `${url}/.zarray`),
+  const [zattrs] = await Promise.all([
     getJsonResource(chunkManager, `${url}/.zattrs`),
   ]);
-  if (zarray === undefined) {
-    if (zattrs === undefined) {
-      return undefined;
-    }
-    if (options.expectedNodeType === "array") {
-      return undefined;
-    }
-    return {
-      zarrVersion: 2,
-      nodeType: "group",
-      userAttributes: verifyObject(zattrs),
-    };
-  }
-  if (options.expectedNodeType === "group") {
-    return undefined;
-  }
-  return parseV2Metadata(
-    zarray,
-    zattrs ?? {},
-    options.explicitDimensionSeparator,
-  );
+  return {
+    zarrVersion: 2,
+    nodeType: "group",
+    userAttributes: verifyObject(zattrs),
+  };
+}
+
+async function getMetadataB(
+  chunkManager: ChunkManager,
+  url: string,
+): Promise<Metadata | undefined> {
+  const [zarray] = await Promise.all([
+    getJsonResource(chunkManager, `${url}/.zarray`),
+  ]);
+  return parseV2Metadata(zarray);
 }
 
 export class ZarrDataSource extends DataSourceProvider {
@@ -408,10 +388,7 @@ export class ZarrDataSource extends DataSourceProvider {
       async () => {
         const url = providerUrl;
 
-        const metadata = await getMetadata(options.chunkManager, url, {
-          zarrVersion: this.zarrVersion,
-          explicitDimensionSeparator: dimensionSeparator,
-        });
+        const metadata = await getMetadataA(options.chunkManager, url);
         if (metadata === undefined) {
           throw new Error("No zarr metadata found");
         }

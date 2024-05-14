@@ -47,7 +47,6 @@ import { MouseEventBinder } from "#src/util/mouse_bindings.js";
 import { startRelativeMouseDrag } from "#src/util/mouse_drag.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { getWheelZoomAmount } from "#src/util/wheel_zoom.js";
-import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import { getMemoizedBuffer } from "#src/webgl/buffer.js";
 import type { ParameterizedEmitterDependentShaderGetter } from "#src/webgl/dynamic_shader.js";
 import { parameterizedEmitterDependentShaderGetter } from "#src/webgl/dynamic_shader.js";
@@ -744,7 +743,7 @@ export class InvlerpWidget extends Tab {
     invertInvlerpRange(this.trackable);
   }
   constructor(
-    visibility: WatchableVisibilityPriority,
+    visibility: any,
     public display: DisplayContext,
     public dataType: DataType,
     public trackable: WatchableValueInterface<InvlerpParameters>,
@@ -825,7 +824,7 @@ export class InvlerpWidget extends Tab {
 export class VariableDataTypeInvlerpWidget extends Tab {
   invlerpWidget: Owned<InvlerpWidget>;
   constructor(
-    visibility: WatchableVisibilityPriority,
+    visibility: any,
     public display: DisplayContext,
     public watchableDataType: WatchableValueInterface<DataType>,
     public trackable: WatchableValueInterface<InvlerpParameters>,

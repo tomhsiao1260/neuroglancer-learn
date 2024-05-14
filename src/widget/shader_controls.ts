@@ -23,7 +23,6 @@ import { RefCounted } from "#src/util/disposable.js";
 import { removeChildren } from "#src/util/dom.js";
 import { verifyObjectProperty, verifyString } from "#src/util/json.js";
 import type { AnyConstructor } from "#src/util/mixin.js";
-import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type {
   ParameterizedEmitterDependentShaderOptions,
   ParameterizedShaderGetterResult,
@@ -51,7 +50,7 @@ export interface LegendShaderOptions
 
 export interface ShaderControlsOptions {
   legendShaderOptions?: LegendShaderOptions;
-  visibility?: WatchableVisibilityPriority;
+  visibility?: any;
   toolId?: string;
 }
 

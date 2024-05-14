@@ -19,7 +19,6 @@ import { animationFrameDebounce } from "#src/util/animation_frame_debounce.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { NullarySignal } from "#src/util/signal.js";
-import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { initializeWebGL } from "#src/webgl/context.js";
 

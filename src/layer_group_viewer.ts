@@ -33,7 +33,6 @@ import type { WatchableSet } from "#src/trackable_value.js";
 import type { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import type { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 
 export interface LayerGroupViewerState {
   display: Borrowed<DisplayContext>;
@@ -42,7 +41,6 @@ export interface LayerGroupViewerState {
   wireFrame: TrackableBoolean;
   layerSpecification: Owned<LayerListSpecification>;
   inputEventBindings: DataPanelInputEventBindings;
-  visibility: WatchableVisibilityPriority;
   visibleLayerRoles: WatchableSet<RenderLayerRole>;
   crossSectionBackgroundColor: TrackableRGB;
 }
