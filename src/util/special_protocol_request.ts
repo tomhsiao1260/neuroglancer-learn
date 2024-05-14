@@ -14,120 +14,15 @@
  * limitations under the License.
  */
 
-import pythonIntegration from "#python_integration_build";
-import type {
-  CredentialsManager,
-  MaybeOptionalCredentialsProvider,
-} from "#src/credentials_provider/index.js";
+import type { MaybeOptionalCredentialsProvider } from "#src/credentials_provider/index.js";
 import { fetchWithOAuth2Credentials } from "#src/credentials_provider/oauth2.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
 import type { ResponseTransform } from "#src/util/http_request.js";
-import { parseUrl } from "#src/util/http_request.js";
 
 export type SpecialProtocolCredentials = any;
 export type SpecialProtocolCredentialsProvider =
   MaybeOptionalCredentialsProvider<SpecialProtocolCredentials>;
-
-function getMiddleAuthCredentialsProvider(
-  credentialsManager: CredentialsManager,
-  url: string,
-): SpecialProtocolCredentialsProvider {
-  return credentialsManager.getCredentialsProvider(
-    "middleauthapp",
-    new URL(url).origin,
-  );
-}
-
-function getNgauthCredentialsProvider(
-  credentialsManager: CredentialsManager,
-  serverUrl: string,
-  path: string,
-): SpecialProtocolCredentialsProvider {
-  const bucketPattern = /^\/([^/]+)/;
-  const m = path.match(bucketPattern);
-  if (m === null) return undefined;
-  return pythonIntegration
-    ? credentialsManager.getCredentialsProvider("gcs", { bucket: m[1] })
-    : credentialsManager.getCredentialsProvider("ngauth_gcs", {
-        authServer: serverUrl,
-        bucket: m[1],
-      });
-}
-
-export function parseSpecialUrl(
-  url: string,
-  credentialsManager: CredentialsManager,
-): { url: string; credentialsProvider: SpecialProtocolCredentialsProvider } {
-  const u = parseUrl(url);
-  switch (u.protocol) {
-    case "gs":
-    case "gs+xml":
-      return {
-        credentialsProvider: pythonIntegration
-          ? credentialsManager.getCredentialsProvider("gcs", {
-              bucket: u.host,
-            })
-          : undefined,
-        url,
-      };
-    case "gs+ngauth+http":
-      return {
-        credentialsProvider: getNgauthCredentialsProvider(
-          credentialsManager,
-          `http://${u.host}`,
-          u.path,
-        ),
-        url: "gs:/" + u.path,
-      };
-    case "gs+ngauth+https":
-      return {
-        credentialsProvider: getNgauthCredentialsProvider(
-          credentialsManager,
-          `https://${u.host}`,
-          u.path,
-        ),
-        url: "gs:/" + u.path,
-      };
-    case "gs+xml+ngauth+http":
-      return {
-        credentialsProvider: getNgauthCredentialsProvider(
-          credentialsManager,
-          `http://${u.host}`,
-          u.path,
-        ),
-        url: "gs+xml:/" + u.path,
-      };
-    case "gs+xml+ngauth+https":
-      return {
-        credentialsProvider: getNgauthCredentialsProvider(
-          credentialsManager,
-          `https://${u.host}`,
-          u.path,
-        ),
-        url: "gs+xml:/" + u.path,
-      };
-    case "middleauth+https":
-      url = url.substr("middleauth+".length);
-      return {
-        credentialsProvider: getMiddleAuthCredentialsProvider(
-          credentialsManager,
-          url,
-        ),
-        url: url,
-      };
-    case "s3":
-      return {
-        credentialsProvider: undefined,
-        url,
-      };
-    default:
-      return {
-        credentialsProvider: undefined,
-        url,
-      };
-  }
-}
 
 export async function cancellableFetchSpecialOk<T>(
   credentialsProvider: SpecialProtocolCredentialsProvider,

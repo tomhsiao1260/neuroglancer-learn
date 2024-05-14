@@ -56,9 +56,7 @@ export async function fetchWithCredentials<Credentials, T>(
     try {
       return await cancellableFetchOk(
         typeof input === "function" ? input(credentials.credentials) : input,
-        applyCredentials(credentials.credentials, init),
         transformResponse,
-        cancellationToken,
       );
     } catch (error) {
       if (error instanceof HttpError) {

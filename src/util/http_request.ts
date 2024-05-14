@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-import type { CancellationToken } from "#src/util/cancellation.js";
-import { CANCELED, uncancelableToken } from "#src/util/cancellation.js";
-import { Uint64 } from "#src/util/uint64.js";
-
 export class HttpError extends Error {
   url: string;
   status: number;
@@ -97,18 +93,11 @@ export function pickDelay(attemptNumber: number): number {
  *
  * If the request fails due to a transient error (429, 503, 504), retry.
  */
-export async function fetchOk(
-  input: RequestInfo,
-  init?: RequestInit,
-): Promise<Response> {
+export async function fetchOk(input: RequestInfo): Promise<Response> {
   for (let requestAttempt = 0; ; ) {
-    if (init?.signal?.aborted) {
-      throw CANCELED;
-    }
     let response: Response;
     try {
       response = await fetch(input);
-      // response = await fetch(input, init);
     } catch (error) {
       throw HttpError.fromRequestError(input, error);
     }
@@ -152,41 +141,10 @@ export type ResponseTransform<T> = (response: Response) => Promise<T>;
  */
 export async function cancellableFetchOk<T>(
   input: RequestInfo,
-  init: RequestInit,
   transformResponse: ResponseTransform<T>,
-  cancellationToken: CancellationToken = uncancelableToken,
 ): Promise<T> {
-  const response = await fetchOk(input, init);
+  const response = await fetchOk(input);
   return await transformResponse(response);
-}
-
-const tempUint64 = new Uint64();
-
-export function getByteRangeHeader(
-  startOffset: Uint64 | number,
-  endOffset: Uint64 | number,
-) {
-  let endOffsetStr: string;
-  if (typeof endOffset === "number") {
-    endOffsetStr = `${endOffset - 1}`;
-  } else {
-    Uint64.decrement(tempUint64, endOffset);
-    endOffsetStr = tempUint64.toString();
-  }
-  return { Range: `bytes=${startOffset}-${endOffsetStr}` };
-}
-
-export function parseUrl(url: string): {
-  protocol: string;
-  host: string;
-  path: string;
-} {
-  const urlProtocolPattern = /^([^:/]+):\/\/([^/]+)((?:\/.*)?)$/;
-  const match = url.match(urlProtocolPattern);
-  if (match === null) {
-    throw new Error(`Invalid URL: ${JSON.stringify(url)}`);
-  }
-  return { protocol: match[1], host: match[2], path: match[3] };
 }
 
 export function isNotFoundError(e: any) {

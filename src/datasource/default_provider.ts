@@ -18,33 +18,25 @@
  * @file Facility for registering default data sources.
  */
 
-import type { CredentialsManager } from "#src/credentials_provider/index.js";
 import type { DataSourceProvider } from "#src/datasource/index.js";
 import { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import type { Owned } from "#src/util/disposable.js";
 
-export interface ProviderOptions {
-  credentialsManager: CredentialsManager;
-}
-
-export type ProviderFactory = (
-  options: ProviderOptions,
-) => Owned<DataSourceProvider>;
+export type ProviderFactory = () => Owned<DataSourceProvider>;
 const providerFactories = new Map<string, ProviderFactory>();
 
 export function registerProvider(name: string, factory: ProviderFactory) {
   providerFactories.set(name, factory);
 }
 
-export function getDefaultDataSourceProvider(options: ProviderOptions) {
+export function getDefaultDataSourceProvider() {
   const provider = new DataSourceProviderRegistry();
   for (const [name, factory] of providerFactories) {
     try {
-      provider.register(name, factory(options));
+      provider.register(name, factory());
     } catch (e) {
       console.warn(`Skipping ${name} data source: ${e}`);
     }
   }
-  console.log(options, provider);
   return provider;
 }

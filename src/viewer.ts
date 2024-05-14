@@ -23,7 +23,6 @@ import {
   ChunkQueueManager,
 } from "#src/chunk_manager/frontend.js";
 import { TrackableCoordinateSpace } from "#src/coordinate_transform.js";
-import { defaultCredentialsManager } from "#src/credentials_provider/default_manager.js";
 import { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
@@ -51,8 +50,6 @@ import {
 } from "#src/navigation_state.js";
 import { allRenderLayerRoles } from "#src/renderlayer.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { makeDerivedWatchableValue } from "#src/trackable_value.js";
 import { SidePanelManager } from "#src/ui/side_panel.js";
 import { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
@@ -216,9 +213,7 @@ export class Viewer extends RefCounted {
       perspectiveView: new EventActionMap(),
     };
     const element = display.makeCanvasOverlayElement();
-    const dataSourceProvider = getDefaultDataSourceProvider({
-      credentialsManager: defaultCredentialsManager,
-    });
+    const dataSourceProvider = getDefaultDataSourceProvider();
 
     this.visibility = visibility;
     this.inputEventBindings = inputEventBindings;

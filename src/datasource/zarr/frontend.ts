@@ -27,7 +27,6 @@ import {
 } from "#src/coordinate_transform.js";
 import { WithCredentialsProvider } from "#src/credentials_provider/chunk_source_frontend.js";
 import type {
-  CompleteUrlOptions,
   DataSource,
   GetDataSourceOptions,
 } from "#src/datasource/index.js";
@@ -48,7 +47,6 @@ import {
   parseDimensionSeparator,
   parseDimensionUnit,
   parseV2Metadata,
-  parseV3Metadata,
 } from "#src/datasource/zarr/metadata/parse.js";
 import type { OmeMultiscaleMetadata } from "#src/datasource/zarr/ome.js";
 import { parseOmeMetadata } from "#src/datasource/zarr/ome.js";
@@ -64,12 +62,7 @@ import {
   VolumeChunkSource,
 } from "#src/sliceview/volume/frontend.js";
 import { transposeNestedArrays } from "#src/util/array.js";
-import {
-  applyCompletionOffset,
-  completeQueryStringParametersFromTable,
-} from "#src/util/completion.js";
 import type { Borrowed } from "#src/util/disposable.js";
-import { completeHttpPath } from "#src/util/http_path_completion.js";
 import { isNotFoundError, responseJson } from "#src/util/http_request.js";
 import {
   parseQueryStringParameters,
@@ -78,17 +71,10 @@ import {
 } from "#src/util/json.js";
 import * as matrix from "#src/util/matrix.js";
 import { getObjectId } from "#src/util/object_id.js";
-import type {
-  SpecialProtocolCredentials,
-  SpecialProtocolCredentialsProvider,
-} from "#src/util/special_protocol_request.js";
-import {
-  cancellableFetchSpecialOk,
-  parseSpecialUrl,
-} from "#src/util/special_protocol_request.js";
+import { cancellableFetchSpecialOk } from "#src/util/special_protocol_request.js";
 
 class ZarrVolumeChunkSource extends WithParameters(
-  WithCredentialsProvider<SpecialProtocolCredentials>()(VolumeChunkSource),
+  WithCredentialsProvider()(VolumeChunkSource),
   VolumeChunkSourceParameters,
 ) {}
 
@@ -109,7 +95,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
   constructor(
     chunkManager: Borrowed<ChunkManager>,
-    public credentialsProvider: SpecialProtocolCredentialsProvider,
+    public credentialsProvider: any,
     public multiscale: ZarrMultiscaleInfo,
   ) {
     super(chunkManager);
@@ -177,7 +163,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
 function getJsonResource(
   chunkManager: ChunkManager,
-  credentialsProvider: SpecialProtocolCredentialsProvider,
+  credentialsProvider: any,
   url: string,
 ): Promise<any | undefined> {
   return chunkManager.memoize.getUncounted(
@@ -297,7 +283,7 @@ function getMultiscaleInfoForSingleArray(
 
 async function resolveOmeMultiscale(
   chunkManager: ChunkManager,
-  credentialsProvider: SpecialProtocolCredentialsProvider,
+  credentialsProvider: any,
   multiscale: OmeMultiscaleMetadata,
   options: {
     explicitDimensionSeparator: DimensionSeparator | undefined;
@@ -386,7 +372,7 @@ async function resolveOmeMultiscale(
 
 async function getMetadata(
   chunkManager: ChunkManager,
-  credentialsProvider: SpecialProtocolCredentialsProvider,
+  credentialsProvider: any,
   url: string,
   options: {
     zarrVersion?: 2 | 3 | undefined;
@@ -451,10 +437,9 @@ export class ZarrDataSource extends DataSourceProvider {
         dimensionSeparator,
       },
       async () => {
-        const { url, credentialsProvider } = parseSpecialUrl(
-          providerUrl,
-          options.credentialsManager,
-        );
+        const url = providerUrl;
+        const credentialsProvider = undefined;
+
         const metadata = await getMetadata(
           options.chunkManager,
           credentialsProvider,
@@ -503,25 +488,6 @@ export class ZarrDataSource extends DataSourceProvider {
           ],
         };
       },
-    );
-  }
-
-  async completeUrl(options: CompleteUrlOptions) {
-    // Pattern is infallible.
-    const [, , query] = options.providerUrl.match(/([^?]*)(?:\?(.*))?$/)!;
-    if (query !== undefined) {
-      return applyCompletionOffset(
-        options.providerUrl.length - query.length,
-        await completeQueryStringParametersFromTable(
-          query,
-          supportedQueryParameters,
-        ),
-      );
-    }
-    return await completeHttpPath(
-      options.credentialsManager,
-      options.providerUrl,
-      options.cancellationToken,
     );
   }
 }

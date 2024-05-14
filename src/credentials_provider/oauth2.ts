@@ -38,12 +38,7 @@ export function fetchWithOAuth2Credentials<T>(
   cancellationToken: CancellationToken = uncancelableToken,
 ): Promise<T> {
   if (credentialsProvider === undefined) {
-    return cancellableFetchOk(
-      input,
-      init,
-      transformResponse,
-      cancellationToken,
-    );
+    return cancellableFetchOk(input, transformResponse);
   }
   return fetchWithCredentials(
     credentialsProvider,

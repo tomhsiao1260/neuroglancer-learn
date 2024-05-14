@@ -248,11 +248,6 @@ export abstract class DataSourceProvider extends RefCounted {
   convertLegacyUrl(options: ConvertLegacyUrlOptions): string {
     return options.url;
   }
-
-  async completeUrl(options: CompleteUrlOptions): Promise<CompletionResult> {
-    options;
-    throw null;
-  }
 }
 
 export const localAnnotationsUrl = "local://annotations";
@@ -324,28 +319,6 @@ class LocalDataSourceProvider extends DataSourceProvider {
       }
     }
     throw new Error("Invalid local data source URL");
-  }
-
-  async completeUrl(options: CompleteUrlOptions) {
-    return {
-      offset: 0,
-      completions: getPrefixMatchesWithDescriptions(
-        options.providerUrl,
-        [
-          {
-            value: "annotations",
-            description: "Annotations stored in the JSON state",
-          },
-          {
-            value: "equivalences",
-            description:
-              "Segmentation equivalence graph stored in the JSON state",
-          },
-        ],
-        (x) => x.value,
-        (x) => x.description,
-      ),
-    };
   }
 }
 
@@ -483,15 +456,7 @@ export class DataSourceProviderRegistry extends RefCounted {
     }
     const factory = this.dataSources.get(protocol);
     if (factory !== undefined) {
-      const completions = await factory.completeUrl({
-        registry: this,
-        url,
-        providerUrl: protocolMatch[2],
-        chunkManager: options.chunkManager,
-        cancellationToken,
-        credentialsManager: this.credentialsManager,
-      });
-      return applyCompletionOffset(protocol.length + 3, completions);
+      return applyCompletionOffset(protocol.length + 3, undefined);
     }
     throw null;
   }

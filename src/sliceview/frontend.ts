@@ -348,15 +348,6 @@ export class SliceView extends Base {
         this.invalidateVisibleSources(),
       ),
     );
-    const { renderScaleHistogram } = renderLayer;
-    if (renderScaleHistogram !== undefined) {
-      disposers.push(renderScaleHistogram.visibility.add(this.visibility));
-    }
-    disposers.push(
-      renderLayer.dataHistogramSpecifications.producerVisibility.add(
-        this.visibility,
-      ),
-    );
   }
 
   private updateVisibleLayersNow() {

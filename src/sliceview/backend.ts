@@ -328,7 +328,7 @@ export function deserializeTransformedSources<
   return sources;
 }
 registerRPC(SLICEVIEW_ADD_VISIBLE_LAYER_RPC_ID, function (x) {
-  const obj = <SliceViewBackend>this.get(x.id);
+  const obj = this.get(x.id);
   const layer = <SliceViewRenderLayerBackend>this.get(x.layerId);
   const sources = deserializeTransformedSources<
     SliceViewChunkSourceBackend,
@@ -337,7 +337,7 @@ registerRPC(SLICEVIEW_ADD_VISIBLE_LAYER_RPC_ID, function (x) {
   obj.addVisibleLayer(layer, sources);
 });
 registerRPC(SLICEVIEW_REMOVE_VISIBLE_LAYER_RPC_ID, function (x) {
-  const obj = <SliceViewBackend>this.get(x.id);
+  const obj = this.get(x.id);
   const layer = <SliceViewRenderLayerBackend>this.get(x.layerId);
   obj.removeVisibleLayer(layer);
 });

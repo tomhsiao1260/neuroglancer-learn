@@ -82,7 +82,7 @@ export abstract class RenderedPanel extends RefCounted {
   constructor(
     public context: Borrowed<DisplayContext>,
     public element: HTMLElement,
-    public visibility: WatchableVisibilityPriority,
+    public visibility: any,
   ) {
     super();
     this.gl = context.gl;
@@ -198,12 +198,8 @@ export abstract class RenderedPanel extends RefCounted {
 export abstract class IndirectRenderedPanel extends RenderedPanel {
   canvas = document.createElement("canvas");
   canvasRenderingContext = this.canvas.getContext("2d");
-  constructor(
-    context: Borrowed<DisplayContext>,
-    element: HTMLElement,
-    visibility: WatchableVisibilityPriority,
-  ) {
-    super(context, element, visibility);
+  constructor(context: Borrowed<DisplayContext>, element: HTMLElement) {
+    super(context, element, this.visibility);
     const { canvas } = this;
     element.appendChild(canvas);
     element.style.position = "relative";
