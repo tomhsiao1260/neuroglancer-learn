@@ -20,7 +20,6 @@ import "#src/datasource/zarr/codec/bytes/decode.js";
 import "#src/datasource/zarr/codec/crc32c/decode.js";
 
 import { WithParameters } from "#src/chunk_manager/backend.js";
-import { WithSharedCredentialsProviderCounterpart } from "#src/credentials_provider/shared_counterpart.js";
 import { VolumeChunkSourceParameters } from "#src/datasource/zarr/base.js";
 import {
   applySharding,
@@ -39,7 +38,7 @@ import { registerSharedObject } from "#src/worker_rpc.js";
 
 @registerSharedObject()
 export class ZarrVolumeChunkSource extends WithParameters(
-  WithSharedCredentialsProviderCounterpart()(VolumeChunkSource),
+  VolumeChunkSource,
   VolumeChunkSourceParameters,
 ) {
   private chunkKvStore = applySharding(

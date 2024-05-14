@@ -25,7 +25,6 @@ import {
   makeIdentityTransform,
   makeIdentityTransformedBoundingBox,
 } from "#src/coordinate_transform.js";
-import { WithCredentialsProvider } from "#src/credentials_provider/chunk_source_frontend.js";
 import type {
   DataSource,
   GetDataSourceOptions,
@@ -70,11 +69,10 @@ import {
   verifyOptionalObjectProperty,
 } from "#src/util/json.js";
 import * as matrix from "#src/util/matrix.js";
-import { getObjectId } from "#src/util/object_id.js";
 import { cancellableFetchOk } from "#src/util/http_request.js";
 
 class ZarrVolumeChunkSource extends WithParameters(
-  WithCredentialsProvider()(VolumeChunkSource),
+  VolumeChunkSource,
   VolumeChunkSourceParameters,
 ) {}
 
@@ -95,7 +93,6 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
   constructor(
     chunkManager: Borrowed<ChunkManager>,
-    public credentialsProvider: any,
     public multiscale: ZarrMultiscaleInfo,
   ) {
     super(chunkManager);
@@ -145,7 +142,6 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
             chunkSource: this.chunkManager.getChunkSource(
               ZarrVolumeChunkSource,
               {
-                credentialsProvider: this.credentialsProvider,
                 spec,
                 parameters: {
                   url: scale.url,
@@ -169,7 +165,6 @@ function getJsonResource(
     {
       type: "zarr:json",
       url,
-      credentialsProvider: undefined,
     },
     async () => {
       try {
@@ -181,19 +176,6 @@ function getJsonResource(
     },
   );
 }
-
-const supportedQueryParameters = [
-  {
-    key: {
-      value: "dimension_separator",
-      description: "Dimension separator in chunk keys",
-    },
-    values: [
-      { value: ".", description: "(default)" },
-      { value: "/", description: "" },
-    ],
-  },
-];
 
 interface ZarrScaleInfo {
   url: string;
@@ -425,7 +407,6 @@ export class ZarrDataSource extends DataSourceProvider {
       },
       async () => {
         const url = providerUrl;
-        const credentialsProvider = undefined;
 
         const metadata = await getMetadata(options.chunkManager, url, {
           zarrVersion: this.zarrVersion,
@@ -454,7 +435,6 @@ export class ZarrDataSource extends DataSourceProvider {
         }
         const volume = new MultiscaleVolumeChunkSource(
           options.chunkManager,
-          credentialsProvider,
           multiscaleInfo,
         );
         return {

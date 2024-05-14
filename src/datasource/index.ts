@@ -27,7 +27,6 @@ import {
   makeCoordinateSpace,
   makeIdentityTransform,
 } from "#src/coordinate_transform.js";
-import type { CredentialsManager } from "#src/credentials_provider/index.js";
 import type { MeshSource, MultiscaleMeshSource } from "#src/mesh/frontend.js";
 import type { SegmentPropertyMap } from "#src/segmentation_display_state/property_map.js";
 import type { SegmentationGraphSource } from "#src/segmentation_graph/source.js";
@@ -109,7 +108,6 @@ export interface GetDataSourceOptions extends GetDataSourceOptionsBase {
   providerUrl: string;
   cancellationToken: CancellationToken;
   providerProtocol: string;
-  credentialsManager: CredentialsManager;
 }
 
 export interface ConvertLegacyUrlOptionsBase {
@@ -159,7 +157,6 @@ export interface CompleteUrlOptions extends CompleteUrlOptionsBase {
   registry: DataSourceProviderRegistry;
   providerUrl: string;
   cancellationToken: CancellationToken;
-  credentialsManager: CredentialsManager;
 }
 
 export interface DataSubsourceEntry {
@@ -362,14 +359,7 @@ export class DataSourceProviderRegistry extends RefCounted {
       const [provider, providerUrl, providerProtocol] = this.getProvider(
         options.url,
       );
-      redirectLog.add(options.url);
       try {
-        console.log(options);
-        console.log(url);
-        console.log(providerProtocol);
-        console.log(providerUrl);
-        console.log(cancellationToken);
-
         return provider.get({
           ...options,
           url,
@@ -377,7 +367,6 @@ export class DataSourceProviderRegistry extends RefCounted {
           providerUrl,
           registry: this,
           cancellationToken,
-          credentialsManager: this.credentialsManager,
         });
       } catch (e) {
         if (e instanceof RedirectError) {

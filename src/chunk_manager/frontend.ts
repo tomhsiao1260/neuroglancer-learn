@@ -412,7 +412,7 @@ export class ChunkManager extends SharedObject {
 
   getChunkSource<T extends GettableChunkSource>(
     constructorFunction: ChunkSourceConstructor<T>,
-    options: T["OPTIONS"],
+    options: any,
   ): T {
     const keyObject = constructorFunction.encodeOptions(options);
     keyObject.constructorId = getObjectId(constructorFunction);

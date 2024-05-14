@@ -14,8 +14,5 @@
  * limitations under the License.
  */
 
-import type { MaybeOptionalCredentialsProvider } from "#src/credentials_provider/index.js";
-
 export type SpecialProtocolCredentials = any;
-export type SpecialProtocolCredentialsProvider =
-  MaybeOptionalCredentialsProvider<SpecialProtocolCredentials>;
+export type SpecialProtocolCredentialsProvider = any;
