@@ -45,10 +45,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
   private chunkKvStore = applySharding(
     this.chunkManager,
     this.parameters.metadata.codecs,
-    getSpecialProtocolKvStore(
-      this.credentialsProvider,
-      this.parameters.url + "/",
-    ),
+    getSpecialProtocolKvStore(this.parameters.url + "/"),
   );
 
   async download(chunk: VolumeChunk, cancellationToken: CancellationToken) {

@@ -15,27 +15,7 @@
  */
 
 import type { MaybeOptionalCredentialsProvider } from "#src/credentials_provider/index.js";
-import { fetchWithOAuth2Credentials } from "#src/credentials_provider/oauth2.js";
-import type { CancellationToken } from "#src/util/cancellation.js";
-import { uncancelableToken } from "#src/util/cancellation.js";
-import type { ResponseTransform } from "#src/util/http_request.js";
 
 export type SpecialProtocolCredentials = any;
 export type SpecialProtocolCredentialsProvider =
   MaybeOptionalCredentialsProvider<SpecialProtocolCredentials>;
-
-export async function cancellableFetchSpecialOk<T>(
-  credentialsProvider: SpecialProtocolCredentialsProvider,
-  url: string,
-  init: RequestInit,
-  transformResponse: ResponseTransform<T>,
-  cancellationToken: CancellationToken = uncancelableToken,
-): Promise<T> {
-  return fetchWithOAuth2Credentials(
-    credentialsProvider,
-    url,
-    init,
-    transformResponse,
-    cancellationToken,
-  );
-}

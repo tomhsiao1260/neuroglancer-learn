@@ -29,11 +29,7 @@ import {
   MultipleConsumerCancellationTokenSource,
 } from "#src/util/cancellation.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
-import { responseArrayBuffer } from "#src/util/http_request.js";
 import { stableStringify } from "#src/util/json.js";
-import { getObjectId } from "#src/util/object_id.js";
-import type { SpecialProtocolCredentialsProvider } from "#src/util/special_protocol_request.js";
-import { cancellableFetchSpecialOk } from "#src/util/special_protocol_request.js";
 
 export type PriorityGetter = () => {
   priorityTier: ChunkPriorityTier;
@@ -227,36 +223,6 @@ export class GenericSharedDataSource<Key, Data> extends ChunkSourceBase {
     const result = source.getData(key, getPriority, cancellationToken);
     source.dispose();
     return result;
-  }
-
-  static getUrl<Data>(
-    chunkManager: Borrowed<ChunkManager>,
-    credentialsProvider: SpecialProtocolCredentialsProvider,
-    decodeFunction: (
-      buffer: ArrayBuffer,
-      cancellationToken: CancellationToken,
-    ) => Promise<{ size: number; data: Data }>,
-    url: string,
-    getPriority: PriorityGetter,
-    cancellationToken: CancellationToken,
-  ) {
-    return GenericSharedDataSource.getData<string, Data>(
-      chunkManager,
-      `${getObjectId(decodeFunction)}`,
-      {
-        download: (url: string, cancellationToken: CancellationToken) =>
-          cancellableFetchSpecialOk(
-            credentialsProvider,
-            url,
-            {},
-            responseArrayBuffer,
-            cancellationToken,
-          ).then((response) => decodeFunction(response, cancellationToken)),
-      },
-      url,
-      getPriority,
-      cancellationToken,
-    );
   }
 }
 

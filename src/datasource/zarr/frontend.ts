@@ -71,7 +71,7 @@ import {
 } from "#src/util/json.js";
 import * as matrix from "#src/util/matrix.js";
 import { getObjectId } from "#src/util/object_id.js";
-import { cancellableFetchSpecialOk } from "#src/util/special_protocol_request.js";
+import { cancellableFetchOk } from "#src/util/http_request.js";
 
 class ZarrVolumeChunkSource extends WithParameters(
   WithCredentialsProvider()(VolumeChunkSource),
@@ -163,23 +163,17 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
 function getJsonResource(
   chunkManager: ChunkManager,
-  credentialsProvider: any,
   url: string,
 ): Promise<any | undefined> {
   return chunkManager.memoize.getUncounted(
     {
       type: "zarr:json",
       url,
-      credentialsProvider: getObjectId(credentialsProvider),
+      credentialsProvider: undefined,
     },
     async () => {
       try {
-        return await cancellableFetchSpecialOk(
-          credentialsProvider,
-          url,
-          {},
-          responseJson,
-        );
+        return await cancellableFetchOk(url, responseJson);
       } catch (e) {
         if (isNotFoundError(e)) return undefined;
         throw e;
@@ -283,7 +277,6 @@ function getMultiscaleInfoForSingleArray(
 
 async function resolveOmeMultiscale(
   chunkManager: ChunkManager,
-  credentialsProvider: any,
   multiscale: OmeMultiscaleMetadata,
   options: {
     explicitDimensionSeparator: DimensionSeparator | undefined;
@@ -292,16 +285,11 @@ async function resolveOmeMultiscale(
 ): Promise<ZarrMultiscaleInfo> {
   const scaleZarrMetadata = await Promise.all(
     multiscale.scales.map(async (scale) => {
-      const metadata = await getMetadata(
-        chunkManager,
-        credentialsProvider,
-        scale.url,
-        {
-          zarrVersion: options.zarrVersion,
-          expectedNodeType: "array",
-          explicitDimensionSeparator: options.explicitDimensionSeparator,
-        },
-      );
+      const metadata = await getMetadata(chunkManager, scale.url, {
+        zarrVersion: options.zarrVersion,
+        expectedNodeType: "array",
+        explicitDimensionSeparator: options.explicitDimensionSeparator,
+      });
       if (metadata === undefined) {
         throw new Error(
           `zarr v{zarrVersion} array metadata not found at ${scale.url}`,
@@ -372,7 +360,6 @@ async function resolveOmeMultiscale(
 
 async function getMetadata(
   chunkManager: ChunkManager,
-  credentialsProvider: any,
   url: string,
   options: {
     zarrVersion?: 2 | 3 | undefined;
@@ -381,8 +368,8 @@ async function getMetadata(
   },
 ): Promise<Metadata | undefined> {
   const [zarray, zattrs] = await Promise.all([
-    getJsonResource(chunkManager, credentialsProvider, `${url}/.zarray`),
-    getJsonResource(chunkManager, credentialsProvider, `${url}/.zattrs`),
+    getJsonResource(chunkManager, `${url}/.zarray`),
+    getJsonResource(chunkManager, `${url}/.zattrs`),
   ]);
   if (zarray === undefined) {
     if (zattrs === undefined) {
@@ -440,15 +427,10 @@ export class ZarrDataSource extends DataSourceProvider {
         const url = providerUrl;
         const credentialsProvider = undefined;
 
-        const metadata = await getMetadata(
-          options.chunkManager,
-          credentialsProvider,
-          url,
-          {
-            zarrVersion: this.zarrVersion,
-            explicitDimensionSeparator: dimensionSeparator,
-          },
-        );
+        const metadata = await getMetadata(options.chunkManager, url, {
+          zarrVersion: this.zarrVersion,
+          explicitDimensionSeparator: dimensionSeparator,
+        });
         if (metadata === undefined) {
           throw new Error("No zarr metadata found");
         }
@@ -461,7 +443,6 @@ export class ZarrDataSource extends DataSourceProvider {
           }
           multiscaleInfo = await resolveOmeMultiscale(
             options.chunkManager,
-            credentialsProvider,
             multiscale,
             {
               zarrVersion: metadata.zarrVersion,

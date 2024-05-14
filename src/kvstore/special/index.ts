@@ -22,10 +22,9 @@ import type {
   ReadResponse,
 } from "#src/kvstore/index.js";
 import { composeByteRangeRequest } from "#src/kvstore/index.js";
-import { uncancelableToken } from "#src/util/cancellation.js";
 import { HttpError, isNotFoundError } from "#src/util/http_request.js";
 import type { SpecialProtocolCredentialsProvider } from "#src/util/special_protocol_request.js";
-import { cancellableFetchSpecialOk } from "#src/util/special_protocol_request.js";
+import { cancellableFetchOk } from "#src/util/http_request.js";
 
 function getRangeHeader(
   request: ByteRangeRequest | undefined,
@@ -47,15 +46,11 @@ const byteRangeCacheMode =
   navigator.userAgent.indexOf("Chrome") !== -1 ? "no-store" : "default";
 
 class SpecialProtocolKvStore implements ReadableKvStore {
-  constructor(
-    public credentialsProvider: SpecialProtocolCredentialsProvider,
-    public baseUrl: string,
-  ) {}
+  constructor(public baseUrl: string) {}
   async read(
     key: string,
     options: ReadOptions,
   ): Promise<ReadResponse | undefined> {
-    const { cancellationToken = uncancelableToken } = options;
     let { byteRange: byteRangeRequest } = options;
     const url = this.baseUrl + key;
     for (let attempt = 0; ; ++attempt) {
@@ -66,15 +61,12 @@ class SpecialProtocolKvStore implements ReadableKvStore {
           requestInit.headers = { range: rangeHeader };
           requestInit.cache = byteRangeCacheMode;
         }
-        const { response, data } = await cancellableFetchSpecialOk(
-          this.credentialsProvider,
+        const { response, data } = await cancellableFetchOk(
           url,
-          requestInit,
           async (response) => ({
             response,
             data: await response.arrayBuffer(),
           }),
-          cancellationToken,
         );
         let byteRange: ByteRange | undefined;
         let totalSize: number | undefined;
@@ -134,12 +126,9 @@ class SpecialProtocolKvStore implements ReadableKvStore {
         ) {
           // Some servers, such as the npm http-server package, do not support suffixLength
           // byte-range requests.
-          const headResponse = await cancellableFetchSpecialOk(
-            this.credentialsProvider,
+          const headResponse = await cancellableFetchOk(
             url,
-            { method: "HEAD" },
             async (response) => response,
-            cancellationToken,
           );
           if (headResponse.status !== 200) {
             throw new Error(
@@ -167,9 +156,6 @@ class SpecialProtocolKvStore implements ReadableKvStore {
     }
   }
 }
-export function getSpecialProtocolKvStore(
-  credentialsProvider: SpecialProtocolCredentialsProvider,
-  baseUrl: string,
-): ReadableKvStore {
-  return new SpecialProtocolKvStore(credentialsProvider, baseUrl);
+export function getSpecialProtocolKvStore(baseUrl: string): ReadableKvStore {
+  return new SpecialProtocolKvStore(baseUrl);
 }

@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-import { fetchWithCredentials } from "#src/credentials_provider/http_request.js";
-import type { CredentialsProvider } from "#src/credentials_provider/index.js";
-import type { CancellationToken } from "#src/util/cancellation.js";
-import { uncancelableToken } from "#src/util/cancellation.js";
-import type { ResponseTransform } from "#src/util/http_request.js";
-import { cancellableFetchOk } from "#src/util/http_request.js";
-
 /**
  * OAuth2 token
  */
@@ -28,49 +21,4 @@ export interface OAuth2Credentials {
   tokenType: string;
   accessToken: string;
   email?: string;
-}
-
-export function fetchWithOAuth2Credentials<T>(
-  credentialsProvider: CredentialsProvider<OAuth2Credentials> | undefined,
-  input: RequestInfo,
-  init: RequestInit,
-  transformResponse: ResponseTransform<T>,
-  cancellationToken: CancellationToken = uncancelableToken,
-): Promise<T> {
-  if (credentialsProvider === undefined) {
-    return cancellableFetchOk(input, transformResponse);
-  }
-  return fetchWithCredentials(
-    credentialsProvider,
-    input,
-    init,
-    transformResponse,
-    (credentials, init) => {
-      if (!credentials.accessToken) return init;
-      const headers = new Headers(init.headers);
-      headers.set(
-        "Authorization",
-        `${credentials.tokenType} ${credentials.accessToken}`,
-      );
-      return { ...init, headers };
-    },
-    (error, credentials) => {
-      const { status } = error;
-      if (status === 401) {
-        // 401: Authorization needed.  OAuth2 token may have expired.
-        return "refresh";
-      }
-      if (status === 403 && !credentials.accessToken) {
-        // Anonymous access denied.  Request credentials.
-        return "refresh";
-      }
-      if (error instanceof Error && credentials.email !== undefined) {
-        error.message += `  (Using credentials for ${JSON.stringify(
-          credentials.email,
-        )})`;
-      }
-      throw error;
-    },
-    cancellationToken,
-  );
 }
