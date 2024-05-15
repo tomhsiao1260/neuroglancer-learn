@@ -134,6 +134,10 @@ export class RPC {
     }
     target.onmessage = (e) => {
       const data = e.data;
+      if (data.fileTree) {
+        self.fileTree = data.fileTree;
+        return;
+      }
       if (DEBUG_MESSAGES) {
         console.log("Received message", data);
       }

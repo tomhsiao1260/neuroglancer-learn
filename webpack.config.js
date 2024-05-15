@@ -16,9 +16,9 @@ export default (env, args) => {
       maxEntrypointSize: 3 * 1024 * 1024,
     },
     optimization: {
-      splitChunks: {
-        chunks: "all",
-      },
+      // splitChunks: {
+      //   chunks: "all",
+      // },
       minimizer: [
         new EsbuildPlugin({
           target: "es2020",
@@ -80,7 +80,7 @@ export default (env, args) => {
     target: ["es2020", "web"],
     experiments: {
       outputModule: true,
-    }
+    },
   };
-  return config
+  return config;
 };

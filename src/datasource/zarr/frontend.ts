@@ -38,9 +38,7 @@ import "#src/datasource/zarr/codec/sharding_indexed/resolve.js";
 import "#src/datasource/zarr/codec/transpose/resolve.js";
 import type {
   ArrayMetadata,
-  DimensionSeparator,
   Metadata,
-  NodeType,
 } from "#src/datasource/zarr/metadata/index.js";
 import {
   parseDimensionSeparator,

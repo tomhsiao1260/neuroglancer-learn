@@ -367,7 +367,6 @@ export class LayerDataSource extends RefCounted {
   }
 
   set spec(spec: DataSourceSpecification) {
-    console.log("set spec here", spec);
     const { layer } = this;
     this.messages.clearMessages();
     if (spec.url.length === 0) {
@@ -401,7 +400,6 @@ export class LayerDataSource extends RefCounted {
     this.spec_ = spec;
     const chunkManager = layer.manager.chunkManager;
     const registry = layer.manager.dataSourceProviderRegistry;
-    console.log(registry);
     const cancellationToken = new CancellationTokenSource();
     this.messages.addMessage({
       severity: MessageSeverity.info,

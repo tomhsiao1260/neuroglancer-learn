@@ -99,10 +99,12 @@ export function pickDelay(attemptNumber: number): number {
  *
  * If the request fails due to a transient error (429, 503, 504), retry.
  */
+
 export async function fetchOk(input: RequestInfo): Promise<Response> {
   for (let requestAttempt = 0; ; ) {
     let response: Response;
     try {
+      console.log(self.fileTree, input);
       response = await fetch(input);
     } catch (error) {
       throw HttpError.fromRequestError(input, error);

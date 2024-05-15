@@ -61,6 +61,11 @@ import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.j
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
 
+async function postMessage(worker: any) {
+  await new Promise((res) => setTimeout(res, 100));
+  worker.postMessage({ fileTree: self.fileTree });
+}
+
 export class DataManagementContext extends RefCounted {
   worker: Worker;
   chunkQueueManager: ChunkQueueManager;
@@ -83,6 +88,8 @@ export class DataManagementContext extends RefCounted {
       new URL("./chunk_worker.bundle.js", import.meta.url),
       { type: "module" },
     );
+    postMessage(this.worker);
+
     this.chunkQueueManager = this.registerDisposer(
       new ChunkQueueManager(
         new RPC(this.worker, /*waitUntilReady=*/ true),
@@ -230,12 +237,16 @@ export class Viewer extends RefCounted {
       this.navigationState.coordinateSpace,
     );
 
-    addNewLayer(this.layerSpecification);
-
     this.makeUI();
   }
 
-  private makeUI() {
+  private async makeUI() {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 500);
+    });
+
+    addNewLayer(this.layerSpecification);
+
     const gridContainer = this.element;
     gridContainer.classList.add("neuroglancer-viewer");
     gridContainer.classList.add("neuroglancer-noselect");

@@ -23,7 +23,6 @@ import type {
 } from "#src/kvstore/index.js";
 import { composeByteRangeRequest } from "#src/kvstore/index.js";
 import { HttpError, isNotFoundError } from "#src/util/http_request.js";
-import type { SpecialProtocolCredentialsProvider } from "#src/util/special_protocol_request.js";
 import { cancellableFetchOk } from "#src/util/http_request.js";
 
 function getRangeHeader(

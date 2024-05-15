@@ -20,15 +20,15 @@
 import { setupDefaultViewer } from "#src/ui/default_viewer_setup.js";
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
 
-window.dir = undefined;
-
 document.addEventListener("keyup", async (e) => {
   // load data via python server
   if (e.code === "Enter") setupDefaultViewer();
 
   // load data via file system api
   if (e.code === "Space") {
-    window.dir = await handleFileBtnOnClick();
+    const fileTree = await handleFileBtnOnClick();
+    self.fileTree = fileTree;
+
     setupDefaultViewer();
   }
 });
