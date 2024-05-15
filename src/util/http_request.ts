@@ -109,7 +109,7 @@ async function getFile(input: string, fileTree: any) {
   return res;
 }
 
-async function fetchFileOk(input: RequestInfo): Promise<Response> {
+async function fetchOk(input: RequestInfo): Promise<Response> {
   for (let requestAttempt = 0; ; ) {
     let response: Response;
     try {
@@ -121,47 +121,13 @@ async function fetchFileOk(input: RequestInfo): Promise<Response> {
   }
 }
 
-async function fetchServerOk(input: RequestInfo): Promise<Response> {
-  for (let requestAttempt = 0; ; ) {
-    let response: Response;
-    try {
-      response = await fetch(input);
-    } catch (error) {
-      throw HttpError.fromRequestError(input, error);
-    }
-    if (!response.ok) {
-      const { status } = response;
-      if (status === 429 || status === 503 || status === 504) {
-        // 429: Too Many Requests.  Retry.
-        // 503: Service unavailable.  Retry.
-        // 504: Gateway timeout. Can occur if the server takes too long to reply.  Retry.
-        if (++requestAttempt !== maxAttempts) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, pickDelay(requestAttempt - 1)),
-          );
-          continue;
-        }
-      }
-      throw HttpError.fromResponse(response);
-    }
-    return response;
-  }
-}
-
-export async function fetchOk(input: RequestInfo): Promise<Response> {
-  return self.fileTree ? fetchFileOk(input) : fetchServerOk(input);
-}
-
 export function responseArrayBuffer(response: Response): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
 export async function responseJson(response: Response): Promise<any> {
-  if (self.fileTree) {
-    const res = await response.text();
-    return JSON.parse(res);
-  }
-  return response.json();
+  const res = await response.text();
+  return JSON.parse(res);
 }
 
 export type ResponseTransform<T> = (response: Response) => Promise<T>;
