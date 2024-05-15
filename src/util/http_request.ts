@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-// import {handleFileOnClick } from "#src/util/file_system.js";
-
-// const file = window.dir["0"]["0"]["0"]["0"];
-// const arraybuffer = await handleFileOnClick(file);
-// console.log(arraybuffer);
-
 export class HttpError extends Error {
   url: string;
   status: number;
@@ -99,12 +93,38 @@ export function pickDelay(attemptNumber: number): number {
  *
  * If the request fails due to a transient error (429, 503, 504), retry.
  */
+async function getFile(input: string, fileTree: any) {
+  let res = fileTree;
 
-export async function fetchOk(input: RequestInfo): Promise<Response> {
+  const path = new URL(input).pathname;
+  const parts = path
+    .split("/")
+    .filter((part) => part.length > 0)
+    .slice(1);
+
+  for (const part of parts) {
+    res = res[part];
+  }
+
+  return res;
+}
+
+async function fetchFileOk(input: RequestInfo): Promise<Response> {
   for (let requestAttempt = 0; ; ) {
     let response: Response;
     try {
-      console.log(self.fileTree, input);
+      response = await getFile(input, self.fileTree);
+    } catch (error) {
+      throw HttpError.fromRequestError(input, error);
+    }
+    return response;
+  }
+}
+
+async function fetchServerOk(input: RequestInfo): Promise<Response> {
+  for (let requestAttempt = 0; ; ) {
+    let response: Response;
+    try {
       response = await fetch(input);
     } catch (error) {
       throw HttpError.fromRequestError(input, error);
@@ -128,11 +148,19 @@ export async function fetchOk(input: RequestInfo): Promise<Response> {
   }
 }
 
+export async function fetchOk(input: RequestInfo): Promise<Response> {
+  return self.fileTree ? fetchFileOk(input) : fetchServerOk(input);
+}
+
 export function responseArrayBuffer(response: Response): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
-export function responseJson(response: Response): Promise<any> {
+export async function responseJson(response: Response): Promise<any> {
+  if (self.fileTree) {
+    const res = await response.text();
+    return JSON.parse(res);
+  }
   return response.json();
 }
 
