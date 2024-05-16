@@ -54,7 +54,7 @@ import type { VolumeType } from "#src/sliceview/volume/base.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { UserLayerSidePanelsState } from "#src/ui/layer_side_panel_state.js";
-import { LocalToolBinder, SelectedLegacyTool } from "#src/ui/tool.js";
+import { SelectedLegacyTool } from "#src/ui/tool.js";
 import { gatherUpdate } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { invokeDisposers, RefCounted } from "#src/util/disposable.js";
@@ -305,9 +305,6 @@ export class UserLayer extends RefCounted {
   tabs = this.registerDisposer(new TabSpecification());
   panels = new UserLayerSidePanelsState(this);
   tool = this.registerDisposer(new SelectedLegacyTool(this));
-  toolBinder = this.registerDisposer(
-    new LocalToolBinder(this, this.manager.root.toolBinder),
-  );
 
   dataSourcesChanged = new NullarySignal();
   dataSources: LayerDataSource[] = [];
@@ -323,7 +320,6 @@ export class UserLayer extends RefCounted {
     this.tabs.changed.add(this.specificationChanged.dispatch);
     this.panels.specificationChanged.add(this.specificationChanged.dispatch);
     this.tool.changed.add(this.specificationChanged.dispatch);
-    this.toolBinder.changed.add(this.specificationChanged.dispatch);
     this.localPosition.changed.add(this.specificationChanged.dispatch);
     this.pick.changed.add(this.specificationChanged.dispatch);
     this.pick.changed.add(this.layersChanged.dispatch);
@@ -477,7 +473,6 @@ export class UserLayer extends RefCounted {
     );
     this.localPosition.restoreState(specification[LOCAL_POSITION_JSON_KEY]);
     this.localVelocity.restoreState(specification[LOCAL_VELOCITY_JSON_KEY]);
-    this.toolBinder.restoreState(specification[TOOL_BINDINGS_JSON_KEY]);
     if ((this.constructor as typeof UserLayer).supportsPickOption) {
       this.pick.restoreState(specification[PICK_JSON_KEY]);
     }
@@ -880,51 +875,6 @@ export class LayerSelectedValues extends RefCounted {
   }
 }
 
-export abstract class LayerListSpecification extends RefCounted {
-  changed = new NullarySignal();
-
-  abstract dataSourceProviderRegistry: Borrowed<DataSourceProviderRegistry>;
-  abstract layerManager: Borrowed<LayerManager>;
-  abstract chunkManager: Borrowed<ChunkManager>;
-  abstract layerSelectedValues: Borrowed<LayerSelectedValues>;
-
-  abstract readonly root: TopLevelLayerListSpecification;
-
-  abstract add(
-    layer: Owned<ManagedUserLayer>,
-    index?: number | undefined,
-  ): void;
-}
-
-export class TopLevelLayerListSpecification extends LayerListSpecification {
-  get root() {
-    return this;
-  }
-
-  coordinateSpaceCombiner = new CoordinateSpaceCombiner(
-    this.coordinateSpace,
-    isGlobalDimension,
-  );
-
-  constructor(
-    public display: DisplayContext,
-    public dataSourceProviderRegistry: DataSourceProviderRegistry,
-    public layerManager: LayerManager,
-    public chunkManager: ChunkManager,
-    public layerSelectedValues: any,
-    public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
-  ) {
-    super();
-  }
-
-  add(layer: ManagedUserLayer, index?: number | undefined) {
-    if (this.layerManager.managedLayers.indexOf(layer) === -1) {
-      layer.name = this.layerManager.getUniqueLayerName(layer.name);
-    }
-    this.layerManager.addManagedLayer(layer, index);
-  }
-}
-
 export type UserLayerConstructor<LayerType extends UserLayer = UserLayer> =
   typeof UserLayer & AnyConstructor<LayerType>;
 
@@ -967,7 +917,7 @@ export function registerVolumeLayerType(
   volumeLayerTypes.set(volumeType, layerConstructor);
 }
 
-export function addNewLayer(manager: Borrowed<LayerListSpecification>) {
+export function addNewLayer(manager: any) {
   const managedLayer = new ManagedUserLayer("new layer", manager);
   managedLayer.layer = new ImageUserLayer(managedLayer);
   managedLayer.archived = false;

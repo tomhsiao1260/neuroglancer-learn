@@ -47,6 +47,7 @@ export interface LayerGroupViewerState {
 
 export class LayerGroupViewer extends RefCounted {
   layout: DataPanelLayoutContainer;
+  element: HTMLElement = document.createElement("div");
 
   // FIXME: don't make viewerState a property, just make these things properties directly
   get display() {
@@ -83,15 +84,14 @@ export class LayerGroupViewer extends RefCounted {
     return this.viewerState.layerSpecification;
   }
 
-  constructor(
-    public element: HTMLElement,
-    public viewerState: LayerGroupViewerState,
-  ) {
+  constructor(public viewerState: LayerGroupViewerState) {
     super();
 
     this.layout = this.registerDisposer(new DataPanelLayoutContainer(this));
 
+    const { element } = this;
     element.style.flex = "1";
+    element.style.width = "0px";
     element.style.display = "flex";
     element.style.flexDirection = "column";
     element.appendChild(this.layout.element);

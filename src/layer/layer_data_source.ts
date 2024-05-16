@@ -389,9 +389,9 @@ export class LayerDataSource extends RefCounted {
       return;
     }
     const refCounted = new RefCounted();
-    const retainer = refCounted.registerDisposer(
-      disposableOnce(layer.markLoading()),
-    );
+    // const retainer = refCounted.registerDisposer(
+    //   disposableOnce(layer.markLoading()),
+    // );
     if (this.refCounted_ !== undefined) {
       this.refCounted_.dispose();
       this.loadState_ = undefined;

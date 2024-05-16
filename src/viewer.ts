@@ -16,6 +16,8 @@
 
 import "#src/viewer.css";
 import "#src/noselect.css";
+import "#src/layer_groups_layout.css";
+import { LayerGroupViewer } from "#src/layer_group_viewer.js";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
   CapacitySpecification,
@@ -32,9 +34,7 @@ import {
   LayerManager,
   LayerSelectedValues,
   MouseSelectionState,
-  TopLevelLayerListSpecification,
 } from "#src/layer/index.js";
-import { RootLayoutContainer } from "#src/layer_groups_layout.js";
 import {
   DisplayPose,
   NavigationState,
@@ -57,6 +57,10 @@ import { NullarySignal } from "#src/util/signal.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
+import {
+  CoordinateSpaceCombiner,
+  isGlobalDimension,
+} from "#src/coordinate_transform.js";
 
 async function postMessage(worker: any) {
   await new Promise((res) => setTimeout(res, 100));
@@ -173,7 +177,8 @@ export class Viewer extends RefCounted {
     return this.dataContext.chunkManager;
   }
 
-  layerSpecification: TopLevelLayerListSpecification;
+  layerSpecification: any;
+  // layerSpecification: TopLevelLayerListSpecification;
   layout: RootLayoutContainer;
 
   dataContext: Owned<DataManagementContext>;
@@ -200,7 +205,6 @@ export class Viewer extends RefCounted {
     this.dataContext = this.registerDisposer(dataContext);
 
     this.layerSpecification = new TopLevelLayerListSpecification(
-      this.display,
       this.dataSourceProvider,
       this.layerManager,
       this.chunkManager,
@@ -226,5 +230,63 @@ export class Viewer extends RefCounted {
 
     this.layout = this.registerDisposer(new RootLayoutContainer(this));
     gridContainer.appendChild(this.layout.element);
+  }
+}
+
+class TopLevelLayerListSpecification extends RefCounted {
+  get root() {
+    return this;
+  }
+
+  coordinateSpaceCombiner = new CoordinateSpaceCombiner(
+    this.coordinateSpace,
+    isGlobalDimension,
+  );
+
+  constructor(
+    public dataSourceProviderRegistry: DataSourceProviderRegistry,
+    public layerManager: LayerManager,
+    public chunkManager: ChunkManager,
+    public layerSelectedValues: any,
+    public coordinateSpace: any,
+  ) {
+    super();
+  }
+
+  add(layer: any, index?: number | undefined) {
+    if (this.layerManager.managedLayers.indexOf(layer) === -1) {
+      layer.name = this.layerManager.getUniqueLayerName(layer.name);
+    }
+    this.layerManager.addManagedLayer(layer, index);
+  }
+}
+
+class RootLayoutContainer extends RefCounted {
+  element: HTMLElement = document.createElement("div");
+  layerGroupViewer: LayerGroupViewer;
+
+  constructor(public viewer: any) {
+    super();
+
+    const { element } = this;
+    element.style.display = "flex";
+    element.style.flex = "1";
+    element.style.position = "relative";
+    element.style.alignItems = "stretch";
+
+    this.layerGroupViewer = this.registerDisposer(
+      new LayerGroupViewer({
+        display: viewer.display,
+        layerSpecification: viewer.layerSpecification,
+        mouseState: viewer.mouseState,
+        wireFrame: viewer.wireFrame,
+        inputEventBindings: viewer.inputEventBindings,
+        visibility: viewer.visibility,
+        visibleLayerRoles: viewer.visibleLayerRoles,
+        navigationState: viewer.navigationState,
+        crossSectionBackgroundColor: viewer.crossSectionBackgroundColor,
+      }),
+    );
+    element.appendChild(this.layerGroupViewer.element);
   }
 }
