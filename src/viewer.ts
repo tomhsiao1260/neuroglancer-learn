@@ -36,7 +36,6 @@ import {
 } from "#src/layer/index.js";
 import { RootLayoutContainer } from "#src/layer_groups_layout.js";
 import {
-  CoordinateSpacePlaybackVelocity,
   DisplayPose,
   NavigationState,
   OrientationState,
@@ -44,13 +43,11 @@ import {
   TrackableCrossSectionZoom,
   TrackableDepthRange,
   TrackableDisplayDimensions,
-  TrackableProjectionZoom,
   TrackableRelativeDisplayScales,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import { allRenderLayerRoles } from "#src/renderlayer.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
-import { SidePanelManager } from "#src/ui/side_panel.js";
 import { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
@@ -122,16 +119,11 @@ export class DataManagementContext extends RefCounted {
   }
 }
 
-export class InputEventBindings extends DataPanelInputEventBindings {
-  global = new EventActionMap();
-}
+export class InputEventBindings extends DataPanelInputEventBindings {}
 
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   position = this.registerDisposer(new Position(this.coordinateSpace));
-  velocity = this.registerDisposer(
-    new CoordinateSpacePlaybackVelocity(this.coordinateSpace),
-  );
   relativeDisplayScales = this.registerDisposer(
     new TrackableRelativeDisplayScales(this.coordinateSpace),
   );
@@ -148,16 +140,10 @@ export class Viewer extends RefCounted {
   crossSectionScale = this.registerDisposer(
     new TrackableCrossSectionZoom(this.displayDimensionRenderInfo.addRef()),
   );
-  projectionOrientation = this.registerDisposer(new OrientationState());
   crossSectionDepthRange = this.registerDisposer(
     new TrackableDepthRange(-10, this.displayDimensionRenderInfo),
   );
-  projectionDepthRange = this.registerDisposer(
-    new TrackableDepthRange(-50, this.displayDimensionRenderInfo),
-  );
-  projectionScale = this.registerDisposer(
-    new TrackableProjectionZoom(this.displayDimensionRenderInfo.addRef()),
-  );
+
   navigationState = this.registerDisposer(
     new NavigationState(
       new DisplayPose(
@@ -169,17 +155,7 @@ export class Viewer extends RefCounted {
       this.crossSectionDepthRange.addRef(),
     ),
   );
-  perspectiveNavigationState = this.registerDisposer(
-    new NavigationState(
-      new DisplayPose(
-        this.position.addRef(),
-        this.displayDimensionRenderInfo.addRef(),
-        this.projectionOrientation.addRef(),
-      ),
-      this.projectionScale.addRef(),
-      this.projectionDepthRange.addRef(),
-    ),
-  );
+
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
   wireFrame = new TrackableBoolean(false, false);
@@ -199,7 +175,6 @@ export class Viewer extends RefCounted {
 
   layerSpecification: TopLevelLayerListSpecification;
   layout: RootLayoutContainer;
-  sidePanelManager: SidePanelManager;
 
   dataContext: Owned<DataManagementContext>;
   visibility: WatchableVisibilityPriority;
@@ -214,11 +189,7 @@ export class Viewer extends RefCounted {
     const visibility = new WatchableVisibilityPriority(
       WatchableVisibilityPriority.VISIBLE,
     );
-    const inputEventBindings = {
-      global: new EventActionMap(),
-      sliceView: new EventActionMap(),
-      perspectiveView: new EventActionMap(),
-    };
+    const inputEventBindings = { sliceView: new EventActionMap() };
     const element = display.makeCanvasOverlayElement();
     const dataSourceProvider = getDefaultDataSourceProvider();
 

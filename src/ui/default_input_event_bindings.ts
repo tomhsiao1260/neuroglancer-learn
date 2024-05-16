@@ -185,16 +185,8 @@ export function getDefaultSliceViewPanelBindings() {
 export function setDefaultInputEventBindings(
   inputEventBindings: InputEventBindings,
 ) {
-  inputEventBindings.global.addParent(
-    getDefaultGlobalBindings(),
-    Number.NEGATIVE_INFINITY,
-  );
   inputEventBindings.sliceView.addParent(
     getDefaultSliceViewPanelBindings(),
-    Number.NEGATIVE_INFINITY,
-  );
-  inputEventBindings.perspectiveView.addParent(
-    getDefaultPerspectivePanelBindings(),
     Number.NEGATIVE_INFINITY,
   );
 }
