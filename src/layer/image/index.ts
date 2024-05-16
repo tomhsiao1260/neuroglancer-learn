@@ -435,7 +435,7 @@ export class ImageUserLayer extends UserLayer {
       ) => {
         const shader = shaderResult.shader!;
         setControlsInShader(
-          this.manager.root.display.gl,
+          this.manager.display.gl,
           shader,
           this.shaderControlState,
           shaderResult.parameters.parseResult.controls,
@@ -563,7 +563,7 @@ class RenderingOptionsTab extends Tab {
       this.registerDisposer(
         new ShaderControls(
           layer.shaderControlState,
-          this.layer.manager.root.display,
+          this.layer.manager.display,
           this.layer,
           {
             visibility: this.visibility,

@@ -17,7 +17,6 @@
 import { ImageUserLayer } from "#src/layer/image/index.js";
 import type { AnnotationLayerState } from "#src/annotation/annotation_layer_state.js";
 import type { AnnotationType } from "#src/annotation/index.js";
-import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import type {
   CoordinateSpace,
   CoordinateTransformSpecification,
@@ -26,18 +25,15 @@ import {
   CoordinateSpaceCombiner,
   coordinateTransformSpecificationFromLegacyJson,
   emptyInvalidCoordinateSpace,
-  isGlobalDimension,
   isLocalDimension,
   isLocalOrChannelDimension,
   TrackableCoordinateSpace,
 } from "#src/coordinate_transform.js";
 import type {
-  DataSourceProviderRegistry,
   DataSourceSpecification,
   DataSubsource,
 } from "#src/datasource/index.js";
 import { makeEmptyDataSourceSpecification } from "#src/datasource/index.js";
-import type { DisplayContext } from "#src/display_context.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
 import {
   LayerDataSource,
@@ -333,6 +329,10 @@ export class UserLayer extends RefCounted {
         getter: () => tab.getter(this),
       });
     }
+    this.manager.coordinateSpaceCombiner = new CoordinateSpaceCombiner(
+      this.manager.coordinateSpace,
+      () => true,
+    );
   }
 
   canAddDataSource() {
@@ -382,25 +382,11 @@ export class UserLayer extends RefCounted {
     }
   }
 
-  markLoading() {
-    const localRetainer = this.localCoordinateSpaceCombiner.retain();
-    const globalRetainer = this.manager.root.coordinateSpaceCombiner.retain();
-    if (++this.loadingCounter === 1) {
-      this.readyStateChanged.dispatch();
-    }
-    const disposer = () => {
-      localRetainer();
-      globalRetainer();
-      this.decrementLoadingCounter();
-    };
-    return disposer;
-  }
-
   addCoordinateSpace(
     coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
     const globalBinding =
-      this.manager.root.coordinateSpaceCombiner.bind(coordinateSpace);
+      this.manager.coordinateSpaceCombiner.bind(coordinateSpace);
     const localBinding =
       this.localCoordinateSpaceCombiner.bind(coordinateSpace);
     return () => {
@@ -926,5 +912,5 @@ export function addNewLayer(manager: any) {
   const source = "zarr2://http://localhost:9000/scroll.zarr/";
   managedLayer.layer.restoreState({ type: "new", source });
 
-  manager.add(managedLayer);
+  manager.layerManager.addManagedLayer(managedLayer);
 }

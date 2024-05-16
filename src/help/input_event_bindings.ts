@@ -202,7 +202,7 @@ export class InputEventBindingHelpDialog extends SidePanel {
     }
     const layerToolBindings = Array.from(layerToolBindingsMap.entries());
     if (layerToolBindings.length > 0) {
-      layerToolBindings[0][0].manager.root.layerManager.updateNonArchivedLayerIndices();
+      layerToolBindings[0][0].manager.layerManager.updateNonArchivedLayerIndices();
       layerToolBindings.sort(
         (a, b) =>
           a[0].managedLayer.nonArchivedLayerIndex -

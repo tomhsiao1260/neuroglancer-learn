@@ -223,7 +223,7 @@ export class LoadedDataSubsource {
     const { layer, transform } = this.loadedDataSource;
     return activated.registerDisposer(
       getWatchableRenderLayerTransform(
-        layer.manager.root.coordinateSpace,
+        layer.manager.coordinateSpace,
         layer.localPosition.coordinateSpace,
         transform,
         this,
@@ -410,7 +410,7 @@ export class LayerDataSource extends RefCounted {
         chunkManager,
         url: spec.url,
         cancellationToken,
-        globalCoordinateSpace: layer.manager.root.coordinateSpace,
+        globalCoordinateSpace: layer.manager.coordinateSpace,
         transform: spec.transform,
         state: spec.state,
       })

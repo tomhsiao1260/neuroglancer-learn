@@ -110,7 +110,7 @@ export abstract class LayerTool<
     super(layer.toolBinder, toggle);
   }
   get mouseState() {
-    return this.layer.manager.root.layerSelectedValues.mouseState;
+    return this.layer.manager.layerSelectedValues.mouseState;
   }
 }
 
@@ -125,7 +125,7 @@ export abstract class LegacyTool<
     return this.layer;
   }
   get mouseState() {
-    return this.layer.manager.root.layerSelectedValues.mouseState;
+    return this.layer.manager.layerSelectedValues.mouseState;
   }
   abstract trigger(mouseState: MouseSelectionState): void;
   abstract toJSON(): any;

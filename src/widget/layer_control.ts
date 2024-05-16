@@ -96,7 +96,7 @@ function makeControl<LayerType extends UserLayer>(
   const { control, controlElement } = options.makeControl(layer, context, {
     labelContainer,
     labelTextContainer,
-    display: layer.manager.root.display,
+    display: layer.manager.display,
     visibility,
   });
   controlElement.classList.add("neuroglancer-layer-control-control");

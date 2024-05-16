@@ -31,25 +31,18 @@ import {
   insertDimensionAt,
   makeCoordinateSpace,
 } from "#src/coordinate_transform.js";
-import type { MouseSelectionState, UserLayer } from "#src/layer/index.js";
 import type {
   CoordinateSpacePlaybackVelocity,
   Position,
 } from "#src/navigation_state.js";
 import { VelocityBoundaryBehavior } from "#src/navigation_state.js";
 import { StatusMessage } from "#src/status.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
 import {
   makeCachedDerivedWatchableValue,
   WatchableValue,
 } from "#src/trackable_value.js";
-import type { LocalToolBinder, ToolActivation } from "#src/ui/tool.js";
-import {
-  makeToolActivationStatusMessage,
-  makeToolButton,
-  registerTool,
-  Tool,
-} from "#src/ui/tool.js";
+import type { LocalToolBinder } from "#src/ui/tool.js";
+import { makeToolButton } from "#src/ui/tool.js";
 import { animationFrameDebounce } from "#src/util/animation_frame_debounce.js";
 import { arraysEqual, binarySearch } from "#src/util/array.js";
 import { setClipboard } from "#src/util/clipboard.js";
@@ -60,8 +53,6 @@ import {
   updateChildren,
   updateInputFieldWidth,
 } from "#src/util/dom.js";
-import { vec3 } from "#src/util/geom.js";
-import { verifyObjectProperty, verifyString } from "#src/util/json.js";
 import type { ActionEvent } from "#src/util/keyboard_bindings.js";
 import {
   KeyboardEventBinder,
@@ -71,7 +62,6 @@ import { EventActionMap, MouseEventBinder } from "#src/util/mouse_bindings.js";
 import { formatScaleWithUnit, parseScale } from "#src/util/si_units.js";
 import { TrackableEnum } from "#src/util/trackable_enum.js";
 import { getWheelZoomAmount } from "#src/util/wheel_zoom.js";
-import type { Viewer } from "#src/viewer.js";
 import { CheckboxIcon } from "#src/widget/checkbox_icon.js";
 import { makeCopyButton } from "#src/widget/copy_button.js";
 import { DependentViewWidget } from "#src/widget/dependent_view_widget.js";
@@ -1261,306 +1251,4 @@ export class PositionWidget extends RefCounted {
   }
 }
 
-export class MousePositionWidget extends RefCounted {
-  tempPosition = vec3.create();
-  constructor(
-    public element: HTMLElement,
-    public mouseState: MouseSelectionState,
-    public coordinateSpace: WatchableValueInterface<
-      CoordinateSpace | undefined
-    >,
-  ) {
-    super();
-    element.className = "neuroglancer-mouse-position-widget";
-    const updateViewFunction = this.registerCancellable(
-      animationFrameDebounce(() => this.updateView()),
-    );
-    this.registerDisposer(mouseState.changed.add(updateViewFunction));
-    this.registerDisposer(coordinateSpace.changed.add(updateViewFunction));
-  }
-  updateView() {
-    let text = "";
-    const {
-      mouseState,
-      coordinateSpace: { value: coordinateSpace },
-    } = this;
-    if (mouseState.active && coordinateSpace !== undefined) {
-      const p = mouseState.position;
-      const { rank, names } = coordinateSpace;
-      for (let i = 0; i < rank; ++i) {
-        if (i !== 0) text += "  ";
-        text += `${names[i]} ${Math.floor(p[i])}`;
-      }
-    }
-    this.element.textContent = text;
-  }
-  disposed() {
-    removeFromParent(this.element);
-    super.disposed();
-  }
-}
-
 const DIMENSION_TOOL_ID = "dimension";
-
-interface SupportsDimensionTool<ToolContext extends object = object> {
-  position: Position;
-  velocity: CoordinateSpacePlaybackVelocity;
-  coordinateSpaceCombiner: CoordinateSpaceCombiner;
-  toolBinder: LocalToolBinder<ToolContext>;
-}
-
-const TOOL_INPUT_EVENT_MAP = EventActionMap.fromObject({
-  "at:shift?+wheel": { action: "adjust-position-via-wheel" },
-  "at:shift?+alt+wheel": { action: "adjust-velocity-via-wheel" },
-  "shift?+alt?+space": { action: "toggle-playback" },
-  "at:shift?+alt?+mousedown0": { action: "toggle-playback" },
-});
-
-class DimensionTool<Viewer extends object> extends Tool<Viewer> {
-  get position() {
-    return this.viewer.position;
-  }
-  get velocity() {
-    return this.viewer.velocity;
-  }
-  get coordinateSpace() {
-    return this.viewer.coordinateSpaceCombiner.combined;
-  }
-
-  activate(activation: ToolActivation<this>) {
-    const { viewer } = this;
-    const { content } = makeToolActivationStatusMessage(activation);
-    content.classList.add("neuroglancer-position-tool");
-    activation.bindInputEventMap(TOOL_INPUT_EVENT_MAP);
-    const positionWidget = new PositionWidget(
-      viewer.position,
-      viewer.coordinateSpaceCombiner,
-      {
-        velocity: viewer.velocity,
-        singleDimensionId: this.dimensionId,
-        copyButton: false,
-        allowFocus: false,
-        showPlayback: false,
-      },
-    );
-    positionWidget.element.style.userSelect = "none";
-    content.appendChild(activation.registerDisposer(positionWidget).element);
-    const plot = activation.registerDisposer(
-      new PositionPlot(viewer.position, this.dimensionId, "row"),
-    );
-    plot.element.style.flex = "1";
-    content.appendChild(plot.element);
-    activation.bindAction<WheelEvent>(
-      "adjust-position-via-wheel",
-      (actionEvent) => {
-        actionEvent.stopPropagation();
-        const event = actionEvent.detail;
-        const { deltaY } = event;
-        if (deltaY === 0) {
-          return;
-        }
-        positionWidget.adjustDimensionPosition(
-          this.dimensionId,
-          Math.sign(deltaY),
-        );
-      },
-    );
-
-    const watchableVelocity = this.velocity.dimensionVelocity(
-      activation,
-      this.dimensionId,
-    );
-    const enabled = activation.registerDisposer(
-      makeCachedDerivedWatchableValue(
-        (value) => value !== undefined,
-        [watchableVelocity],
-      ),
-    );
-    content.appendChild(
-      activation.registerDisposer(
-        new DependentViewWidget(enabled, (enabledValue, parent, context) => {
-          if (!enabledValue) return;
-          parent.classList.add("neuroglancer-position-dimension-playback");
-          const playButton = document.createElement("div");
-          const pauseButton = document.createElement("div");
-          playButton.classList.add("neuroglancer-icon");
-          pauseButton.classList.add("neuroglancer-icon");
-          playButton.innerHTML = svg_play;
-          pauseButton.innerHTML = svg_pause;
-          parent.appendChild(playButton);
-          parent.appendChild(pauseButton);
-          const togglePlayback = () =>
-            viewer.velocity.togglePlayback(this.dimensionId);
-          playButton.addEventListener("click", togglePlayback);
-          pauseButton.addEventListener("click", togglePlayback);
-          const updatePlayPause = () => {
-            const paused = watchableVelocity.value?.paused;
-            playButton.style.display = paused ? "" : "none";
-            pauseButton.style.display = !paused ? "" : "none";
-          };
-          context.registerDisposer(
-            watchableVelocity.changed.add(updatePlayPause),
-          );
-          updatePlayPause();
-          const velocityModel = new WatchableValue<number>(0);
-          velocityModel.changed.add(() => {
-            const newValue = velocityModel.value;
-            const velocity = watchableVelocity.value;
-            if (velocity === undefined) return;
-            if (velocity.velocity === newValue) return;
-            watchableVelocity.value = { ...velocity, velocity: newValue };
-          });
-          const negateButton = makeIcon({
-            text: "±",
-            title: "Negate velocity",
-            onClick: () => {
-              velocityModel.value = -velocityModel.value;
-            },
-          });
-          const velocityInputWidget = context.registerDisposer(
-            new NumberInputWidget(velocityModel),
-          );
-          velocityInputWidget.inputElement.disabled = true;
-          velocityInputWidget.element.insertBefore(
-            negateButton,
-            velocityInputWidget.element.firstChild,
-          );
-          velocityInputWidget.element.title =
-            "Velocity in coordinates per second";
-          const rateSpan = document.createElement("span");
-          rateSpan.textContent = "/s";
-          velocityInputWidget.element.appendChild(rateSpan);
-          parent.appendChild(velocityInputWidget.element);
-          const trackableEnum = new TrackableEnum<VelocityBoundaryBehavior>(
-            VelocityBoundaryBehavior,
-            VelocityBoundaryBehavior.STOP,
-          );
-          const watchableVelocityChanged = () => {
-            trackableEnum.value =
-              watchableVelocity.value?.atBoundary ??
-              VelocityBoundaryBehavior.STOP;
-            velocityModel.value = watchableVelocity.value?.velocity ?? 0;
-          };
-          watchableVelocityChanged();
-          context.registerDisposer(
-            watchableVelocity.changed.add(watchableVelocityChanged),
-          );
-          trackableEnum.changed.add(() => {
-            const atBoundary = trackableEnum.value;
-            const velocity = watchableVelocity.value;
-            if (velocity === undefined) return;
-            if (velocity.atBoundary === atBoundary) return;
-            watchableVelocity.value = { ...velocity, atBoundary };
-          });
-          const selectWidget = new EnumSelectWidget(trackableEnum).element;
-          parent.appendChild(selectWidget);
-          selectWidget.title = "Behavior when lower/upper bound is reached";
-        }),
-      ).element,
-    );
-    content.appendChild(
-      activation.registerDisposer(
-        new CheckboxIcon(viewer.velocity.playbackEnabled(this.dimensionId), {
-          svg: svg_video,
-          enableTitle: "Enable playback/velocity",
-          disableTitle: "Disable playback/velocity",
-          backgroundScheme: "dark",
-        }),
-      ).element,
-    );
-
-    activation.bindAction<WheelEvent>(
-      "adjust-velocity-via-wheel",
-      (actionEvent) => {
-        actionEvent.stopPropagation();
-        const factor = getWheelZoomAmount(actionEvent.detail);
-        viewer.velocity.multiplyVelocity(this.dimensionId, factor);
-      },
-    );
-    activation.bindAction<WheelEvent>("toggle-playback", (event) => {
-      event.stopPropagation();
-      viewer.velocity.togglePlayback(this.dimensionId);
-    });
-  }
-
-  get description() {
-    return `dim ${this.dimensionName}`;
-  }
-
-  dimensionIndex: number;
-  dimensionName: string;
-
-  constructor(
-    public viewer: SupportsDimensionTool<Viewer>,
-    public dimensionId: DimensionId,
-  ) {
-    super(viewer.toolBinder);
-    const coordinateSpace = this.coordinateSpace.value;
-    const i = (this.dimensionIndex = coordinateSpace.ids.indexOf(dimensionId));
-    this.dimensionName = coordinateSpace.names[i];
-    this.registerDisposer(
-      this.coordinateSpace.changed.add(() => {
-        const coordinateSpace = this.coordinateSpace.value;
-        const i = (this.dimensionIndex =
-          this.coordinateSpace.value.ids.indexOf(dimensionId));
-        if (i === -1) {
-          this.unbind();
-          return;
-        }
-        const newName = coordinateSpace.names[i];
-        if (this.dimensionName !== newName) {
-          this.dimensionName = newName;
-          this.changed.dispatch();
-        }
-      }),
-    );
-  }
-
-  toJSON() {
-    return {
-      type: DIMENSION_TOOL_ID,
-      dimension: this.dimensionName,
-    };
-  }
-}
-
-function makeDimensionTool(viewer: SupportsDimensionTool, obj: unknown) {
-  const dimension = verifyObjectProperty(obj, "dimension", verifyString);
-  const coordinateSpace = viewer.coordinateSpaceCombiner.combined.value;
-  const dimensionIndex = coordinateSpace.names.indexOf(dimension);
-  if (dimensionIndex === -1) {
-    throw new Error(`Invalid dimension name: ${JSON.stringify(dimension)}`);
-  }
-  return new DimensionTool(viewer, coordinateSpace.ids[dimensionIndex]);
-}
-
-export function registerDimensionToolForViewer(contextType: typeof Viewer) {
-  registerTool(contextType, DIMENSION_TOOL_ID, (viewer, obj) =>
-    makeDimensionTool(
-      {
-        position: viewer.position,
-        velocity: viewer.velocity,
-        coordinateSpaceCombiner:
-          viewer.layerSpecification.coordinateSpaceCombiner,
-        toolBinder: viewer.toolBinder,
-      },
-      obj,
-    ),
-  );
-}
-
-export function registerDimensionToolForUserLayer(
-  contextType: typeof UserLayer,
-) {
-  registerTool(contextType, DIMENSION_TOOL_ID, (layer, obj) =>
-    makeDimensionTool(
-      {
-        position: layer.localPosition,
-        velocity: layer.localVelocity,
-        coordinateSpaceCombiner: layer.localCoordinateSpaceCombiner,
-        toolBinder: layer.toolBinder,
-      },
-      obj,
-    ),
-  );
-}

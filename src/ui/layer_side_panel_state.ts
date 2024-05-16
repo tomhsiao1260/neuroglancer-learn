@@ -191,7 +191,7 @@ export class UserLayerSidePanelState extends RefCounted {
     panels.panels.splice(1, 0, newPanel);
     panels.updateTabs();
     newPanel.initialize();
-    layer.manager.root.layerManager.layersChanged.dispatch();
+    layer.manager.layerManager.layersChanged.dispatch();
     panels.specificationChanged.dispatch();
   }
 

@@ -17,7 +17,7 @@
 import "#src/viewer.css";
 import "#src/noselect.css";
 import "#src/layer_groups_layout.css";
-import { LayerGroupViewer } from "#src/layer_group_viewer.js";
+import { FourPanelLayout } from "#src/data_panel_layout.js";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
   CapacitySpecification,
@@ -57,10 +57,7 @@ import { NullarySignal } from "#src/util/signal.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
-import {
-  CoordinateSpaceCombiner,
-  isGlobalDimension,
-} from "#src/coordinate_transform.js";
+import { CoordinateSpaceCombiner } from "#src/coordinate_transform.js";
 
 async function postMessage(worker: any) {
   await new Promise((res) => setTimeout(res, 100));
@@ -178,8 +175,6 @@ export class Viewer extends RefCounted {
   }
 
   layerSpecification: any;
-  // layerSpecification: TopLevelLayerListSpecification;
-  layout: RootLayoutContainer;
 
   dataContext: Owned<DataManagementContext>;
   visibility: WatchableVisibilityPriority;
@@ -204,14 +199,6 @@ export class Viewer extends RefCounted {
     this.dataSourceProvider = dataSourceProvider;
     this.dataContext = this.registerDisposer(dataContext);
 
-    this.layerSpecification = new TopLevelLayerListSpecification(
-      this.dataSourceProvider,
-      this.layerManager,
-      this.chunkManager,
-      this.layerSelectedValues,
-      this.navigationState.coordinateSpace,
-    );
-
     this.makeUI();
   }
 
@@ -220,73 +207,34 @@ export class Viewer extends RefCounted {
       setTimeout(resolve, 500);
     });
 
-    addNewLayer(this.layerSpecification);
+    addNewLayer({
+      dataSourceProviderRegistry: this.dataSourceProvider,
+      layerManager: this.layerManager,
+      chunkManager: this.chunkManager,
+      layerSelectedValues: this.layerSelectedValues,
+      coordinateSpace: this.navigationState.coordinateSpace,
+    });
 
-    const gridContainer = this.element;
-    gridContainer.classList.add("neuroglancer-viewer");
-    gridContainer.classList.add("neuroglancer-noselect");
-    gridContainer.style.display = "flex";
-    gridContainer.style.flexDirection = "column";
-
-    this.layout = this.registerDisposer(new RootLayoutContainer(this));
-    gridContainer.appendChild(this.layout.element);
-  }
-}
-
-class TopLevelLayerListSpecification extends RefCounted {
-  get root() {
-    return this;
-  }
-
-  coordinateSpaceCombiner = new CoordinateSpaceCombiner(
-    this.coordinateSpace,
-    isGlobalDimension,
-  );
-
-  constructor(
-    public dataSourceProviderRegistry: DataSourceProviderRegistry,
-    public layerManager: LayerManager,
-    public chunkManager: ChunkManager,
-    public layerSelectedValues: any,
-    public coordinateSpace: any,
-  ) {
-    super();
-  }
-
-  add(layer: any, index?: number | undefined) {
-    if (this.layerManager.managedLayers.indexOf(layer) === -1) {
-      layer.name = this.layerManager.getUniqueLayerName(layer.name);
-    }
-    this.layerManager.addManagedLayer(layer, index);
-  }
-}
-
-class RootLayoutContainer extends RefCounted {
-  element: HTMLElement = document.createElement("div");
-  layerGroupViewer: LayerGroupViewer;
-
-  constructor(public viewer: any) {
-    super();
-
-    const { element } = this;
-    element.style.display = "flex";
-    element.style.flex = "1";
-    element.style.position = "relative";
-    element.style.alignItems = "stretch";
-
-    this.layerGroupViewer = this.registerDisposer(
-      new LayerGroupViewer({
-        display: viewer.display,
-        layerSpecification: viewer.layerSpecification,
-        mouseState: viewer.mouseState,
-        wireFrame: viewer.wireFrame,
-        inputEventBindings: viewer.inputEventBindings,
-        visibility: viewer.visibility,
-        visibleLayerRoles: viewer.visibleLayerRoles,
-        navigationState: viewer.navigationState,
-        crossSectionBackgroundColor: viewer.crossSectionBackgroundColor,
+    const panel = this.registerDisposer(
+      new FourPanelLayout({
+        chunkManager: this.chunkManager,
+        layerManager: this.layerManager,
+        display: this.display,
+        mouseState: this.mouseState,
+        wireFrame: this.wireFrame,
+        inputEventBindings: this.inputEventBindings,
+        visibility: this.visibility,
+        visibleLayerRoles: this.visibleLayerRoles,
+        navigationState: this.navigationState,
+        crossSectionBackgroundColor: this.crossSectionBackgroundColor,
       }),
     );
-    element.appendChild(this.layerGroupViewer.element);
+
+    const container = this.element;
+    container.classList.add("neuroglancer-viewer");
+    container.classList.add("neuroglancer-noselect");
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.appendChild(panel.element);
   }
 }

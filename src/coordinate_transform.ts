@@ -1691,7 +1691,7 @@ export class CoordinateSpaceCombiner {
     }
     bindings.add(binding);
 
-    const changedDisposer = space.changed.add(() => {
+    const changed5Disposer = space.changed.add(() => {
       if (space.value === binding.prevValue) return;
       this.update();
     });

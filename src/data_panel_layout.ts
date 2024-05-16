@@ -64,11 +64,6 @@ export interface ViewerUIState extends SliceViewViewerState {
   crossSectionBackgroundColor: TrackableRGB;
 }
 
-export interface DataDisplayLayout extends RefCounted {
-  rootElement: HTMLElement;
-  container: DataPanelLayoutContainer;
-}
-
 const AXES_RELATIVE_ORIENTATION = new Map([
   ["xy", undefined],
   ["xz", quat.rotateX(quat.create(), quat.create(), Math.PI / 2)],
@@ -127,15 +122,15 @@ export function getCommonViewerState(viewer: ViewerUIState) {
 }
 
 export class FourPanelLayout extends RefCounted {
-  constructor(
-    public container: DataPanelLayoutContainer,
-    public rootElement: HTMLElement,
-    public viewer: ViewerUIState,
-  ) {
+  element = document.createElement("div");
+
+  constructor(public viewer: ViewerUIState) {
     super();
 
     const sliceViews = makeOrthogonalSliceViews(viewer);
     const { display } = viewer;
+    const rootElement = this.element;
+    rootElement.style.flex = "1";
 
     const makeSliceViewPanel = (
       axes: any,
@@ -168,16 +163,5 @@ export class FourPanelLayout extends RefCounted {
       ),
     ];
     L.box("row", mainDisplayContents)(rootElement);
-  }
-}
-
-export class DataPanelLayoutContainer extends RefCounted {
-  element = document.createElement("div");
-
-  constructor(public viewer: ViewerUIState) {
-    super();
-
-    this.element.style.flex = "1";
-    new FourPanelLayout(this, this.element, this.viewer);
   }
 }
