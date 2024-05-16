@@ -1,3 +1,3 @@
 ## How to run
 
-Generate a zarr folder called `scroll.zarr` in the root directory. Then, `npm install`. Now open a server via `python cors_webserver.py` command to serve the zarr content at `localhost:9000`. Once finished, run `npm run dev-server` to start the app. Hopefully you can see the volume data on it.
+Run `npm install` and then open the app via `npm run dev-server` command. Go to `localhost:8080`, and then press `space` key. It will pop up a UI panel for you to choose a `.zarr` folder that you want to see. Have fun!
