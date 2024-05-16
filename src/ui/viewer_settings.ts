@@ -133,8 +133,5 @@ export class ViewerSettingsPanel extends SidePanel {
       labelElement.appendChild(widget.element);
       scroll.appendChild(labelElement);
     };
-
-    addColor("Cross-section background", viewer.crossSectionBackgroundColor);
-    addColor("Projection background", viewer.perspectiveViewBackgroundColor);
   }
 }

@@ -20,7 +20,6 @@ import { RenderedDataPanel } from "#src/rendered_data_panel.js";
 import type { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
 import type { TrackableBoolean } from "#src/trackable_boolean.js";
-import type { TrackableRGB } from "#src/util/color.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import {
@@ -35,7 +34,6 @@ export interface SliceViewerState extends RenderedDataViewerState {
   showScaleBar: TrackableBoolean;
   wireFrame: TrackableBoolean;
   scaleBarOptions: TrackableScaleBarOptions;
-  crossSectionBackgroundColor: TrackableRGB;
 }
 
 export enum OffscreenTextures {
@@ -137,11 +135,9 @@ export class SliceViewPanel extends RenderedDataPanel {
     gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT);
 
     const backgroundColor = tempVec4;
-    const crossSectionBackgroundColor =
-      this.viewer.crossSectionBackgroundColor.value;
-    backgroundColor[0] = crossSectionBackgroundColor[0];
-    backgroundColor[1] = crossSectionBackgroundColor[1];
-    backgroundColor[2] = crossSectionBackgroundColor[2];
+    backgroundColor[0] = 0.5;
+    backgroundColor[1] = 0.5;
+    backgroundColor[2] = 0.5;
     backgroundColor[3] = 1;
 
     this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);

@@ -266,11 +266,7 @@ function drawChunk(
   wireFrame: boolean,
 ) {
   gl.uniform3fv(shader.uniform("uTranslation"), chunkPosition);
-  if (wireFrame) {
-    drawLines(shader.gl, 6, 1);
-  } else {
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 6);
-  }
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 6);
 
   if (DEBUG_VERTICES) {
     const sliceView: SliceView = (<any>window).debug_sliceView;

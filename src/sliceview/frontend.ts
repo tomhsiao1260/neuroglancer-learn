@@ -208,7 +208,6 @@ export class SliceView extends Base {
     public chunkManager: ChunkManager,
     public layerManager: LayerManager,
     public navigationState: Owned<NavigationState>,
-    public wireFrame: WatchableValueInterface<boolean>,
   ) {
     super(
       new DerivedProjectionParameters({
@@ -486,12 +485,13 @@ export class SliceView extends Base {
     gl.colorMask(true, true, true, true);
     gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT);
     let renderLayerNum = 0;
-    const wireFrame = this.wireFrame.value;
-    const renderContext = { sliceView: this, projectionParameters, wireFrame };
+    const renderContext = {
+      sliceView: this,
+      projectionParameters,
+      wireFrame: false,
+    };
     for (const renderLayer of this.visibleLayerList) {
-      const histogramCount = wireFrame
-        ? 0
-        : renderLayer.getDataHistogramCount();
+      const histogramCount = false ? 0 : renderLayer.getDataHistogramCount();
       const framebuffer =
         this.getOffscreenFramebufferWithHistograms(histogramCount);
       framebuffer.bind(width, height);

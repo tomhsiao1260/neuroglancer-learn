@@ -370,21 +370,6 @@ export class DisplayContext extends RefCounted implements FrameNumberCounter {
     return true;
   }
 
-  /**
-   * Returns a child element that overlays the canvas.
-   */
-  makeCanvasOverlayElement() {
-    const element = document.createElement("div");
-    element.style.position = "absolute";
-    element.style.top = "0px";
-    element.style.left = "0px";
-    element.style.width = "100%";
-    element.style.height = "100%";
-    element.style.zIndex = "2";
-    this.container.appendChild(element);
-    return element;
-  }
-
   disposed() {
     this.orderedPanels.length = 0;
     this.resizeObserver.disconnect();

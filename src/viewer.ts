@@ -47,17 +47,13 @@ import {
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import { allRenderLayerRoles } from "#src/renderlayer.js";
-import { TrackableBoolean } from "#src/trackable_boolean.js";
-import { TrackableRGB } from "#src/util/color.js";
-import type { Borrowed, Owned } from "#src/util/disposable.js";
+import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { vec3 } from "#src/util/geom.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { NullarySignal } from "#src/util/signal.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
-import { CoordinateSpaceCombiner } from "#src/coordinate_transform.js";
 
 async function postMessage(worker: any) {
   await new Promise((res) => setTimeout(res, 100));
@@ -159,45 +155,27 @@ export class Viewer extends RefCounted {
 
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
-  wireFrame = new TrackableBoolean(false, false);
   visibleLayerRoles = allRenderLayerRoles();
-  crossSectionBackgroundColor = new TrackableRGB(
-    vec3.fromValues(0.5, 0.5, 0.5),
-  );
   layerSelectedValues = this.registerDisposer(
     new LayerSelectedValues(this.layerManager, this.mouseState),
   );
 
   resetInitiated = new NullarySignal();
 
-  get chunkManager() {
-    return this.dataContext.chunkManager;
-  }
-
-  layerSpecification: any;
-
-  dataContext: Owned<DataManagementContext>;
   visibility: WatchableVisibilityPriority;
   inputEventBindings: InputEventBindings;
-  element: HTMLElement;
   dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
+  chunkManager: any;
 
   constructor(public display: DisplayContext) {
     super();
 
     const dataContext = new DataManagementContext(display.gl, display);
-    const visibility = new WatchableVisibilityPriority(
-      WatchableVisibilityPriority.VISIBLE,
-    );
-    const inputEventBindings = { sliceView: new EventActionMap() };
-    const element = display.makeCanvasOverlayElement();
-    const dataSourceProvider = getDefaultDataSourceProvider();
+    this.chunkManager = dataContext.chunkManager;
 
-    this.visibility = visibility;
-    this.inputEventBindings = inputEventBindings;
-    this.element = element;
-    this.dataSourceProvider = dataSourceProvider;
-    this.dataContext = this.registerDisposer(dataContext);
+    this.inputEventBindings = { sliceView: new EventActionMap() };
+    this.dataSourceProvider = getDefaultDataSourceProvider();
+    this.visibility = new WatchableVisibilityPriority(Infinity);
 
     this.makeUI();
   }
@@ -207,34 +185,41 @@ export class Viewer extends RefCounted {
       setTimeout(resolve, 500);
     });
 
+    // create an image layer
     addNewLayer({
-      dataSourceProviderRegistry: this.dataSourceProvider,
-      layerManager: this.layerManager,
       chunkManager: this.chunkManager,
+      layerManager: this.layerManager,
       layerSelectedValues: this.layerSelectedValues,
+      dataSourceProviderRegistry: this.dataSourceProvider,
       coordinateSpace: this.navigationState.coordinateSpace,
     });
 
+    // panel generation
     const panel = this.registerDisposer(
       new FourPanelLayout({
         chunkManager: this.chunkManager,
         layerManager: this.layerManager,
-        display: this.display,
-        mouseState: this.mouseState,
-        wireFrame: this.wireFrame,
-        inputEventBindings: this.inputEventBindings,
-        visibility: this.visibility,
-        visibleLayerRoles: this.visibleLayerRoles,
         navigationState: this.navigationState,
-        crossSectionBackgroundColor: this.crossSectionBackgroundColor,
+        inputEventBindings: this.inputEventBindings,
+        mouseState: this.mouseState,
+        visibility: this.visibility,
+        display: this.display,
       }),
     );
 
-    const container = this.element;
-    container.classList.add("neuroglancer-viewer");
-    container.classList.add("neuroglancer-noselect");
+    // append viewer dom
+    const container = document.createElement("div");
+    container.style.top = "0px";
+    container.style.left = "0px";
+    container.style.width = "100%";
+    container.style.height = "100%";
     container.style.display = "flex";
     container.style.flexDirection = "column";
+    container.style.position = "absolute";
+    container.classList.add("neuroglancer-viewer");
+    container.classList.add("neuroglancer-noselect");
     container.appendChild(panel.element);
+
+    this.display.container.appendChild(container);
   }
 }

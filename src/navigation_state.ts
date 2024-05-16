@@ -2272,24 +2272,6 @@ export class TrackableDepthRange
   }
 }
 
-export class LinkedDepthRange extends SimpleLinkedBase<TrackableDepthRange> {
-  constructor(
-    peer: Owned<TrackableDepthRange>,
-    displayDimensionRenderInfo: WatchableValueInterface<DisplayDimensionRenderInfo>,
-  ) {
-    super(peer);
-    this.value = makeSimpleLinked(
-      new TrackableDepthRange(peer.defaultValue, displayDimensionRenderInfo),
-      this.peer,
-      this.link,
-      {
-        assign: (target, source) => target.assign(source),
-        isValid: () => true,
-      },
-    );
-  }
-}
-
 export class NavigationState extends RefCounted {
   changed = new NullarySignal();
 

@@ -29,15 +29,8 @@ import {
   NavigationState,
   OrientationState,
 } from "#src/navigation_state.js";
-import type { RenderLayerRole } from "#src/renderlayer.js";
 import { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewPanel } from "#src/sliceview/panel.js";
-import { TrackableBoolean } from "#src/trackable_boolean.js";
-import type {
-  WatchableSet,
-  WatchableValueInterface,
-} from "#src/trackable_value.js";
-import type { TrackableRGB } from "#src/util/color.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/event_action_map.js";
 import { quat } from "#src/util/geom.js";
@@ -46,7 +39,6 @@ export interface SliceViewViewerState {
   chunkManager: ChunkManager;
   navigationState: NavigationState;
   layerManager: LayerManager;
-  wireFrame: WatchableValueInterface<boolean>;
 }
 
 export class InputEventBindings {
@@ -57,11 +49,8 @@ export interface ViewerUIState extends SliceViewViewerState {
   display: DisplayContext;
   mouseState: MouseSelectionState;
   selectionDetailsState: TrackableDataSelectionState;
-  wireFrame: TrackableBoolean;
-  visibleLayerRoles: WatchableSet<RenderLayerRole>;
   visibility: boolean;
   inputEventBindings: InputEventBindings;
-  crossSectionBackgroundColor: TrackableRGB;
 }
 
 const AXES_RELATIVE_ORIENTATION = new Map([
@@ -95,7 +84,6 @@ export function makeSliceView(
     viewerState.chunkManager,
     viewerState.layerManager,
     navigationState,
-    viewerState.wireFrame,
   );
 }
 
@@ -109,12 +97,9 @@ export function makeOrthogonalSliceViews(viewerState: SliceViewViewerState) {
 
 export function getCommonViewerState(viewer: ViewerUIState) {
   return {
-    crossSectionBackgroundColor: viewer.crossSectionBackgroundColor,
     selectionDetailsState: viewer.selectionDetailsState,
     mouseState: viewer.mouseState,
     layerManager: viewer.layerManager,
-    wireFrame: viewer.wireFrame,
-    visibleLayerRoles: viewer.visibleLayerRoles,
     visibility: viewer.visibility,
     navigationState: viewer.navigationState,
     inputEventMap: viewer.inputEventBindings.sliceView,
