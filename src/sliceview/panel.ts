@@ -17,9 +17,8 @@
 import type { DisplayContext } from "#src/display_context.js";
 import type { RenderedDataViewerState } from "#src/rendered_data_panel.js";
 import { RenderedDataPanel } from "#src/rendered_data_panel.js";
-import type { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
-import type { Borrowed, Owned } from "#src/util/disposable.js";
+import type { Borrowed } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import {
   FramebufferConfiguration,
@@ -85,7 +84,7 @@ export class SliceViewPanel extends RenderedDataPanel {
   constructor(
     context: Borrowed<DisplayContext>,
     element: HTMLElement,
-    public sliceView: Owned<SliceView>,
+    public sliceView: any,
     viewer: SliceViewerState,
   ) {
     super(context, element, viewer);

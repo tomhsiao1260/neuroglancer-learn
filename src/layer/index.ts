@@ -44,7 +44,6 @@ import {
 import type { RenderLayerTransform } from "#src/render_coordinate_transform.js";
 import type { RenderLayer } from "#src/renderlayer.js";
 import type { VolumeType } from "#src/sliceview/volume/base.js";
-import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { gatherUpdate } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
@@ -108,8 +107,6 @@ export class UserLayer extends RefCounted {
   }
 
   static supportsPickOption = false;
-
-  pick = new TrackableBoolean(true, true);
 
   selectionState: UserLayerSelectionState;
 
@@ -235,8 +232,6 @@ export class UserLayer extends RefCounted {
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalOrChannelDimension;
     this.localPosition.changed.add(this.specificationChanged.dispatch);
-    this.pick.changed.add(this.specificationChanged.dispatch);
-    this.pick.changed.add(this.layersChanged.dispatch);
     this.dataSourcesChanged.add(this.specificationChanged.dispatch);
     this.dataSourcesChanged.add(() => this.updateDataSubsourceActivations());
     this.messages.changed.add(this.layersChanged.dispatch);

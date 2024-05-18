@@ -15,7 +15,6 @@
  */
 
 import type { CoordinateSpaceCombiner } from "#src/coordinate_transform.js";
-import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type {
   TrackableValueInterface,
   WatchableValueInterface,
@@ -968,11 +967,6 @@ function getControlTrackable(control: ShaderUiControl): {
           property: value.property,
           dataType: value.dataType,
         }),
-      };
-    case "checkbox":
-      return {
-        trackable: new TrackableBoolean(control.default),
-        getBuilderValue: (value) => ({ value }),
       };
   }
 }
