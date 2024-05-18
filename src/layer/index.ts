@@ -46,7 +46,6 @@ import type { RenderLayer } from "#src/renderlayer.js";
 import type { VolumeType } from "#src/sliceview/volume/base.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { SelectedLegacyTool } from "#src/ui/tool.js";
 import { gatherUpdate } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { invokeDisposers, RefCounted } from "#src/util/disposable.js";
@@ -224,8 +223,6 @@ export class UserLayer extends RefCounted {
     return this.loadingCounter === 0;
   }
 
-  tool = this.registerDisposer(new SelectedLegacyTool(this));
-
   dataSourcesChanged = new NullarySignal();
   dataSources: LayerDataSource[] = [];
 
@@ -237,7 +234,6 @@ export class UserLayer extends RefCounted {
     super();
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalOrChannelDimension;
-    this.tool.changed.add(this.specificationChanged.dispatch);
     this.localPosition.changed.add(this.specificationChanged.dispatch);
     this.pick.changed.add(this.specificationChanged.dispatch);
     this.pick.changed.add(this.layersChanged.dispatch);
@@ -367,7 +363,6 @@ export class UserLayer extends RefCounted {
   }
 
   restoreState(specification: any) {
-    this.tool.restoreState(specification[TOOL_JSON_KEY]);
     this.localCoordinateSpace.restoreState(
       specification[LOCAL_COORDINATE_SPACE_JSON_KEY],
     );

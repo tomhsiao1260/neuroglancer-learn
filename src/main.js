@@ -1,8 +1,8 @@
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
-import { setDefaultInputEventBindings } from "#src/ui/default_input_event_bindings.js";
+import { setDefaultInputEventBindings } from "#src/default_input_event_bindings.js";
 import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
-import "#src/ui/viewer.css";
+import "#src/viewer.css";
 
 // Space key: Load data via file system api
 document.addEventListener("keyup", async (e) => {
