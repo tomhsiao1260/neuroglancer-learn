@@ -2,8 +2,8 @@
 // on Node.js subpath imports to translate paths for Workers since those paths
 // must be valid for use in `new URL` with multiple bundlers.
 import "#src/shared_watchable_value.js";
-import "#src/chunk_manager/backend.js";
-import "#src/sliceview/backend.js";
-import "#src/volume_rendering/backend.js";
-import "#src/datasource/enabled_backend_modules.js";
-import "#src/worker_rpc_context.js";
+import "#datasource/zarr/backend";
+import { RPC } from "#src/worker_rpc.js";
+
+const rpc = new RPC(self, /*waitUntilReady=*/ false);
+rpc.sendReady();

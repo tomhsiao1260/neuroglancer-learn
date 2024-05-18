@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { ImageUserLayer } from "#src/layer/image/index.js";
+// import { ImageUserLayer } from "#src/layer/image/index.js";
 import type { AnnotationLayerState } from "#src/annotation/annotation_layer_state.js";
 import type { AnnotationType } from "#src/annotation/index.js";
 import type {
@@ -901,16 +901,4 @@ export function registerVolumeLayerType(
   layerConstructor: UserLayerConstructor,
 ) {
   volumeLayerTypes.set(volumeType, layerConstructor);
-}
-
-export function addNewLayer(manager: any) {
-  const managedLayer = new ManagedUserLayer("new layer", manager);
-  managedLayer.layer = new ImageUserLayer(managedLayer);
-  managedLayer.archived = false;
-  managedLayer.visible = true;
-
-  const source = "zarr2://http://localhost:9000/scroll.zarr/";
-  managedLayer.layer.restoreState({ type: "new", source });
-
-  manager.layerManager.addManagedLayer(managedLayer);
 }

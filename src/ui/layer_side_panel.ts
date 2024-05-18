@@ -20,7 +20,6 @@
 
 import "#src/ui/layer_side_panel.css";
 
-import svg_cursor from "ikonate/icons/cursor.svg?raw";
 import type {
   ManagedUserLayer,
   SelectedLayerState,
@@ -29,27 +28,18 @@ import type {
 import {
   changeLayerName,
   changeLayerType,
-  deleteLayer,
   layerTypes,
 } from "#src/layer/index.js";
-import { ElementVisibilityFromTrackableBoolean } from "#src/trackable_boolean.js";
-import {
-  CachedWatchableValue,
-  observeWatchable,
-} from "#src/trackable_value.js";
+import { CachedWatchableValue } from "#src/trackable_value.js";
 import type { UserLayerSidePanelState } from "#src/ui//layer_side_panel_state.js";
-import { LAYER_SIDE_PANEL_DEFAULT_LOCATION } from "#src/ui//layer_side_panel_state.js";
-import { popDragStatus, pushDragStatus } from "#src/ui/drag_and_drop.js";
 import type { DragSource, SidePanelManager } from "#src/ui/side_panel.js";
-import { DRAG_OVER_CLASSNAME, SidePanel } from "#src/ui/side_panel.js";
+import { SidePanel } from "#src/ui/side_panel.js";
 import { RefCounted } from "#src/util/disposable.js";
 import {
   KeyboardEventBinder,
   registerActionListener,
 } from "#src/util/keyboard_bindings.js";
 import { EventActionMap } from "#src/util/mouse_bindings.js";
-import { CheckboxIcon } from "#src/widget/checkbox_icon.js";
-import { makeDeleteButton } from "#src/widget/delete_button.js";
 import { TabView } from "#src/widget/tab_view.js";
 
 const layerNameInputEventMap = EventActionMap.fromObject({

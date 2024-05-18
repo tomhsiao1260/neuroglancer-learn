@@ -30,11 +30,12 @@ import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.j
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import type { DisplayContext } from "#src/display_context.js";
 import {
-  addNewLayer,
+  ManagedUserLayer,
   LayerManager,
   LayerSelectedValues,
   MouseSelectionState,
 } from "#src/layer/index.js";
+import { ImageUserLayer } from "#src/layer/image/index.js";
 import {
   DisplayPose,
   NavigationState,
@@ -46,11 +47,9 @@ import {
   TrackableRelativeDisplayScales,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
-import { allRenderLayerRoles } from "#src/renderlayer.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
-import { NullarySignal } from "#src/util/signal.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
 import { RPC } from "#src/worker_rpc.js";
@@ -58,6 +57,17 @@ import { RPC } from "#src/worker_rpc.js";
 async function postMessage(worker: any) {
   await new Promise((res) => setTimeout(res, 100));
   worker.postMessage({ fileTree: self.fileTree });
+}
+
+function addNewLayer(manager: any) {
+  const managedLayer = new ManagedUserLayer("new layer", manager);
+  managedLayer.layer = new ImageUserLayer(managedLayer);
+  managedLayer.archived = false;
+  managedLayer.visible = true;
+
+  const source = "zarr2://http://localhost:9000/scroll.zarr/";
+  managedLayer.layer.restoreState({ type: "new", source });
+  manager.layerManager.addManagedLayer(managedLayer);
 }
 
 export class DataManagementContext extends RefCounted {
@@ -155,17 +165,14 @@ export class Viewer extends RefCounted {
 
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
-  visibleLayerRoles = allRenderLayerRoles();
   layerSelectedValues = this.registerDisposer(
     new LayerSelectedValues(this.layerManager, this.mouseState),
   );
 
-  resetInitiated = new NullarySignal();
-
   visibility: WatchableVisibilityPriority;
   inputEventBindings: InputEventBindings;
   dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
-  chunkManager: any;
+  chunkManager: ChunkManager;
 
   constructor(public display: DisplayContext) {
     super();
