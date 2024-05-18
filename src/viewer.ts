@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-import "#src/viewer.css";
-import "#src/noselect.css";
-import "#src/layer_groups_layout.css";
 import { FourPanelLayout } from "#src/data_panel_layout.js";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
@@ -24,6 +21,7 @@ import {
   ChunkManager,
   ChunkQueueManager,
 } from "#src/chunk_manager/frontend.js";
+import "#src/sliceview/uncompressed_chunk_format.js";
 import { TrackableCoordinateSpace } from "#src/coordinate_transform.js";
 import { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";

@@ -15,7 +15,6 @@
  */
 
 import "#src/rendered_data_panel.css";
-import "#src/noselect.css";
 
 import type { DisplayContext } from "#src/display_context.js";
 import { RenderedPanel } from "#src/display_context.js";

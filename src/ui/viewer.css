@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-import "#src/sliceview/chunk_format_handlers.js";
+html,
+body {
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
 
-import { DisplayContext } from "#src/display_context.js";
-import { Viewer } from "#src/viewer.js";
+  display: flex;
+  flex-direction: column;
+}
 
-export function makeMinimalViewer() {
-  const target = document.createElement("div");
-  target.id = "neuroglancer-container";
-  document.body.appendChild(target);
-  const display = new DisplayContext(target);
-  return new Viewer(display);
+#neuroglancer-container {
+  width: 100vw;
+  overflow: hidden;
+  flex: 1;
 }

@@ -5,14 +5,6 @@ export const handleFileBtnOnClick = async () => {
   return dir;
 };
 
-export const handleFileOnClick = async (file: File) => {
-  const arraybuffer = await file.arrayBuffer();
-  const blob = new Blob([arraybuffer], { type: file.name });
-  const text = await file.text();
-
-  return arraybuffer;
-};
-
 async function readDirectory(
   directoryHandle: FileSystemDirectoryHandle,
   path = "",
