@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-// import { ImageUserLayer } from "#src/layer/image/index.js";
-import type { AnnotationLayerState } from "#src/annotation/annotation_layer_state.js";
-import type { AnnotationType } from "#src/annotation/index.js";
 import type {
   CoordinateSpace,
   CoordinateTransformSpecification,
@@ -49,7 +46,6 @@ import type { RenderLayer } from "#src/renderlayer.js";
 import type { VolumeType } from "#src/sliceview/volume/base.js";
 import { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { UserLayerSidePanelsState } from "#src/ui/layer_side_panel_state.js";
 import { SelectedLegacyTool } from "#src/ui/tool.js";
 import { gatherUpdate } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
@@ -57,10 +53,8 @@ import { invokeDisposers, RefCounted } from "#src/util/disposable.js";
 import {
   parseFixedLengthArray,
   verifyFiniteFloat,
-  verifyInt,
   verifyObjectProperty,
   verifyOptionalObjectProperty,
-  verifyString,
 } from "#src/util/json.js";
 import { MessageList } from "#src/util/message_list.js";
 import type { AnyConstructor } from "#src/util/mixin.js";
@@ -69,9 +63,6 @@ import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
 import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
-import type { DependentViewContext } from "#src/widget/dependent_view_widget.js";
-import type { Tab } from "#src/widget/tab_view.js";
-import { TabSpecification } from "#src/widget/tab_view.js";
 
 const TOOL_JSON_KEY = "tool";
 const TOOL_BINDINGS_JSON_KEY = "toolBindings";
@@ -90,27 +81,8 @@ export interface UserLayerSelectionState {
   localPosition: Float32Array;
   localCoordinateSpace: CoordinateSpace | undefined;
 
-  annotationId: string | undefined;
-  annotationType: AnnotationType | undefined;
-  annotationBuffer: Uint8Array | undefined;
-  annotationIndex: number | undefined;
-  annotationCount: number | undefined;
-  annotationSourceIndex: number | undefined;
-  annotationSubsource: string | undefined;
-  annotationSubsubsourceId: string | undefined;
-  annotationPartIndex: number | undefined;
-
   value: any;
 }
-
-export interface UserLayerTab {
-  id: string;
-  label: string;
-  order: number;
-  getter: (layer: UserLayer) => Tab;
-}
-
-export const USER_LAYER_TABS: UserLayerTab[] = [];
 
 export class UserLayer extends RefCounted {
   get localPosition() {
@@ -149,20 +121,11 @@ export class UserLayer extends RefCounted {
     state.localPositionValid = false;
     state.localPosition = kEmptyFloat32Vec;
     state.localCoordinateSpace = undefined;
-    state.annotationId = undefined;
-    state.annotationType = undefined;
-    state.annotationBuffer = undefined;
-    state.annotationIndex = undefined;
-    state.annotationCount = undefined;
-    state.annotationSourceIndex = undefined;
-    state.annotationSubsource = undefined;
-    state.annotationPartIndex = undefined;
     state.value = undefined;
   }
 
   resetSelectionState(state: this["selectionState"]) {
     state.localPositionValid = false;
-    state.annotationId = undefined;
     state.value = undefined;
   }
 
@@ -188,29 +151,6 @@ export class UserLayer extends RefCounted {
         state.localPosition = localPosition;
       }
     }
-    const annotationId = (state.annotationId = verifyOptionalObjectProperty(
-      json,
-      "annotationId",
-      verifyString,
-    ));
-    if (annotationId !== undefined) {
-      state.annotationSourceIndex = verifyOptionalObjectProperty(
-        json,
-        "annotationSource",
-        verifyInt,
-        0,
-      );
-      state.annotationPartIndex = verifyOptionalObjectProperty(
-        json,
-        "annotationPart",
-        verifyInt,
-      );
-      state.annotationSubsource = verifyOptionalObjectProperty(
-        json,
-        "annotationSubsource",
-        verifyString,
-      );
-    }
 
     state.value = json.value;
   }
@@ -219,7 +159,7 @@ export class UserLayer extends RefCounted {
   displaySelectionState(
     state: this["selectionState"],
     parent: HTMLElement,
-    context: DependentViewContext,
+    context: any,
   ) {
     state;
     parent;
@@ -235,12 +175,6 @@ export class UserLayer extends RefCounted {
       if (localPosition.length > 0) {
         json.localPosition = Array.from(localPosition);
       }
-    }
-    if (state.annotationId !== undefined) {
-      json.annotationId = state.annotationId;
-      json.annotationPart = state.annotationPartIndex;
-      json.annotationSource = state.annotationSourceIndex;
-      json.annotationSubsource = state.annotationSubsource;
     }
     if (state.value != null) {
       json.value = state.value;
@@ -278,14 +212,6 @@ export class UserLayer extends RefCounted {
     } else {
       dest.localPosition.set(curLocalPosition);
     }
-    dest.annotationId = source.annotationId;
-    dest.annotationType = source.annotationType;
-    dest.annotationBuffer = source.annotationBuffer;
-    dest.annotationIndex = source.annotationIndex;
-    dest.annotationCount = source.annotationCount;
-    dest.annotationSourceIndex = source.annotationSourceIndex;
-    dest.annotationSubsource = source.annotationSubsource;
-    dest.annotationPartIndex = source.annotationPartIndex;
     dest.value = source.value;
   }
 
@@ -298,8 +224,6 @@ export class UserLayer extends RefCounted {
     return this.loadingCounter === 0;
   }
 
-  tabs = this.registerDisposer(new TabSpecification());
-  panels = new UserLayerSidePanelsState(this);
   tool = this.registerDisposer(new SelectedLegacyTool(this));
 
   dataSourcesChanged = new NullarySignal();
@@ -313,8 +237,6 @@ export class UserLayer extends RefCounted {
     super();
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalOrChannelDimension;
-    this.tabs.changed.add(this.specificationChanged.dispatch);
-    this.panels.specificationChanged.add(this.specificationChanged.dispatch);
     this.tool.changed.add(this.specificationChanged.dispatch);
     this.localPosition.changed.add(this.specificationChanged.dispatch);
     this.pick.changed.add(this.specificationChanged.dispatch);
@@ -322,13 +244,6 @@ export class UserLayer extends RefCounted {
     this.dataSourcesChanged.add(this.specificationChanged.dispatch);
     this.dataSourcesChanged.add(() => this.updateDataSubsourceActivations());
     this.messages.changed.add(this.layersChanged.dispatch);
-    for (const tab of USER_LAYER_TABS) {
-      this.tabs.add(tab.id, {
-        label: tab.label,
-        order: tab.order,
-        getter: () => tab.getter(this),
-      });
-    }
     this.manager.coordinateSpaceCombiner = new CoordinateSpaceCombiner(
       this.manager.coordinateSpace,
       () => true,
@@ -453,7 +368,6 @@ export class UserLayer extends RefCounted {
 
   restoreState(specification: any) {
     this.tool.restoreState(specification[TOOL_JSON_KEY]);
-    this.panels.restoreState(specification);
     this.localCoordinateSpace.restoreState(
       specification[LOCAL_COORDINATE_SPACE_JSON_KEY],
     );
@@ -737,16 +651,6 @@ export class MouseSelectionState {
   pickedRenderLayer: RenderLayer | null = null;
   pickedValue = new Uint64(0, 0);
   pickedOffset = 0;
-  pickedAnnotationLayer: AnnotationLayerState | undefined = undefined;
-  pickedAnnotationId: string | undefined = undefined;
-  pickedAnnotationBuffer: ArrayBuffer | undefined = undefined;
-  // Base offset into `pickedAnnotationBuffer` of the `pickedAnnotationCount` serialized annotations
-  // of `pickedAnnotationType`.
-  pickedAnnotationBufferBaseOffset: number | undefined = undefined;
-  // Index (out of a total of `pickedAnnotationCount`) of the picked annotation.
-  pickedAnnotationIndex: number | undefined = undefined;
-  pickedAnnotationCount: number | undefined = undefined;
-  pickedAnnotationType: AnnotationType | undefined = undefined;
   pageX: number;
   pageY: number;
 

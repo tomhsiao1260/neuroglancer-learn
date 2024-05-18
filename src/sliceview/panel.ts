@@ -19,7 +19,6 @@ import type { RenderedDataViewerState } from "#src/rendered_data_panel.js";
 import { RenderedDataPanel } from "#src/rendered_data_panel.js";
 import type { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
-import type { TrackableBoolean } from "#src/trackable_boolean.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import {
@@ -28,13 +27,8 @@ import {
   TextureBuffer,
 } from "#src/webgl/offscreen.js";
 import type { ShaderBuilder } from "#src/webgl/shader.js";
-import type { TrackableScaleBarOptions } from "#src/widget/scale_bar.js";
 
-export interface SliceViewerState extends RenderedDataViewerState {
-  showScaleBar: TrackableBoolean;
-  wireFrame: TrackableBoolean;
-  scaleBarOptions: TrackableScaleBarOptions;
-}
+export interface SliceViewerState extends RenderedDataViewerState {}
 
 export enum OffscreenTextures {
   COLOR = 0,

@@ -222,7 +222,6 @@ export class Viewer extends RefCounted {
     container.style.flexDirection = "column";
     container.style.position = "absolute";
     container.classList.add("neuroglancer-viewer");
-    container.classList.add("neuroglancer-noselect");
     container.appendChild(panel.element);
 
     this.display.container.appendChild(container);

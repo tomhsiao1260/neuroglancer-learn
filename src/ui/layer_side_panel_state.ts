@@ -242,9 +242,6 @@ export class UserLayerSidePanelsState {
       TAB_JSON_KEY,
       verifyString,
     );
-    const { layer } = this;
-    const { tabs } = layer;
-    const availableTabs = new Set<string>(tabs.options.keys());
     verifyOptionalObjectProperty(obj, PANELS_JSON_KEY, (panelsObj) =>
       parseArray(panelsObj, (panelObj) => {
         verifyObject(panelObj);
@@ -259,84 +256,16 @@ export class UserLayerSidePanelsState {
         panel.explicitTabs = verifyOptionalObjectProperty(
           panelObj,
           TABS_JSON_KEY,
-          (tabsObj) => {
+          () => {
             const curTabs = new Set<string>();
-            for (const tab of verifyStringArray(tabsObj)) {
-              if (!availableTabs.has(tab)) continue;
-              availableTabs.delete(tab);
-              curTabs.add(tab);
-            }
             return curTabs;
           },
         );
-        if (panel.explicitTabs === undefined) {
-          panel.tabs = Array.from(availableTabs);
-          availableTabs.clear();
-        } else {
-          panel.tabs = Array.from(panel.explicitTabs);
-        }
-        if (panel.tabs.length === 0) return;
-        panel.normalizeTabs();
-        layer.registerDisposer(panel);
-        panel.initialize();
-        panels.push(panel);
+        return;
       }),
     );
-    panels[0].tabs = Array.from(availableTabs);
     panels[0].normalizeTabs();
     this.panels[0].initialize();
-  }
-
-  removePanel(panel: UserLayerSidePanelState) {
-    if (this.updating) return;
-    const i = this.panels.indexOf(panel);
-    this.panels.splice(i, 1);
-    this.layer.unregisterDisposer(panel);
-    this.updateTabs();
-  }
-
-  updateTabs() {
-    const { layer } = this;
-    const { tabs } = layer;
-    const availableTabs = new Set<string>(tabs.options.keys());
-    const { panels } = this;
-    this.updating = true;
-    const updatePanelTabs = (panel: UserLayerSidePanelState) => {
-      const oldTabs = panel.tabs;
-      if (panel.explicitTabs === undefined) {
-        panel.tabs = Array.from(availableTabs);
-        availableTabs.clear();
-      } else {
-        panel.tabs = Array.from(panel.explicitTabs);
-        for (const tab of panel.tabs) {
-          availableTabs.delete(tab);
-        }
-      }
-      if (!arraysEqual(oldTabs, panel.tabs)) {
-        panel.normalizeTabs();
-        panel.tabsChanged.dispatch();
-      }
-    };
-    for (let i = 1; i < panels.length; ) {
-      const panel = panels[i];
-      if (panel.location.visible) {
-        updatePanelTabs(panel);
-        if (panel.tabs.length !== 0) {
-          ++i;
-          continue;
-        }
-      }
-      panels.splice(i, 1);
-      layer.unregisterDisposer(panel);
-    }
-    updatePanelTabs(panels[0]);
-    if (panels[0].tabs.length === 0) {
-      const { selectedLayer } = this.layer.manager.root;
-      if (selectedLayer.layer?.layer === this.layer) {
-        selectedLayer.location.visible = false;
-      }
-    }
-    this.updating = false;
   }
 
   toJSON() {

@@ -13,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import "#src/layer/image/style.css";
-
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
 import {
   CoordinateSpaceCombiner,
@@ -34,7 +31,6 @@ import {
   UserLayer,
 } from "#src/layer/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
-import { Overlay } from "#src/overlay.js";
 import { getChannelSpace } from "#src/render_coordinate_transform.js";
 import {
   RenderScaleHistogram,
@@ -43,7 +39,6 @@ import {
 import { DataType, VolumeType } from "#src/sliceview/volume/base.js";
 import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import {
-  defineImageLayerShader,
   getTrackableFragmentMain,
   ImageRenderLayer,
 } from "#src/sliceview/volume/image_renderlayer.js";
@@ -57,7 +52,6 @@ import {
   registerNested,
   WatchableValue,
 } from "#src/trackable_value.js";
-import { setClipboard } from "#src/util/clipboard.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { makeValueOrError } from "#src/util/error.js";
 import { verifyOptionalObjectProperty } from "#src/util/json.js";
@@ -70,36 +64,8 @@ import {
   VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE,
   VolumeRenderingRenderLayer,
 } from "#src/volume_rendering/volume_render_layer.js";
-import type { ParameterizedShaderGetterResult } from "#src/webgl/dynamic_shader.js";
 import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
-import type { ShaderControlsBuilderState } from "#src/webgl/shader_ui_controls.js";
-import {
-  setControlsInShader,
-  ShaderControlState,
-} from "#src/webgl/shader_ui_controls.js";
-import { ChannelDimensionsWidget } from "#src/widget/channel_dimensions_widget.js";
-import { makeCopyButton } from "#src/widget/copy_button.js";
-import type { DependentViewContext } from "#src/widget/dependent_view_widget.js";
-import { makeHelpButton } from "#src/widget/help_button.js";
-import type { LayerControlDefinition } from "#src/widget/layer_control.js";
-import {
-  addLayerControlToOptionsTab,
-  registerLayerControl,
-} from "#src/widget/layer_control.js";
-import { enumLayerControl } from "#src/widget/layer_control_enum.js";
-import { rangeLayerControl } from "#src/widget/layer_control_range.js";
-import { makeMaximizeButton } from "#src/widget/maximize_button.js";
-import {
-  renderScaleLayerControl,
-  VolumeRenderingRenderScaleWidget,
-} from "#src/widget/render_scale_widget.js";
-import { ShaderCodeWidget } from "#src/widget/shader_code_widget.js";
-import type { LegendShaderOptions } from "#src/widget/shader_controls.js";
-import {
-  registerLayerShaderControlsTool,
-  ShaderControls,
-} from "#src/widget/shader_controls.js";
-import { Tab } from "#src/widget/tab_view.js";
+import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 
 const OPACITY_JSON_KEY = "opacity";
 const BLEND_JSON_KEY = "blend";
@@ -212,12 +178,6 @@ export class ImageUserLayer extends UserLayer {
     this.volumeRenderingDepthSamplesTarget.changed.add(
       this.specificationChanged.dispatch,
     );
-    this.tabs.add("rendering", {
-      label: "Rendering",
-      order: -100,
-      getter: () => new RenderingOptionsTab(this),
-    });
-    this.tabs.default = "rendering";
   }
 
   activateDataSubsources(subsources: Iterable<LoadedDataSubsource>) {
@@ -347,242 +307,8 @@ export class ImageUserLayer extends UserLayer {
     return x;
   }
 
-  displayImageSelectionState(
-    state: this["selectionState"],
-    parent: HTMLElement,
-  ): boolean {
-    const { value } = state;
-    if (value == null) return false;
-    const channelSpace = this.channelSpace.value;
-    if (channelSpace.error !== undefined) return false;
-    const {
-      numChannels,
-      coordinates,
-      channelCoordinateSpace: { names, rank },
-    } = channelSpace;
-    const grid = document.createElement("div");
-    grid.classList.add("neuroglancer-selection-details-value-grid");
-    let gridTemplateColumns = "[copy] 0fr ";
-    if (rank !== 0) {
-      gridTemplateColumns += `repeat(${rank}, [dim] 0fr [coord] 0fr) `;
-    }
-    gridTemplateColumns += "[value] 1fr";
-    grid.style.gridTemplateColumns = gridTemplateColumns;
-    for (let channelIndex = 0; channelIndex < numChannels; ++channelIndex) {
-      const x = rank === 0 ? value : value[channelIndex];
-      // TODO(jbms): do data type-specific formatting
-      const valueString = x == null ? "" : x.toString();
-      const copyButton = makeCopyButton({
-        title: "Copy value",
-        onClick: () => {
-          setClipboard(valueString);
-        },
-      });
-      grid.appendChild(copyButton);
-      for (let channelDim = 0; channelDim < rank; ++channelDim) {
-        const dimElement = document.createElement("div");
-        dimElement.classList.add(
-          "neuroglancer-selection-details-value-grid-dim",
-        );
-        dimElement.textContent = names[channelDim];
-        grid.appendChild(dimElement);
-        const coordElement = document.createElement("div");
-        coordElement.classList.add(
-          "neuroglancer-selection-details-value-grid-coord",
-        );
-        coordElement.textContent =
-          coordinates[channelIndex * rank + channelDim].toString();
-        grid.appendChild(coordElement);
-      }
-      const valueElement = document.createElement("div");
-      valueElement.classList.add(
-        "neuroglancer-selection-details-value-grid-value",
-      );
-      valueElement.textContent = valueString;
-      grid.appendChild(valueElement);
-    }
-    parent.appendChild(grid);
-    return true;
-  }
-
-  displaySelectionState(
-    state: this["selectionState"],
-    parent: HTMLElement,
-    context: DependentViewContext,
-  ): boolean {
-    let displayed = this.displayImageSelectionState(state, parent);
-    if (super.displaySelectionState(state, parent, context)) displayed = true;
-    return displayed;
-  }
-
-  getLegendShaderOptions(): LegendShaderOptions {
-    return {
-      memoizeKey: "ImageUserLayer",
-      parameters: this.shaderControlState.builderState,
-      // fixme: support fallback
-      encodeParameters: (p) => p.key,
-      defineShader: (
-        builder,
-        shaderBuilderState: ShaderControlsBuilderState,
-      ) => {
-        builder.addFragmentCode(`
-#define uOpacity 1.0
-`);
-        defineImageLayerShader(builder, shaderBuilderState);
-      },
-      initializeShader: (
-        shaderResult: ParameterizedShaderGetterResult<ShaderControlsBuilderState>,
-      ) => {
-        const shader = shaderResult.shader!;
-        setControlsInShader(
-          this.manager.display.gl,
-          shader,
-          this.shaderControlState,
-          shaderResult.parameters.parseResult.controls,
-        );
-      },
-    };
-  }
-
   static type = "image";
   static typeAbbreviation = "img";
-}
-
-function makeShaderCodeWidget(layer: ImageUserLayer) {
-  return new ShaderCodeWidget({
-    shaderError: layer.shaderError,
-    fragmentMain: layer.fragmentMain,
-    shaderControlState: layer.shaderControlState,
-  });
-}
-
-const LAYER_CONTROLS: LayerControlDefinition<ImageUserLayer>[] = [
-  {
-    label: "Resolution (slice)",
-    toolJson: CROSS_SECTION_RENDER_SCALE_JSON_KEY,
-    ...renderScaleLayerControl((layer) => ({
-      histogram: layer.sliceViewRenderScaleHistogram,
-      target: layer.sliceViewRenderScaleTarget,
-    })),
-  },
-  {
-    label: "Blending (slice)",
-    toolJson: BLEND_JSON_KEY,
-    ...enumLayerControl((layer) => layer.blendMode),
-  },
-  {
-    label: "Opacity (slice)",
-    toolJson: OPACITY_JSON_KEY,
-    ...rangeLayerControl((layer) => ({ value: layer.opacity })),
-  },
-  {
-    label: "Volume rendering (experimental)",
-    toolJson: VOLUME_RENDERING_JSON_KEY,
-    ...enumLayerControl((layer) => layer.volumeRenderingMode),
-  },
-  {
-    label: "Gain (3D)",
-    toolJson: VOLUME_RENDERING_GAIN_JSON_KEY,
-    isValid: (layer) =>
-      makeCachedDerivedWatchableValue(
-        (volumeRenderingMode) =>
-          volumeRenderingMode === VolumeRenderingModes.ON,
-        [layer.volumeRenderingMode],
-      ),
-    ...rangeLayerControl((layer) => ({
-      value: layer.volumeRenderingGain,
-      options: { min: -10.0, max: 10.0, step: 0.1 },
-    })),
-  },
-  {
-    label: "Resolution (3D)",
-    toolJson: VOLUME_RENDERING_DEPTH_SAMPLES_JSON_KEY,
-    isValid: (layer) =>
-      makeCachedDerivedWatchableValue(
-        (volumeRenderingMode) =>
-          volumeRenderingMode !== VolumeRenderingModes.OFF,
-        [layer.volumeRenderingMode],
-      ),
-    ...renderScaleLayerControl(
-      (layer) => ({
-        histogram: layer.volumeRenderingChunkResolutionHistogram,
-        target: layer.volumeRenderingDepthSamplesTarget,
-      }),
-      VolumeRenderingRenderScaleWidget,
-    ),
-  },
-];
-
-for (const control of LAYER_CONTROLS) {
-  registerLayerControl(ImageUserLayer, control);
-}
-
-class RenderingOptionsTab extends Tab {
-  codeWidget = this.registerDisposer(makeShaderCodeWidget(this.layer));
-  constructor(public layer: ImageUserLayer) {
-    super();
-    const { element } = this;
-    element.classList.add("neuroglancer-image-dropdown");
-
-    for (const control of LAYER_CONTROLS) {
-      element.appendChild(
-        addLayerControlToOptionsTab(this, layer, this.visibility, control),
-      );
-    }
-
-    const spacer = document.createElement("div");
-    spacer.style.flex = "1";
-
-    const topRow = document.createElement("div");
-    topRow.className = "neuroglancer-image-dropdown-top-row";
-    topRow.appendChild(document.createTextNode("Shader"));
-    topRow.appendChild(spacer);
-    topRow.appendChild(
-      makeMaximizeButton({
-        title: "Show larger editor view",
-        onClick: () => {
-          new ShaderCodeOverlay(this.layer);
-        },
-      }),
-    );
-    topRow.appendChild(
-      makeHelpButton({
-        title: "Documentation on image layer rendering",
-        href: "https://github.com/google/neuroglancer/blob/master/src/sliceview/image_layer_rendering.md",
-      }),
-    );
-
-    element.appendChild(topRow);
-    element.appendChild(
-      this.registerDisposer(
-        new ChannelDimensionsWidget(layer.channelCoordinateSpaceCombiner),
-      ).element,
-    );
-    element.appendChild(this.codeWidget.element);
-    element.appendChild(
-      this.registerDisposer(
-        new ShaderControls(
-          layer.shaderControlState,
-          this.layer.manager.display,
-          this.layer,
-          {
-            visibility: this.visibility,
-            legendShaderOptions: this.layer.getLegendShaderOptions(),
-          },
-        ),
-      ).element,
-    );
-  }
-}
-
-class ShaderCodeOverlay extends Overlay {
-  codeWidget = this.registerDisposer(makeShaderCodeWidget(this.layer));
-  constructor(public layer: ImageUserLayer) {
-    super();
-    this.content.classList.add("neuroglancer-image-layer-shader-overlay");
-    this.content.appendChild(this.codeWidget.element);
-    this.codeWidget.textEditor.refresh();
-  }
 }
 
 registerLayerType(ImageUserLayer);
@@ -594,8 +320,3 @@ registerLayerTypeDetector((subsource) => {
   if (volume.volumeType !== VolumeType.UNKNOWN) return undefined;
   return { layerConstructor: ImageUserLayer, priority: -100 };
 });
-
-registerLayerShaderControlsTool(ImageUserLayer, (layer) => ({
-  shaderControlState: layer.shaderControlState,
-  legendShaderOptions: layer.getLegendShaderOptions(),
-}));
