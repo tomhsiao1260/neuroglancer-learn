@@ -20,16 +20,15 @@
 
 import type { DataSourceProvider } from "#src/datasource/index.js";
 import { DataSourceProviderRegistry } from "#src/datasource/index.js";
+import { ZarrDataSource } from "#src/datasource/zarr/frontend.js";
 import type { Owned } from "#src/util/disposable.js";
 
-export type ProviderFactory = () => Owned<DataSourceProvider>;
-const providerFactories = new Map<string, ProviderFactory>();
-
-export function registerProvider(name: string, factory: ProviderFactory) {
-  providerFactories.set(name, factory);
-}
+type ProviderFactory = () => Owned<DataSourceProvider>;
 
 export function getDefaultDataSourceProvider() {
+  const providerFactories = new Map<string, ProviderFactory>();
+  providerFactories.set("zarr2", () => new ZarrDataSource(2));
+
   const provider = new DataSourceProviderRegistry();
   for (const [name, factory] of providerFactories) {
     try {
