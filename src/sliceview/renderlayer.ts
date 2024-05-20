@@ -271,27 +271,3 @@ export interface SliceViewPanelRenderContext
    */
   emitPickID: boolean;
 }
-
-export class SliceViewPanelRenderLayer<
-  AttachmentState = unknown,
-> extends VisibilityTrackedRenderLayer {
-  draw(
-    renderContext: SliceViewPanelRenderContext,
-    attachment: VisibleLayerInfo<SliceViewPanel, AttachmentState>,
-  ) {
-    renderContext;
-    attachment;
-    // Must be overridden by subclasses.
-  }
-
-  isReady(
-    renderContext: SliceViewPanelReadyRenderContext,
-    attachment: VisibleLayerInfo<SliceViewPanel, AttachmentState>,
-  ) {
-    renderContext;
-    attachment;
-    return true;
-  }
-
-  backend: SharedObject | undefined;
-}

@@ -217,8 +217,6 @@ export class SliceView extends Base {
           // console.log("updating ...");
           const { invViewMatrix, centerDataPosition } = out;
           navigationState.toMat4(invViewMatrix);
-          const { canonicalVoxelFactors, voxelPhysicalScales } =
-            out.displayDimensionRenderInfo;
           for (let i = 0; i < 3; ++i) {
             centerDataPosition[i] = invViewMatrix[12 + i];
           }
@@ -227,7 +225,6 @@ export class SliceView extends Base {
             logicalHeight,
             projectionMat,
             viewportNormalInGlobalCoordinates,
-            viewportNormalInCanonicalCoordinates,
           } = out;
           const relativeDepthRange = 10;
           mat4.ortho(
@@ -242,28 +239,8 @@ export class SliceView extends Base {
           updateProjectionParametersFromInverseViewAndProjection(out);
           const { viewMatrix } = out;
           for (let i = 0; i < 3; ++i) {
-            const x = (viewportNormalInGlobalCoordinates[i] =
-              viewMatrix[i * 4 + 2]);
-            viewportNormalInCanonicalCoordinates[i] =
-              x / canonicalVoxelFactors[i];
+            viewportNormalInGlobalCoordinates[i] = viewMatrix[i * 4 + 2];
           }
-          vec3.normalize(
-            viewportNormalInGlobalCoordinates,
-            viewportNormalInGlobalCoordinates,
-          );
-          vec3.normalize(
-            viewportNormalInCanonicalCoordinates,
-            viewportNormalInCanonicalCoordinates,
-          );
-
-          let newPixelSize = 0;
-          for (let i = 0; i < 3; ++i) {
-            const s = voxelPhysicalScales[i];
-            const x = invViewMatrix[i];
-            newPixelSize += (s * x) ** 2;
-          }
-          newPixelSize = Math.sqrt(newPixelSize);
-          out.pixelSize = newPixelSize;
         },
       }),
     );

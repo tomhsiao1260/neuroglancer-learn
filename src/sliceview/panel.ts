@@ -93,9 +93,7 @@ export class SliceViewPanel extends RenderedDataPanel {
 
     this.registerDisposer(
       sliceView.viewChanged.add(() => {
-        if (this.visible) {
-          context.scheduleRedraw();
-        }
+        if (this.visible) context.scheduleRedraw();
       }),
     );
   }

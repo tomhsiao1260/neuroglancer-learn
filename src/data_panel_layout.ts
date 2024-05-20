@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import "#src/data_panel_layout.css";
-
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import type { DisplayContext } from "#src/display_context.js";
 import type {
@@ -23,7 +21,6 @@ import type {
   MouseSelectionState,
   TrackableDataSelectionState,
 } from "#src/layer/index.js";
-import * as L from "#src/layout.js";
 import {
   DisplayPose,
   NavigationState,
@@ -87,14 +84,6 @@ export function makeSliceView(
   );
 }
 
-export function makeOrthogonalSliceViews(viewerState: SliceViewViewerState) {
-  return new Map([
-    ["xy", makeSliceView(viewerState, AXES_RELATIVE_ORIENTATION.get("xy")!)],
-    ["xz", makeSliceView(viewerState, AXES_RELATIVE_ORIENTATION.get("xz")!)],
-    ["yz", makeSliceView(viewerState, AXES_RELATIVE_ORIENTATION.get("yz")!)],
-  ]);
-}
-
 export function getCommonViewerState(viewer: ViewerUIState) {
   return {
     selectionDetailsState: viewer.selectionDetailsState,
@@ -112,41 +101,29 @@ export class FourPanelLayout extends RefCounted {
   constructor(public viewer: ViewerUIState) {
     super();
 
-    const sliceViews = makeOrthogonalSliceViews(viewer);
     const { display } = viewer;
-    const rootElement = this.element;
-    rootElement.style.flex = "1";
+    this.element.style.flex = "1";
+    this.element.style.display = "flex";
+    this.element.style.flexDirection = "row";
+    const state = getCommonViewerState(viewer);
 
-    const makeSliceViewPanel = (
-      axes: any,
-      element: HTMLElement,
-      state: any,
-    ) => {
-      const panel = this.registerDisposer(
-        new SliceViewPanel(display, element, sliceViews.get(axes)!, state),
-      );
-      return panel;
-    };
+    const elementXY = document.createElement("div");
+    const orthXY = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("xy"));
+    elementXY.style.flex = "1";
+    new SliceViewPanel(display, elementXY, orthXY, state);
 
-    const sliceViewerState = getCommonViewerState(viewer);
-    const mainDisplayContents = [
-      L.withFlex(
-        1,
-        L.box("column", [
-          L.withFlex(
-            1,
-            L.box("row", [
-              L.withFlex(1, (element) => {
-                makeSliceViewPanel("xy", element, sliceViewerState);
-              }),
-              L.withFlex(1, (element) => {
-                makeSliceViewPanel("yz", element, sliceViewerState);
-              }),
-            ]),
-          ),
-        ]),
-      ),
-    ];
-    L.box("row", mainDisplayContents)(rootElement);
+    const elementYZ = document.createElement("div");
+    const orthYZ = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("yz"));
+    elementYZ.style.flex = "1";
+    new SliceViewPanel(display, elementYZ, orthYZ, state);
+
+    const elementXZ = document.createElement("div");
+    const orthXZ = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("xz"));
+    elementXZ.style.flex = "1";
+    new SliceViewPanel(display, elementXZ, orthXZ, state);
+
+    this.element.appendChild(elementXY);
+    this.element.appendChild(elementYZ);
+    this.element.appendChild(elementXZ);
   }
 }
