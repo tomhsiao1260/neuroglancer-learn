@@ -4,19 +4,7 @@ Try to learn [Neuroglancer](https://github.com/google/neuroglancer) step by step
 
 # Run it
 
-Make sure there's a `scroll.zarr` data in root directory.
-
-Then, run a python server to serve `zarr` data.
-
-```bash
-python cors_webserver.py
-```
-
-And run the application server.
-
-```bash
-npm run dev-server
-```
+Run `npm install` and then open the app via `npm run dev-server` command. Go to `localhost:8080`, and then press `space` key. It will pop up a UI panel for you to choose a `.zarr` folder that you want to see. Have fun!
 
 ## 打包
 
