@@ -6,7 +6,7 @@ export default (env, args) => {
     mode,
     context: import.meta.dirname,
     entry: {
-      main: "./src/main.bundle.js",
+      main: "./src/main.ts",
     },
     devtool: "source-map",
     module: {

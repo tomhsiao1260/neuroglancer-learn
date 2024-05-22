@@ -1,33 +1,37 @@
 import { RefCounted } from "#src/util/disposable.ts";
-import { RootLayoutContainer } from "#src/layer_groups_layout.ts";
-
 import type { DisplayContext } from "#src/display_context.ts";
+import { FourPanelLayout } from "#src/data_panel_layout.ts";
+import { LayerManager } from "#src/layer/index.ts";
 
 export class Viewer extends RefCounted {
-  layout: RootLayoutContainer;
   element: HTMLElement;
+
+  layerManager = this.registerDisposer(new LayerManager());
 
   constructor(public display: DisplayContext) {
     super();
-
-    const element = display.makeCanvasOverlayElement();
-
-    this.element = element;
 
     this.makeUI();
   }
 
   private makeUI() {
-    const gridContainer = this.element;
-    gridContainer.classList.add("neuroglancer-viewer");
-    gridContainer.classList.add("neuroglancer-noselect");
-    gridContainer.style.display = "flex";
-    gridContainer.style.flexDirection = "column";
-
-    this.layout = this.registerDisposer(
-      new RootLayoutContainer(this, "4panel")
+    // panel generation
+    const panel = this.registerDisposer(
+      new FourPanelLayout({ display: this.display })
     );
 
-    gridContainer.appendChild(this.layout.element);
+    // append viewer dom
+    const container = document.createElement("div");
+    container.style.top = "0px";
+    container.style.left = "0px";
+    container.style.width = "100%";
+    container.style.height = "100%";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.position = "absolute";
+    container.classList.add("neuroglancer-viewer");
+    container.appendChild(panel.element);
+
+    this.display.container.appendChild(container);
   }
 }

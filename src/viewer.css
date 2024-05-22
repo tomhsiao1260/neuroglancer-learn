@@ -1,0 +1,18 @@
+html,
+body {
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+
+  display: flex;
+  flex-direction: column;
+}
+
+#neuroglancer-container {
+  width: 100vw;
+  overflow: hidden;
+  flex: 1;
+}
