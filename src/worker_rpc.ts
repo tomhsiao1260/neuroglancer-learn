@@ -378,7 +378,7 @@ export function registerSharedObjectOwner(identifier: string) {
  * SharedObject owner.
  */
 export function registerSharedObject(identifier?: string) {
-  return (constructorFunction: SharedObjectConstructor) => {
+  return (constructorFunction: any) => {
     if (identifier !== undefined) {
       constructorFunction.prototype.RPC_TYPE_ID = identifier;
     } else {

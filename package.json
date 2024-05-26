@@ -16,7 +16,8 @@
     "last 2 Safari versions"
   ],
   "scripts": {
-    "dev-server": "tsx ./build_tools/cli.ts serve"
+    "dev-server": "tsx ./build_tools/cli.ts serve",
+    "build": "tsx ./build_tools/cli.ts build"
   },
   "devDependencies": {
     "@types/codemirror": "5.60.15",

@@ -51,7 +51,6 @@ import type {
 import {
   forEachPlaneIntersectingVolumetricChunk,
   SLICEVIEW_ADD_VISIBLE_LAYER_RPC_ID,
-  SLICEVIEW_REMOVE_VISIBLE_LAYER_RPC_ID,
   SLICEVIEW_REQUEST_CHUNK_RPC_ID,
   SLICEVIEW_RPC_ID,
   SliceViewBase,
@@ -62,16 +61,14 @@ import { SliceViewRenderLayer } from "#src/sliceview/renderlayer.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
 import type { Borrowed, Disposer, Owned } from "#src/util/disposable.js";
-import { invokeDisposers, RefCounted } from "#src/util/disposable.js";
+import { RefCounted } from "#src/util/disposable.js";
 import type { vec4 } from "#src/util/geom.js";
-import { kOneVec, kZeroVec4, mat4, vec3 } from "#src/util/geom.js";
+import { kOneVec, mat4, vec3 } from "#src/util/geom.js";
 import { MessageList, MessageSeverity } from "#src/util/message_list.js";
 import { getObjectId } from "#src/util/object_id.js";
 import { NullarySignal } from "#src/util/signal.js";
 import { withSharedVisibility } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import type { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
-import { TextureHistogramGenerator } from "#src/webgl/empirical_cdf.js";
 import type { TextureBuffer } from "#src/webgl/offscreen.js";
 import {
   DepthTextureBuffer,
@@ -86,12 +83,7 @@ import { registerSharedObjectOwner } from "#src/worker_rpc.js";
 
 export type GenericChunkKey = string;
 
-class FrontendSliceViewBase extends SliceViewBase<
-  SliceViewChunkSource,
-  SliceViewRenderLayer,
-  FrontendTransformedSource
-> {}
-const Base = withSharedVisibility(FrontendSliceViewBase);
+const Base = withSharedVisibility(SliceViewBase);
 
 export interface FrontendTransformedSource<
   RLayer extends SliceViewRenderLayer = SliceViewRenderLayer,
@@ -176,21 +168,6 @@ export class SliceView extends Base {
   histogramInputTextures: TextureBuffer[] = [];
   offscreenFramebuffersWithHistograms = [this.offscreenFramebuffer];
 
-  private histogramGenerator = TextureHistogramGenerator.get(this.gl);
-
-  computeHistograms(
-    count: number,
-    histogramSpecifications: HistogramSpecifications,
-  ) {
-    this.histogramGenerator.compute(
-      count,
-      this.offscreenFramebuffer.depthBuffer!.texture,
-      this.histogramInputTextures,
-      histogramSpecifications,
-      this.chunkManager.chunkQueueManager.frameNumberCounter.frameNumber,
-    );
-  }
-
   projectionParameters: Owned<
     DerivedProjectionParameters<SliceViewProjectionParameters>
   >;
@@ -241,17 +218,6 @@ export class SliceView extends Base {
             viewportNormalInGlobalCoordinates[i] = viewMatrix[i * 4 + 2];
           }
         },
-      }),
-    );
-    this.registerDisposer(this.projectionParameters);
-    this.registerDisposer(
-      this.projectionParameters.changed.add((oldValue, newValue) => {
-        if (
-          oldValue.displayDimensionRenderInfo !==
-          newValue.displayDimensionRenderInfo
-        ) {
-          this.updateVisibleLayers();
-        }
       }),
     );
     const rpc = this.chunkManager.rpc!;
@@ -384,16 +350,6 @@ export class SliceView extends Base {
         changed = true;
       }
     }
-    for (const [renderLayer, layerInfo] of visibleLayers) {
-      if (layerInfo.lastSeenGeneration === curUpdateGeneration) continue;
-      rpcMessage.layerId = renderLayer.rpcId;
-      rpc.invoke(SLICEVIEW_REMOVE_VISIBLE_LAYER_RPC_ID, rpcMessage);
-      visibleLayers.delete(renderLayer);
-      disposeTransformedSources(renderLayer, layerInfo.allSources);
-      invokeDisposers(layerInfo.disposers);
-      renderLayer.dispose();
-      changed = true;
-    }
     if (changed) {
       this.visibleSourcesStale = true;
     }
@@ -410,36 +366,6 @@ export class SliceView extends Base {
 
   get valid() {
     return this.navigationState.valid;
-  }
-
-  private getOffscreenFramebufferWithHistograms(count: number) {
-    const { offscreenFramebuffersWithHistograms } = this;
-    let framebuffer = offscreenFramebuffersWithHistograms[count];
-    if (framebuffer === undefined) {
-      const { gl, histogramInputTextures, offscreenFramebuffer } = this;
-      if (histogramInputTextures.length < count) {
-        histogramInputTextures.push(
-          ...makeTextureBuffers(
-            gl,
-            count - histogramInputTextures.length,
-            WebGL2RenderingContext.R8,
-            WebGL2RenderingContext.RED,
-          ),
-        );
-      }
-      const colorBuffers = [offscreenFramebuffer.colorBuffers[0].addRef()];
-      for (let i = 0; i < count; ++i) {
-        colorBuffers.push(histogramInputTextures[i].addRef());
-      }
-      framebuffer = this.registerDisposer(
-        new FramebufferConfiguration(gl, {
-          colorBuffers,
-          depthBuffer: offscreenFramebuffer.depthBuffer!.addRef(),
-        }),
-      );
-      offscreenFramebuffersWithHistograms[count] = framebuffer;
-    }
-    return framebuffer;
   }
 
   updateRendering() {
@@ -467,13 +393,6 @@ export class SliceView extends Base {
       wireFrame: false,
     };
     for (const renderLayer of this.visibleLayerList) {
-      const histogramCount = false ? 0 : renderLayer.getDataHistogramCount();
-      const framebuffer =
-        this.getOffscreenFramebufferWithHistograms(histogramCount);
-      framebuffer.bind(width, height);
-      for (let i = 0; i < histogramCount; ++i) {
-        gl.clearBufferfv(WebGL2RenderingContext.COLOR, 1 + i, kZeroVec4);
-      }
       gl.enable(WebGL2RenderingContext.DEPTH_TEST);
       gl.depthFunc(WebGL2RenderingContext.LESS);
       gl.clearDepth(1);

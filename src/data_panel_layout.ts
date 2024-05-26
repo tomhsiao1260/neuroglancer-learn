@@ -50,13 +50,7 @@ export interface ViewerUIState extends SliceViewViewerState {
   inputEventBindings: InputEventBindings;
 }
 
-const AXES_RELATIVE_ORIENTATION = new Map([
-  ["xy", undefined],
-  ["xz", quat.rotateX(quat.create(), quat.create(), Math.PI / 2)],
-  ["yz", quat.rotateY(quat.create(), quat.create(), Math.PI / 2)],
-]);
-
-export function makeSliceView(
+export function makeState(
   viewerState: SliceViewViewerState,
   baseToSelf?: quat,
 ) {
@@ -77,11 +71,7 @@ export function makeSliceView(
       viewerState.navigationState.depthRange.addRef(),
     );
   }
-  return new SliceView(
-    viewerState.chunkManager,
-    viewerState.layerManager,
-    navigationState,
-  );
+  return navigationState;
 }
 
 export function getCommonViewerState(viewer: ViewerUIState) {
@@ -101,26 +91,41 @@ export class FourPanelLayout extends RefCounted {
   constructor(public viewer: ViewerUIState) {
     super();
 
-    const { display } = viewer;
+    const { display, chunkManager, layerManager } = viewer;
     this.element.style.flex = "1";
     this.element.style.display = "flex";
     this.element.style.flexDirection = "row";
     const state = getCommonViewerState(viewer);
 
     const elementXY = document.createElement("div");
-    const orthXY = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("xy"));
     elementXY.style.flex = "1";
-    new SliceViewPanel(display, elementXY, orthXY, state);
+    const quatXY = undefined;
+    const sliceViewXY = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(viewer, quatXY),
+    );
+    new SliceViewPanel(display, elementXY, sliceViewXY, state);
 
     const elementYZ = document.createElement("div");
-    const orthYZ = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("yz"));
     elementYZ.style.flex = "1";
-    new SliceViewPanel(display, elementYZ, orthYZ, state);
+    const quatYZ = quat.rotateY(quat.create(), quat.create(), Math.PI / 2);
+    const sliceViewYZ = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(viewer, quatYZ),
+    );
+    new SliceViewPanel(display, elementYZ, sliceViewYZ, state);
 
     const elementXZ = document.createElement("div");
-    const orthXZ = makeSliceView(viewer, AXES_RELATIVE_ORIENTATION.get("xz"));
     elementXZ.style.flex = "1";
-    new SliceViewPanel(display, elementXZ, orthXZ, state);
+    const quatXZ = quat.rotateX(quat.create(), quat.create(), Math.PI / 2);
+    const sliceViewXZ = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(viewer, quatXZ),
+    );
+    new SliceViewPanel(display, elementXZ, sliceViewXZ, state);
 
     this.element.appendChild(elementXY);
     this.element.appendChild(elementYZ);

@@ -167,7 +167,7 @@ export interface SliceViewRenderLayer {
   renderScaleTarget: WatchableValueInterface<number>;
 
   filterVisibleSources(
-    sliceView: SliceViewBase<SliceViewChunkSource, SliceViewRenderLayer>,
+    sliceView: any,
     sources: readonly TransformedSource[],
   ): Iterable<TransformedSource>;
 }
@@ -667,7 +667,7 @@ export function makeSliceViewChunkSpecification<
 }
 
 export function* filterVisibleSources(
-  sliceView: SliceViewBase,
+  sliceView: any,
   renderLayer: SliceViewRenderLayer,
   sources: readonly TransformedSource[],
 ): Iterable<TransformedSource> {

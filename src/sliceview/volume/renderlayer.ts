@@ -698,15 +698,5 @@ void main() {
       }
     }
     endShader();
-    this.vertexIdHelper.disable();
-    if (!renderContext.wireFrame) {
-      const dataHistogramCount = this.getDataHistogramCount();
-      if (dataHistogramCount > 0) {
-        sliceView.computeHistograms(
-          dataHistogramCount,
-          this.dataHistogramSpecifications,
-        );
-      }
-    }
   }
 }

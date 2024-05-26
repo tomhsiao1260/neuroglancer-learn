@@ -433,7 +433,7 @@ export class SliceViewRenderLayerBackend
   }
 
   filterVisibleSources(
-    sliceView: SliceViewBase,
+    sliceView: any,
     sources: readonly TransformedSource[],
   ): Iterable<TransformedSource> {
     return filterVisibleSources(sliceView, this, sources);

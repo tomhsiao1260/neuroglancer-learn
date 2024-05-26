@@ -17,7 +17,6 @@
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { ChunkRenderLayerFrontend } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
-import type { VisibleLayerInfo } from "#src/layer/index.js";
 import type {
   ChunkTransformParameters,
   RenderLayerTransformOrError,
@@ -28,10 +27,9 @@ import type {
   ThreeDimensionalReadyRenderContext,
   ThreeDimensionalRenderContext,
 } from "#src/renderlayer.js";
-import { RenderLayer, VisibilityTrackedRenderLayer } from "#src/renderlayer.js";
+import { RenderLayer } from "#src/renderlayer.js";
 import { SharedWatchableValue } from "#src/shared_watchable_value.js";
 import type {
-  SliceViewBase,
   SliceViewProjectionParameters,
   SliceViewSourceOptions,
   TransformedSource,
@@ -46,13 +44,12 @@ import type {
   SliceViewChunkSource,
   SliceViewSingleResolutionSource,
 } from "#src/sliceview/frontend.js";
-import type { SliceViewPanel } from "#src/sliceview/panel.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { constantWatchableValue } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
 import type { ShaderModule } from "#src/webgl/shader.js";
-import type { RpcId, SharedObject } from "#src/worker_rpc.js";
+import type { RpcId } from "#src/worker_rpc.js";
 
 export interface SliceViewRenderLayerOptions {
   /**
@@ -242,7 +239,7 @@ export abstract class SliceViewRenderLayer<
   abstract draw(renderContext: SliceViewRenderContext): void;
 
   filterVisibleSources(
-    sliceView: SliceViewBase,
+    sliceView: any,
     sources: readonly TransformedSource[],
   ): Iterable<TransformedSource> {
     return filterVisibleSources(sliceView, this, sources);
