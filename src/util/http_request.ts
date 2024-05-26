@@ -96,15 +96,13 @@ export function pickDelay(attemptNumber: number): number {
 async function getFile(input: string, fileTree: any) {
   let res = fileTree;
 
-  console.log("step B", fileTree);
+  console.log("File Tree: ", fileTree, input);
 
   const path = new URL(input).pathname;
   const parts = path
     .split("/")
     .filter((part) => part.length > 0)
     .slice(1);
-
-  console.log("step C", parts);
 
   for (const part of parts) {
     res = res[part];
@@ -119,7 +117,6 @@ async function fetchOk(input: RequestInfo): Promise<Response> {
     try {
       response = await getFile(input, self.fileTree);
     } catch (error) {
-      console.log("step A", error);
       throw HttpError.fromRequestError(input, error);
     }
     return response;

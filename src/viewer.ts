@@ -187,7 +187,7 @@ export class Viewer extends RefCounted {
 
   private async makeUI() {
     await new Promise((resolve) => {
-      setTimeout(resolve, 500);
+      setTimeout(resolve, 10000);
     });
 
     // create an image layer
