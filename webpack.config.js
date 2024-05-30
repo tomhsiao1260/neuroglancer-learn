@@ -1,3 +1,4 @@
+import { EsbuildPlugin } from "esbuild-loader";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 
 export default (env, args) => {
@@ -30,6 +31,18 @@ export default (env, args) => {
             { loader: "css-loader" },
           ],
         },
+      ],
+    },
+    optimization: {
+      // splitChunks: {
+      //   chunks: "all",
+      // },
+      minimizer: [
+        new EsbuildPlugin({
+          target: "es2020",
+          format: "esm",
+          css: true,
+        }),
       ],
     },
     devServer: {

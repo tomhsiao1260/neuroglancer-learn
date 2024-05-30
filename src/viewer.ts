@@ -3,6 +3,25 @@ import type { DisplayContext } from "#src/display_context.ts";
 import { FourPanelLayout } from "#src/data_panel_layout.ts";
 import { LayerManager } from "#src/layer/index.ts";
 
+export class DataManagementContext extends RefCounted {
+  worker: Worker;
+
+  constructor() {
+    super();
+
+    this.worker = new Worker(
+      new URL("./chunk_worker.bundle.js", import.meta.url),
+      { type: "module" }
+    );
+
+    this.worker.onmessage = (e) => {
+      console.log("data from worker: ", e.data);
+    };
+
+    this.worker.postMessage({ message: "hello" });
+  }
+}
+
 export class Viewer extends RefCounted {
   element: HTMLElement;
 
@@ -10,6 +29,8 @@ export class Viewer extends RefCounted {
 
   constructor(public display: DisplayContext) {
     super();
+
+    const dataContext = new DataManagementContext();
 
     this.makeUI();
   }

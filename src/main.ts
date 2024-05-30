@@ -2,6 +2,7 @@ import "#src/viewer.css";
 import { handleFileBtnOnClick } from "#src/util/file_system.ts";
 import { DisplayContext } from "#src/display_context.ts";
 import { Viewer } from "#src/viewer.ts";
+import { registerSharedObject } from "#src/worker_rpc.ts";
 import {
   cancellableFetchOk,
   responseArrayBuffer,
@@ -14,8 +15,7 @@ document.addEventListener("keyup", async (e) => {
     const fileTree = await handleFileBtnOnClick();
     self.fileTree = fileTree;
 
-    test();
-
+    fileSystemAPI();
     makeMinimalViewer();
   }
 });
@@ -28,13 +28,14 @@ function makeMinimalViewer() {
   return new Viewer(display);
 }
 
-// load data via file system api
-const url = {};
-url.zarray = "http://localhost:9000/scroll.zarr/0/.zarray";
-url.zattrs = "http://localhost:9000/scroll.zarr/.zattrs";
-url.data = "http://localhost:9000/scroll.zarr/0/0/0/0";
+async function fileSystemAPI() {
+  // load data via file system api
+  const url = {
+    zarray: "http://localhost:9000/scroll.zarr/0/.zarray",
+    zattrs: "http://localhost:9000/scroll.zarr/.zattrs",
+    data: "http://localhost:9000/scroll.zarr/0/0/0/0",
+  };
 
-async function test() {
   const [zarray, zattrs, data] = await Promise.all([
     cancellableFetchOk(url.zarray, (res) => responseJson(res)),
     cancellableFetchOk(url.zattrs, (res) => responseJson(res)),
