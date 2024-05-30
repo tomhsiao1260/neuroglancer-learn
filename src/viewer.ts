@@ -50,12 +50,7 @@ import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import { RPC } from "#src/worker_rpc.js";
-
-async function postMessage(worker: any) {
-  await new Promise((res) => setTimeout(res, 100));
-  worker.postMessage({ fileTree: self.fileTree });
-}
+import { RPC, READY_ID } from "#src/worker_rpc.js";
 
 function addNewLayer(manager: any) {
   const managedLayer = new ManagedUserLayer("new layer", manager);
@@ -82,15 +77,15 @@ export class DataManagementContext extends RefCounted {
     public frameNumberCounter: FrameNumberCounter,
   ) {
     super();
-    // Note: For compatibility with multiple bundlers, a browser-compatible URL
-    // must be used with `new URL`, which means a Node.js subpath import like
-    // "#src/chunk_worker.bundle.js" cannot be used.
     this.worker = new Worker(
-      /* webpackChunkName: "neuroglancer_chunk_worker" */
       new URL("./chunk_worker.bundle.js", import.meta.url),
       { type: "module" },
     );
-    postMessage(this.worker);
+
+    this.worker.addEventListener("message", (e: any) => {
+      const isReady = e.data.functionName === READY_ID;
+      if (isReady) this.worker.postMessage({ fileTree: self.fileTree });
+    });
 
     this.chunkQueueManager = this.registerDisposer(
       new ChunkQueueManager(
@@ -186,10 +181,6 @@ export class Viewer extends RefCounted {
   }
 
   private async makeUI() {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10000);
-    });
-
     // create an image layer
     addNewLayer({
       chunkManager: this.chunkManager,

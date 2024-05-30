@@ -95,8 +95,7 @@ export function pickDelay(attemptNumber: number): number {
  */
 async function getFile(input: string, fileTree: any) {
   let res = fileTree;
-
-  console.log("File Tree: ", fileTree, input);
+  // console.log("File Tree: ", fileTree, input);
 
   const path = new URL(input).pathname;
   const parts = path

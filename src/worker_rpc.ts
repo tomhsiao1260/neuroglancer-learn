@@ -35,7 +35,7 @@ const DEBUG_MESSAGES = false;
 
 const PROMISE_RESPONSE_ID = "rpc.promise.response";
 const PROMISE_CANCEL_ID = "rpc.promise.cancel";
-const READY_ID = "rpc.ready";
+export const READY_ID = "rpc.ready";
 
 const handlers = new Map<string, RPCHandler>();
 
