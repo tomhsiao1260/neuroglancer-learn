@@ -32,3 +32,18 @@ body {
   overflow: hidden;
   flex: 1;
 }
+
+#upload-container {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#upload {
+  padding: 20px 20px;
+  font-size: 50px;
+  border-radius: 20px;
+  cursor: pointer;
+}

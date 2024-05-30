@@ -4,21 +4,40 @@ import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
 import "#src/viewer.css";
 
-// Space key: Load data via file system api
-document.addEventListener("keyup", async (e) => {
-  if (e.code === "Space") {
-    const fileTree = await handleFileBtnOnClick();
-    self.fileTree = fileTree;
+// Zarr upload button
+makeUploadButton();
 
-    const viewer = makeMinimalViewer();
-    setDefaultInputEventBindings(viewer.inputEventBindings);
-  }
+// Space Key: used for debugging
+document.addEventListener("keyup", async (e) => {
+  if (e.code === "Space") makeMinimalViewer();
 });
 
-function makeMinimalViewer() {
+function makeUploadButton() {
+  const button = document.createElement("button");
+  button.id = "upload";
+  button.innerText = "choose .zarr folder";
+  button.onclick = makeMinimalViewer;
+
+  const container = document.createElement("div");
+  container.id = "upload-container";
+  container.appendChild(button);
+  document.body.appendChild(container);
+}
+
+async function makeMinimalViewer() {
+  const container = document.querySelector("#upload-container");
+  container.style.display = "none";
+
+  // Load data via file system api
+  const fileTree = await handleFileBtnOnClick();
+  self.fileTree = fileTree;
+
   const target = document.createElement("div");
   target.id = "neuroglancer-container";
   document.body.appendChild(target);
   const display = new DisplayContext(target);
-  return new Viewer(display);
+  const viewer = new Viewer(display);
+
+  // mouse control events
+  setDefaultInputEventBindings(viewer.inputEventBindings);
 }
