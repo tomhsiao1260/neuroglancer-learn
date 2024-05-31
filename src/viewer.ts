@@ -166,12 +166,13 @@ export class Viewer extends RefCounted {
   inputEventBindings: InputEventBindings;
   dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
   chunkManager: ChunkManager;
+  dataContext: any;
 
   constructor(public display: DisplayContext) {
     super();
 
-    const dataContext = new DataManagementContext(display.gl, display);
-    this.chunkManager = dataContext.chunkManager;
+    this.dataContext = new DataManagementContext(display.gl, display);
+    this.chunkManager = this.dataContext.chunkManager;
 
     this.inputEventBindings = { sliceView: new EventActionMap() };
     this.dataSourceProvider = getDefaultDataSourceProvider();

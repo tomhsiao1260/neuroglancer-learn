@@ -2,6 +2,7 @@ import { handleFileBtnOnClick } from "#src/util/file_system.js";
 import { setDefaultInputEventBindings } from "#src/default_input_event_bindings.js";
 import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
+import { READY_ID } from "#src/worker_rpc.js";
 import "#src/viewer.css";
 
 // Zarr upload button
@@ -18,16 +19,16 @@ function makeUploadButton() {
   button.innerText = "choose .zarr folder";
   button.onclick = makeMinimalViewer;
 
-  const container = document.createElement("div");
-  container.id = "upload-container";
-  container.appendChild(button);
-  document.body.appendChild(container);
+  const loading = document.createElement("div");
+  loading.id = "loading";
+  loading.innerText = "Loading ...";
+  loading.style.display = "none";
+
+  document.body.appendChild(button);
+  document.body.appendChild(loading);
 }
 
 async function makeMinimalViewer() {
-  const container = document.querySelector("#upload-container");
-  container.style.display = "none";
-
   // Load data via file system api
   const fileTree = await handleFileBtnOnClick();
   self.fileTree = fileTree;
@@ -40,4 +41,18 @@ async function makeMinimalViewer() {
 
   // mouse control events
   setDefaultInputEventBindings(viewer.inputEventBindings);
+  // handle loading text
+  loading(viewer.dataContext.worker);
+}
+
+function loading(worker) {
+  const loading = document.querySelector("#loading");
+  const button = document.querySelector("#upload");
+  loading.style.display = "inline";
+  button.style.display = "none";
+
+  worker.addEventListener("message", (e) => {
+    const isReady = e.data.functionName === READY_ID;
+    if (isReady) loading.style.display = "none";
+  });
 }
