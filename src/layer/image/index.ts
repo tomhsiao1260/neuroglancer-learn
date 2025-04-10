@@ -42,8 +42,6 @@ import {
   getTrackableFragmentMain,
   ImageRenderLayer,
 } from "#src/sliceview/volume/image_renderlayer.js";
-import { trackableAlphaValue } from "#src/trackable_alpha.js";
-import { trackableBlendModeValue } from "#src/trackable_blend.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import {
   makeCachedDerivedWatchableValue,
@@ -66,8 +64,6 @@ import {
 import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 
-const OPACITY_JSON_KEY = "opacity";
-const BLEND_JSON_KEY = "blend";
 const SHADER_JSON_KEY = "shader";
 const SHADER_CONTROLS_JSON_KEY = "shaderControls";
 const CROSS_SECTION_RENDER_SCALE_JSON_KEY = "crossSectionRenderScale";
@@ -85,8 +81,6 @@ const [
   volumeRenderingDepthSamplesMaxLogScale,
 ] = getVolumeRenderingDepthSamplesBoundsLogScale();
 export class ImageUserLayer extends UserLayer {
-  opacity = trackableAlphaValue(0.5);
-  blendMode = trackableBlendModeValue();
   fragmentMain = getTrackableFragmentMain();
   shaderError = makeWatchableShaderError();
   dataType = new WatchableValue<DataType | undefined>(undefined);
@@ -98,9 +92,7 @@ export class ImageUserLayer extends UserLayer {
   volumeRenderingDepthSamplesTarget = trackableRenderScaleTarget(
     VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE,
     2 ** volumeRenderingDepthSamplesOriginLogScale,
-    2 ** volumeRenderingDepthSamplesMaxLogScale - 1,
   );
-
   channelCoordinateSpace = new TrackableCoordinateSpace();
   channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
     this.channelCoordinateSpace,
@@ -108,13 +100,11 @@ export class ImageUserLayer extends UserLayer {
   );
   channelSpace = this.registerDisposer(
     makeCachedLazyDerivedWatchableValue(
-      (channelCoordinateSpace) =>
-        makeValueOrError(() => getChannelSpace(channelCoordinateSpace)),
+      (channelSpace) => getChannelSpace(channelSpace),
       this.channelCoordinateSpace,
     ),
   );
   volumeRenderingMode = trackableShaderModeValue();
-
   shaderControlState = this.registerDisposer(
     new ShaderControlState(
       this.fragmentMain,
@@ -164,8 +154,6 @@ export class ImageUserLayer extends UserLayer {
     super(managedLayer);
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalDimension;
-    this.blendMode.changed.add(this.specificationChanged.dispatch);
-    this.opacity.changed.add(this.specificationChanged.dispatch);
     this.fragmentMain.changed.add(this.specificationChanged.dispatch);
     this.shaderControlState.changed.add(this.specificationChanged.dispatch);
     this.sliceViewRenderScaleTarget.changed.add(
@@ -197,8 +185,6 @@ export class ImageUserLayer extends UserLayer {
       loadedSubsource.activate((context) => {
         loadedSubsource.addRenderLayer(
           new ImageRenderLayer(volume, {
-            opacity: this.opacity,
-            blendMode: this.blendMode,
             shaderControlState: this.shaderControlState,
             shaderError: this.shaderError,
             transform: loadedSubsource.getRenderLayerTransform(
@@ -246,10 +232,6 @@ export class ImageUserLayer extends UserLayer {
 
   restoreState(specification: any) {
     super.restoreState(specification);
-    this.opacity.restoreState(specification[OPACITY_JSON_KEY]);
-    verifyOptionalObjectProperty(specification, BLEND_JSON_KEY, (blendValue) =>
-      this.blendMode.restoreState(blendValue),
-    );
     this.fragmentMain.restoreState(specification[SHADER_JSON_KEY]);
     this.shaderControlState.restoreState(
       specification[SHADER_CONTROLS_JSON_KEY],
@@ -290,8 +272,6 @@ export class ImageUserLayer extends UserLayer {
   }
   toJSON() {
     const x = super.toJSON();
-    x[OPACITY_JSON_KEY] = this.opacity.toJSON();
-    x[BLEND_JSON_KEY] = this.blendMode.toJSON();
     x[SHADER_JSON_KEY] = this.fragmentMain.toJSON();
     x[SHADER_CONTROLS_JSON_KEY] = this.shaderControlState.toJSON();
     x[CROSS_SECTION_RENDER_SCALE_JSON_KEY] =
