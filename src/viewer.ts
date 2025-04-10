@@ -119,8 +119,6 @@ export class DataManagementContext extends RefCounted {
   }
 }
 
-export class InputEventBindings extends DataPanelInputEventBindings {}
-
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   position = this.registerDisposer(new Position(this.coordinateSpace));
@@ -163,7 +161,7 @@ export class Viewer extends RefCounted {
   );
 
   visibility: WatchableVisibilityPriority;
-  inputEventBindings: InputEventBindings;
+  inputEventBindings: any;
   dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
   chunkManager: ChunkManager;
   dataContext: any;
