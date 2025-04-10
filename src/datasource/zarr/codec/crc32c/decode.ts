@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import type { Configuration } from "#src/datasource/zarr/codec/crc32c/resolve.js";
-import { registerCodec } from "#src/datasource/zarr/codec/decode.js";
+import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 
@@ -24,8 +23,8 @@ const checksumSize = 4;
 registerCodec({
   name: "crc32c",
   kind: CodecKind.bytesToBytes,
-  async decode(
-    configuration: Configuration,
+  decode(
+    configuration: unknown,
     encoded: Uint8Array,
     cancellationToken: CancellationToken,
   ): Promise<Uint8Array> {
@@ -37,6 +36,6 @@ registerCodec({
       );
     }
     // TODO(jbms): Actually verify checksum.
-    return encoded.subarray(0, encoded.length - checksumSize);
+    return Promise.resolve(encoded.subarray(0, encoded.length - checksumSize));
   },
 });

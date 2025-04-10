@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import "#src/datasource/zarr/codec/register.js";
 import "#src/datasource/zarr/codec/blosc/decode.js";
 import "#src/datasource/zarr/codec/zstd/decode.js";
 import "#src/datasource/zarr/codec/bytes/decode.js";
@@ -21,15 +22,10 @@ import "#src/datasource/zarr/codec/crc32c/decode.js";
 
 import { WithParameters } from "#src/chunk_manager/backend.js";
 import { VolumeChunkSourceParameters } from "#src/datasource/zarr/base.js";
-import {
-  applySharding,
-  decodeArray,
-} from "#src/datasource/zarr/codec/decode.js";
+import { decodeArray } from "#src/datasource/zarr/codec/simple_decode.js";
 import "#src/datasource/zarr/codec/gzip/decode.js";
-import "#src/datasource/zarr/codec/sharding_indexed/decode.js";
-import "#src/datasource/zarr/codec/transpose/decode.js";
 import { ChunkKeyEncoding } from "#src/datasource/zarr/metadata/index.js";
-import { getSpecialProtocolKvStore } from "#src/kvstore/special/index.js";
+import { getFileReader } from "#src/util/file_reader.js";
 import { postProcessRawData } from "#src/sliceview/backend_chunk_decoders/postprocess.js";
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import { VolumeChunkSource } from "#src/sliceview/volume/backend.js";
@@ -41,11 +37,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
   VolumeChunkSource,
   VolumeChunkSourceParameters,
 ) {
-  private chunkKvStore = applySharding(
-    this.chunkManager,
-    this.parameters.metadata.codecs,
-    getSpecialProtocolKvStore(this.parameters.url + "/"),
-  );
+  private fileReader = getFileReader(this.parameters.url + "/");
 
   async download(chunk: VolumeChunk, cancellationToken: CancellationToken) {
     chunk.chunkDataSize = this.spec.chunkDataSize;
@@ -84,14 +76,10 @@ export class ZarrVolumeChunkSource extends WithParameters(
       baseKey += `${sep}${keyCoords[i]}`;
       sep = metadata.dimensionSeparator;
     }
-    const { chunkKvStore } = this;
-    const response = await chunkKvStore.kvStore.read(
-      chunkKvStore.getChunkKey(chunkGridPosition, baseKey),
-      { cancellationToken },
-    );
+    const response = await this.fileReader.read(baseKey);
     if (response !== undefined) {
       const decoded = await decodeArray(
-        chunkKvStore.decodeCodecs,
+        metadata.codecs,
         response.data,
         cancellationToken,
       );

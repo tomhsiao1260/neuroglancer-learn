@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-import type { ChunkManager } from "#src/chunk_manager/backend.js";
-import type {
-  CodecArrayInfo,
-  CodecChainSpec,
-} from "#src/datasource/zarr/codec/index.js";
+import type { CodecArrayInfo, CodecChainSpec } from "#src/datasource/zarr/codec/index.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
-import type { ReadableKvStore } from "#src/kvstore/index.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
-import type { RefCounted } from "#src/util/disposable.js";
 
 export interface Codec {
   name: string;
@@ -49,20 +43,6 @@ export interface ArrayToBytesCodec<Configuration = unknown> extends Codec {
   ): Promise<ArrayBufferView>;
 }
 
-export type ShardingKey<BaseKey> = {
-  base: BaseKey;
-  subChunk: number[];
-};
-
-export interface ShardingCodec<Configuration = unknown> extends Codec {
-  kind: CodecKind.arrayToBytes;
-  getShardedKvStore<BaseKey>(
-    configuration: Configuration,
-    chunkManager: ChunkManager,
-    base: ReadableKvStore<BaseKey>,
-  ): ReadableKvStore<ShardingKey<BaseKey>> & RefCounted;
-}
-
 export interface BytesToBytesCodec<Configuration = unknown> extends Codec {
   kind: CodecKind.bytesToBytes;
   decode(
@@ -76,21 +56,15 @@ const codecRegistry = {
   [CodecKind.arrayToArray]: new Map<string, ArrayToArrayCodec>(),
   [CodecKind.arrayToBytes]: new Map<string, ArrayToBytesCodec>(),
   [CodecKind.bytesToBytes]: new Map<string, BytesToBytesCodec>(),
-  sharding: new Map<string, ShardingCodec>(),
 };
 
 export function registerCodec<Configuration>(
   codec:
     | ArrayToArrayCodec<Configuration>
     | ArrayToBytesCodec<Configuration>
-    | BytesToBytesCodec<Configuration>
-    | ShardingCodec<Configuration>,
+    | BytesToBytesCodec<Configuration>,
 ) {
-  if (codec.kind === CodecKind.arrayToBytes && "getShardedKvStore" in codec) {
-    codecRegistry.sharding.set(codec.name, codec as any);
-  } else {
-    codecRegistry[codec.kind].set(codec.name, codec as any);
-  }
+  codecRegistry[codec.kind].set(codec.name, codec as any);
 }
 
 export async function decodeArray(
@@ -98,6 +72,7 @@ export async function decodeArray(
   encoded: Uint8Array,
   cancellationToken: CancellationToken,
 ): Promise<ArrayBufferView> {
+  // First apply bytes-to-bytes codecs
   const bytesToBytes = codecs[CodecKind.bytesToBytes];
   for (let i = bytesToBytes.length; i--; ) {
     const codec = bytesToBytes[i];
@@ -112,6 +87,7 @@ export async function decodeArray(
     );
   }
 
+  // Then apply array-to-bytes codec
   let decoded: ArrayBufferView;
   {
     const codec = codecs[CodecKind.arrayToBytes];
@@ -127,6 +103,7 @@ export async function decodeArray(
     );
   }
 
+  // Finally apply array-to-array codecs
   const arrayToArray = codecs[CodecKind.arrayToArray];
   for (let i = arrayToArray.length; i--; ) {
     const codec = arrayToArray[i];
@@ -143,72 +120,4 @@ export async function decodeArray(
   }
 
   return decoded;
-}
-
-export function applySharding(
-  chunkManager: ChunkManager,
-  codecs: CodecChainSpec,
-  baseKvStore: ReadableKvStore<string>,
-): {
-  kvStore: ReadableKvStore<unknown>;
-  getChunkKey: (
-    chunkGridPosition: ArrayLike<number>,
-    baseKey: string,
-  ) => unknown;
-  decodeCodecs: CodecChainSpec;
-} {
-  let kvStore: ReadableKvStore<unknown> = baseKvStore;
-  let curCodecs = codecs;
-  while (true) {
-    const { shardingInfo } = curCodecs;
-    if (shardingInfo === undefined) break;
-    const codec = curCodecs[CodecKind.arrayToBytes];
-    const impl = codecRegistry.sharding.get(codec.name);
-    if (impl === undefined) {
-      throw new Error(`Unsupported codec: ${JSON.stringify(codec.name)}`);
-    }
-    kvStore = impl.getShardedKvStore(
-      codec.configuration,
-      chunkManager,
-      kvStore,
-    );
-    curCodecs = shardingInfo.subChunkCodecs;
-  }
-
-  const decodeCodecs = curCodecs;
-
-  function getChunkKey(
-    chunkGridPosition: ArrayLike<number>,
-    baseKey: string,
-  ): unknown {
-    let key: unknown = baseKey;
-    const rank = chunkGridPosition.length;
-    let curCodecs = codecs;
-    while (curCodecs.shardingInfo !== undefined) {
-      const layoutInfo = codecs.layoutInfo[codecs.layoutInfo.length - 1];
-      const { physicalToLogicalDimension, readChunkShape } = layoutInfo;
-      const { subChunkShape, subChunkGridShape, subChunkCodecs } =
-        curCodecs.shardingInfo;
-      const subChunk = new Array<number>(rank);
-      for (
-        let fOrderPhysicalDim = 0;
-        fOrderPhysicalDim < rank;
-        ++fOrderPhysicalDim
-      ) {
-        const subChunkDim =
-          physicalToLogicalDimension[rank - 1 - fOrderPhysicalDim];
-        subChunk[subChunkDim] =
-          Math.floor(
-            (chunkGridPosition[fOrderPhysicalDim] *
-              readChunkShape[subChunkDim]) /
-              subChunkShape[subChunkDim],
-          ) % subChunkGridShape[subChunkDim];
-      }
-      key = { base: key, subChunk };
-      curCodecs = subChunkCodecs;
-    }
-    return key;
-  }
-
-  return { kvStore, getChunkKey, decodeCodecs };
-}
+} 

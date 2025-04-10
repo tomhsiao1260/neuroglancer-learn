@@ -16,8 +16,8 @@
 
 import { decodeGzip } from "#src/async_computation/decode_gzip_request.js";
 import { requestAsyncComputation } from "#src/async_computation/request.js";
-import { registerCodec } from "#src/datasource/zarr/codec/decode.js";
 import type { Configuration } from "#src/datasource/zarr/codec/gzip/resolve.js";
+import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 

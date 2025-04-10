@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-import type { Configuration } from "#src/datasource/zarr/codec/bytes/resolve.js";
-import { registerCodec } from "#src/datasource/zarr/codec/decode.js";
-import type { CodecArrayInfo } from "#src/datasource/zarr/codec/index.js";
+import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
+import type { CodecArrayInfo } from "#src/datasource/zarr/codec/index.js";
 import { DATA_TYPE_BYTES, makeDataTypeArrayView } from "#src/util/data_type.js";
-import { convertEndian } from "#src/util/endian.js";
+import { convertEndian, type Endianness } from "#src/util/endian.js";
 
 registerCodec({
   name: "bytes",
   kind: CodecKind.arrayToBytes,
-  async decode(
-    configuration: Configuration,
+  decode(
+    configuration: { endian: Endianness },
     decodedArrayInfo: CodecArrayInfo,
     encoded: Uint8Array,
     cancellationToken: CancellationToken,
@@ -49,6 +48,6 @@ registerCodec({
       encoded.byteLength,
     );
     convertEndian(data, configuration.endian, bytesPerElement);
-    return data;
+    return Promise.resolve(data);
   },
 });

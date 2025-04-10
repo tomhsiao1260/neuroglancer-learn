@@ -17,7 +17,7 @@
 import { decodeBlosc } from "#src/async_computation/decode_blosc_request.js";
 import { requestAsyncComputation } from "#src/async_computation/request.js";
 import type { Configuration } from "#src/datasource/zarr/codec/blosc/resolve.js";
-import { registerCodec } from "#src/datasource/zarr/codec/decode.js";
+import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 
