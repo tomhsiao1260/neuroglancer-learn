@@ -58,7 +58,6 @@ export interface SliceViewRenderLayerOptions {
    */
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
   renderScaleTarget?: WatchableValueInterface<number>;
-  renderScaleHistogram?: RenderScaleHistogram;
 
   /**
    * Specifies the position within the "local" coordinate space.
@@ -93,7 +92,6 @@ export abstract class SliceViewRenderLayer<
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
 
   renderScaleTarget: WatchableValueInterface<number>;
-  renderScaleHistogram?: RenderScaleHistogram;
 
   // This is only used by `ImageRenderLayer` currently, but is defined here because
   // `sliceview/frontend.ts` is responsible for providing the texture buffers used for accumulating
@@ -178,9 +176,8 @@ export abstract class SliceViewRenderLayer<
   ) {
     super();
 
-    const { renderScaleTarget = trackableRenderScaleTarget(1) } = options;
+    const { renderScaleTarget = new WatchableValue(1) } = options;
     this.renderScaleTarget = renderScaleTarget;
-    this.renderScaleHistogram = options.renderScaleHistogram;
     this.transform = options.transform;
     this.localPosition = options.localPosition;
     this.rpcTransfer = options.rpcTransfer || {};

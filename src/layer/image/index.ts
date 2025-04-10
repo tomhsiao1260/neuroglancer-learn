@@ -32,10 +32,6 @@ import {
 } from "#src/layer/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
 import { getChannelSpace } from "#src/render_coordinate_transform.js";
-import {
-  RenderScaleHistogram,
-  trackableRenderScaleTarget,
-} from "#src/render_scale_statistics.js";
 import { DataType, VolumeType } from "#src/sliceview/volume/base.js";
 import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import {
@@ -47,6 +43,7 @@ import {
   makeCachedDerivedWatchableValue,
   makeCachedLazyDerivedWatchableValue,
   registerNested,
+  TrackableValue,
   WatchableValue,
 } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
@@ -84,14 +81,10 @@ export class ImageUserLayer extends UserLayer {
   fragmentMain = getTrackableFragmentMain();
   shaderError = makeWatchableShaderError();
   dataType = new WatchableValue<DataType | undefined>(undefined);
-  sliceViewRenderScaleHistogram = new RenderScaleHistogram();
-  sliceViewRenderScaleTarget = trackableRenderScaleTarget(1);
-  volumeRenderingChunkResolutionHistogram = new RenderScaleHistogram(
-    volumeRenderingDepthSamplesOriginLogScale,
-  );
-  volumeRenderingDepthSamplesTarget = trackableRenderScaleTarget(
+  sliceViewRenderScaleTarget = new TrackableValue(1, x => x);
+  volumeRenderingDepthSamplesTarget = new TrackableValue(
     VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE,
-    2 ** volumeRenderingDepthSamplesOriginLogScale,
+    x => x
   );
   channelCoordinateSpace = new TrackableCoordinateSpace();
   channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
@@ -191,7 +184,6 @@ export class ImageUserLayer extends UserLayer {
               this.channelCoordinateSpace,
             ),
             renderScaleTarget: this.sliceViewRenderScaleTarget,
-            renderScaleHistogram: this.sliceViewRenderScaleHistogram,
             localPosition: this.localPosition,
             channelCoordinateSpace: this.channelCoordinateSpace,
           }),
@@ -206,8 +198,6 @@ export class ImageUserLayer extends UserLayer {
               this.channelCoordinateSpace,
             ),
             depthSamplesTarget: this.volumeRenderingDepthSamplesTarget,
-            chunkResolutionHistogram:
-              this.volumeRenderingChunkResolutionHistogram,
             localPosition: this.localPosition,
             channelCoordinateSpace: this.channelCoordinateSpace,
             mode: this.volumeRenderingMode,
@@ -248,7 +238,7 @@ export class ImageUserLayer extends UserLayer {
       (volumeRenderingMode) => {
         if (typeof volumeRenderingMode === "boolean") {
           this.volumeRenderingMode.value = volumeRenderingMode
-            ? VolumeRenderingModes.ON
+            ? VolumeRenderingModes.DEFAULT
             : VolumeRenderingModes.OFF;
         } else {
           this.volumeRenderingMode.restoreState(volumeRenderingMode);
@@ -257,19 +247,13 @@ export class ImageUserLayer extends UserLayer {
     );
     verifyOptionalObjectProperty(
       specification,
-      VOLUME_RENDERING_GAIN_JSON_KEY,
-      (volumeRenderingGain) =>
-        this.volumeRenderingGain.restoreState(volumeRenderingGain),
-    );
-    verifyOptionalObjectProperty(
-      specification,
       VOLUME_RENDERING_DEPTH_SAMPLES_JSON_KEY,
-      (volumeRenderingDepthSamplesTarget) =>
-        this.volumeRenderingDepthSamplesTarget.restoreState(
-          volumeRenderingDepthSamplesTarget,
-        ),
+      (depthSamples) => {
+        this.volumeRenderingDepthSamplesTarget.restoreState(depthSamples);
+      },
     );
   }
+
   toJSON() {
     const x = super.toJSON();
     x[SHADER_JSON_KEY] = this.fragmentMain.toJSON();
@@ -278,7 +262,6 @@ export class ImageUserLayer extends UserLayer {
       this.sliceViewRenderScaleTarget.toJSON();
     x[CHANNEL_DIMENSIONS_JSON_KEY] = this.channelCoordinateSpace.toJSON();
     x[VOLUME_RENDERING_JSON_KEY] = this.volumeRenderingMode.toJSON();
-    x[VOLUME_RENDERING_GAIN_JSON_KEY] = this.volumeRenderingGain.toJSON();
     x[VOLUME_RENDERING_DEPTH_SAMPLES_JSON_KEY] =
       this.volumeRenderingDepthSamplesTarget.toJSON();
     return x;
