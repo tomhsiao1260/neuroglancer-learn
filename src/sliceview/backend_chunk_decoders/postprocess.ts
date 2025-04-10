@@ -28,11 +28,5 @@ export async function postProcessRawData(
   data: ArrayBufferView,
 ) {
   cancellationToken;
-  const { spec } = chunk.source!;
-  if (spec.compressedSegmentationBlockSize !== undefined) {
-    // 如果不需要壓縮分割，直接使用原始數據
-    chunk.data = data;
-  } else {
-    chunk.data = data;
-  }
+  chunk.data = data;
 }

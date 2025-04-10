@@ -27,8 +27,6 @@ export async function decodeRawChunk(
   cancellationToken: CancellationToken,
   response: ArrayBuffer,
   endianness: Endianness = ENDIANNESS,
-  byteOffset = 0,
-  byteLength: number = response.byteLength,
 ) {
   cancellationToken;
   const { spec } = chunk.source!;
@@ -36,18 +34,15 @@ export async function decodeRawChunk(
   const numElements = vector.prod(chunk.chunkDataSize!);
   const bytesPerElement = DATA_TYPE_BYTES[dataType];
   const expectedBytes = numElements * bytesPerElement;
-  if (expectedBytes !== byteLength) {
+  if (expectedBytes !== response.byteLength) {
     throw new Error(
-      `Raw-format chunk is ${byteLength} bytes, ` +
+      `Raw-format chunk is ${response.byteLength} bytes, ` +
         `but ${numElements} * ${bytesPerElement} = ${expectedBytes} bytes are expected.`,
     );
   }
-  const data = makeDataTypeArrayView(
-    dataType,
-    response,
-    byteOffset,
-    byteLength,
-  );
-  convertEndian(data, endianness, bytesPerElement);
+  const data = makeDataTypeArrayView(dataType, response);
+  if (endianness !== ENDIANNESS) {
+    convertEndian(data, bytesPerElement, endianness);
+  }
   await postProcessRawData(chunk, cancellationToken, data);
 }
