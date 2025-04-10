@@ -16,24 +16,18 @@
 
 import { EventActionMap } from "#src/util/event_action_map.js";
 
-let defaultSliceViewPanelBindings: EventActionMap | undefined;
-export function getDefaultSliceViewPanelBindings() {
-  if (defaultSliceViewPanelBindings === undefined) {
-    defaultSliceViewPanelBindings = EventActionMap.fromObject({
-      "at:mousedown0": {
-        action: "translate-via-mouse-drag",
-        stopPropagation: true,
-      },
-      "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
-      "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
-    });
-  }
-  return defaultSliceViewPanelBindings;
-}
+const defaultSliceViewPanelBindings = EventActionMap.fromObject({
+  "at:mousedown0": {
+    action: "translate-via-mouse-drag",
+    stopPropagation: true,
+  },
+  "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
+  "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
+});
 
 export function setDefaultInputEventBindings(inputEventBindings: any) {
   inputEventBindings.sliceView.addParent(
-    getDefaultSliceViewPanelBindings(),
+    defaultSliceViewPanelBindings,
     Number.NEGATIVE_INFINITY,
   );
 }
