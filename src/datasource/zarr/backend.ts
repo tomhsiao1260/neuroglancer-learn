@@ -15,15 +15,12 @@
  */
 
 import "#src/datasource/zarr/codec/register.js";
-import "#src/datasource/zarr/codec/blosc/decode.js";
-import "#src/datasource/zarr/codec/zstd/decode.js";
 import "#src/datasource/zarr/codec/bytes/decode.js";
 import "#src/datasource/zarr/codec/crc32c/decode.js";
 
 import { WithParameters } from "#src/chunk_manager/backend.js";
 import { VolumeChunkSourceParameters } from "#src/datasource/zarr/base.js";
 import { decodeArray } from "#src/datasource/zarr/codec/simple_decode.js";
-import "#src/datasource/zarr/codec/gzip/decode.js";
 import { ChunkKeyEncoding } from "#src/datasource/zarr/metadata/index.js";
 import { getFileReader } from "#src/util/file_reader.js";
 import { postProcessRawData } from "#src/sliceview/backend_chunk_decoders/postprocess.js";

@@ -18,11 +18,6 @@
  * Converts raw data volumes to the appropriate format required by the frontend.
  */
 
-import {
-  encodeCompressedSegmentationUint32,
-  encodeCompressedSegmentationUint64,
-} from "#src/async_computation/encode_compressed_segmentation_request.js";
-import { requestAsyncComputation } from "#src/async_computation/request.js";
 import { DataType } from "#src/sliceview/base.js";
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
@@ -35,40 +30,8 @@ export async function postProcessRawData(
   cancellationToken;
   const { spec } = chunk.source!;
   if (spec.compressedSegmentationBlockSize !== undefined) {
-    const { dataType } = spec;
-    const chunkDataSize = chunk.chunkDataSize!;
-    const shape = [
-      chunkDataSize[0],
-      chunkDataSize[1],
-      chunkDataSize[2],
-      chunkDataSize[3] || 1,
-    ];
-    switch (dataType) {
-      case DataType.UINT32:
-        chunk.data = await requestAsyncComputation(
-          encodeCompressedSegmentationUint32,
-          cancellationToken,
-          [data.buffer],
-          data as Uint32Array,
-          shape,
-          spec.compressedSegmentationBlockSize,
-        );
-        break;
-      case DataType.UINT64:
-        chunk.data = await requestAsyncComputation(
-          encodeCompressedSegmentationUint64,
-          cancellationToken,
-          [data.buffer],
-          data as Uint32Array,
-          shape,
-          spec.compressedSegmentationBlockSize,
-        );
-        break;
-      default:
-        throw new Error(
-          `Unsupported data type for compressed segmentation: ${DataType[dataType]}`,
-        );
-    }
+    // 如果不需要壓縮分割，直接使用原始數據
+    chunk.data = data;
   } else {
     chunk.data = data;
   }

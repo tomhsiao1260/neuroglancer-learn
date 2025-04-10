@@ -87,45 +87,11 @@
       "neuroglancer/datasource/zarr:disabled": "./src/datasource/zarr/backend.ts",
       "default": "./src/datasource/zarr/backend.ts"
     },
-    "#datasource/zarr/async_computation": {
-      "neuroglancer/datasource/zarr:enabled": "./src/datasource/zarr/async_computation.ts",
-      "neuroglancer/datasource:none_by_default": "./src/util/false.ts",
-      "neuroglancer/datasource/zarr:disabled": "./src/datasource/zarr/async_computation.ts",
-      "default": "./src/datasource/zarr/async_computation.ts"
-    },
     "#datasource/zarr/register_default": {
       "neuroglancer/datasource/zarr:enabled": "./src/datasource/zarr/register_default.ts",
       "neuroglancer/datasource:none_by_default": "./src/util/false.ts",
       "neuroglancer/datasource/zarr:disabled": "./src/datasource/zarr/register_default.ts",
       "default": "./src/datasource/zarr/register_default.ts"
-    },
-    "#layer/annotation": {
-      "neuroglancer/layer/annotation:enabled": "./src/layer/annotation/index.ts",
-      "neuroglancer/layer:none_by_default": "./src/util/false.ts",
-      "default": "./src/layer/annotation/index.ts"
-    },
-    "#layer/image": {
-      "neuroglancer/layer/image:enabled": "./src/layer/image/index.ts",
-      "neuroglancer/layer:none_by_default": "./src/util/false.ts",
-      "default": "./src/layer/image/index.ts"
-    },
-    "#layer/segmentation": {
-      "neuroglancer/layer/segmentation:enabled": "./src/layer/segmentation/index.ts",
-      "neuroglancer/layer:none_by_default": "./src/util/false.ts",
-      "default": "./src/layer/segmentation/index.ts"
-    },
-    "#layer/single_mesh": {
-      "neuroglancer/layer/single_mesh:enabled": "./src/layer/single_mesh/index.ts",
-      "neuroglancer/layer:none_by_default": "./src/util/false.ts",
-      "default": "./src/layer/single_mesh/index.ts"
-    },
-    "#main": {
-      "neuroglancer/python": "./src/main_python.ts",
-      "default": "./src/main.ts"
-    },
-    "#python_integration_build": {
-      "neuroglancer/python": "./src/util/true.ts",
-      "default": "./src/util/false.ts"
     }
   }
 }

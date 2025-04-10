@@ -17,8 +17,5 @@
 import { registerCodec } from "./simple_decode.ts";
 
 // Register all codecs
-import "./blosc/decode.ts";
 import "./bytes/decode.ts";
-import "./crc32c/decode.ts";
-import "./gzip/decode.ts";
-import "./zstd/decode.ts"; 
+import "./crc32c/decode.ts"; 
