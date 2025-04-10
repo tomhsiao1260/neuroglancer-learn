@@ -47,29 +47,6 @@ import { optionallyRestoreFromJsonMember } from "#src/util/trackable.js";
 import { TrackableEnum } from "#src/util/trackable_enum.js";
 import * as vector from "#src/util/vector.js";
 
-export enum NavigationLinkType {
-  LINKED = 0,
-  RELATIVE = 1,
-  UNLINKED = 2,
-}
-
-export enum NavigationSimpleLinkType {
-  LINKED = 0,
-  UNLINKED = 2,
-}
-
-export class TrackableNavigationLink extends TrackableEnum<NavigationLinkType> {
-  constructor(value = NavigationLinkType.LINKED) {
-    super(NavigationLinkType, value);
-  }
-}
-
-export class TrackableNavigationSimpleLink extends TrackableEnum<NavigationSimpleLinkType> {
-  constructor(value = NavigationSimpleLinkType.LINKED) {
-    super(NavigationSimpleLinkType, value);
-  }
-}
-
 const tempVec3 = vec3.create();
 const tempQuat = quat.create();
 
@@ -79,7 +56,7 @@ function makeLinked<
 >(
   self: T,
   peer: T,
-  link: TrackableNavigationLink,
+  link: TrackableEnum<number>,
   operations: {
     assign: (target: T, source: T) => void;
     isValid: (a: T) => boolean;
@@ -98,15 +75,15 @@ function makeLinked<
     }
     updatingSelf = true;
     switch (link.value) {
-      case NavigationLinkType.UNLINKED:
+      case 2: // UNLINKED
         if (operations.isValid(self)) {
           break;
         }
       // fallthrough
-      case NavigationLinkType.LINKED:
+      case 0: // LINKED
         operations.assign(self, peer);
         break;
-      case NavigationLinkType.RELATIVE:
+      case 1: // RELATIVE
         operations.add(self, peer, selfMinusPeer!);
         break;
     }
@@ -117,29 +94,29 @@ function makeLinked<
       return;
     }
     switch (link.value) {
-      case NavigationLinkType.UNLINKED:
+      case 2: // UNLINKED
         break;
-      case NavigationLinkType.LINKED:
+      case 0: // LINKED
         operations.assign(peer, self);
         break;
-      case NavigationLinkType.RELATIVE:
+      case 1: // RELATIVE
         operations.subtract(peer, self, selfMinusPeer!);
         break;
     }
   };
-  let previousLinkValue = NavigationLinkType.UNLINKED;
+  let previousLinkValue = 2; // UNLINKED
   const handleLinkUpdate = () => {
     const linkValue = link.value;
     if (linkValue !== previousLinkValue) {
       switch (linkValue) {
-        case NavigationLinkType.UNLINKED:
+        case 2: // UNLINKED
           selfMinusPeer = undefined;
           break;
-        case NavigationLinkType.LINKED:
+        case 0: // LINKED
           selfMinusPeer = undefined;
           operations.assign(self, peer);
           break;
-        case NavigationLinkType.RELATIVE:
+        case 1: // RELATIVE
           selfMinusPeer = operations.difference(self, peer);
           break;
       }
@@ -157,13 +134,13 @@ function makeLinked<
 function makeSimpleLinked<T extends RefCounted & { changed: NullarySignal }>(
   self: T,
   peer: T,
-  link: TrackableNavigationSimpleLink,
+  link: TrackableEnum<number>,
   operations: {
     assign: (target: T, source: T) => void;
     isValid: (a: T) => boolean;
   },
 ) {
-  return makeLinked(self, peer, link as any, operations as any);
+  return makeLinked(self, peer, link, operations as any);
 }
 
 export class Position extends RefCounted {
@@ -680,19 +657,19 @@ export class LinkedCoordinateSpacePlaybackVelocity extends RefCounted {
 
   constructor(
     public peer: Owned<CoordinateSpacePlaybackVelocity>,
-    public positionLink: TrackableLinkInterface,
+    public positionLink: TrackableEnum<number>,
   ) {
     super();
     this.registerDisposer(peer);
     this.velocity.changed.add(() => {
-      if (this.positionLink.value === NavigationLinkType.UNLINKED) {
+      if (this.positionLink.value === 2) {
         this.changed.dispatch();
       } else {
         this.peer.assign(this.velocity);
       }
     });
     const updateSelf = () => {
-      if (this.positionLink.value !== NavigationLinkType.UNLINKED) {
+      if (this.positionLink.value !== 2) {
         this.velocity.assign(this.peer);
       }
     };
@@ -701,26 +678,26 @@ export class LinkedCoordinateSpacePlaybackVelocity extends RefCounted {
   }
 
   toJSON() {
-    if (this.positionLink.value !== NavigationLinkType.UNLINKED) {
+    if (this.positionLink.value !== 2) {
       return undefined;
     }
     return this.velocity.toJSON();
   }
 
   reset() {
-    if (this.positionLink.value === NavigationLinkType.UNLINKED) {
+    if (this.positionLink.value === 2) {
       this.velocity.reset();
     }
   }
 
   restoreState(obj: unknown) {
-    if (this.positionLink.value === NavigationLinkType.UNLINKED) {
+    if (this.positionLink.value === 2) {
       this.velocity.restoreState(obj);
     }
   }
 
   copyToPeer() {
-    if (this.positionLink.value === NavigationLinkType.UNLINKED) {
+    if (this.positionLink.value === 2) {
       this.peer.assign(this.velocity);
     }
   }
@@ -882,21 +859,17 @@ export class PlaybackManager extends RefCounted {
   }
 }
 
-type TrackableLinkInterface =
-  | TrackableNavigationLink
-  | TrackableNavigationSimpleLink;
-
 function restoreLinkedFromJson(
-  link: TrackableLinkInterface,
+  link: TrackableEnum<number>,
   value: { restoreState(obj: unknown): void },
   json: any,
 ) {
   if (json === undefined || Object.keys(json).length === 0) {
-    link.value = NavigationLinkType.LINKED;
+    link.value = 0;
     return;
   }
   verifyObject(json);
-  link.value = NavigationLinkType.UNLINKED;
+  link.value = 2;
   verifyObjectProperty(json, "value", (x) => {
     if (x !== undefined) {
       value.restoreState(x);
@@ -911,7 +884,7 @@ interface LinkableState<T> extends RefCounted, Trackable {
 
 abstract class LinkedBase<
   T extends LinkableState<T>,
-  Link extends TrackableLinkInterface = TrackableNavigationLink,
+  Link extends TrackableEnum<number> = TrackableEnum<number>,
 > implements Trackable
 {
   value: T;
@@ -920,12 +893,12 @@ abstract class LinkedBase<
   }
   constructor(
     public peer: Owned<T>,
-    public link: Link = new TrackableNavigationLink() as any,
+    public link: Link = new TrackableEnum({LINKED: 0, RELATIVE: 1, UNLINKED: 2}, 0) as any,
   ) {}
 
   toJSON() {
     const { link } = this;
-    if (link.value === NavigationLinkType.LINKED) {
+    if (link.value === 0) {
       return undefined;
     }
     return { link: link.toJSON(), value: this.getValueJson() };
@@ -936,7 +909,7 @@ abstract class LinkedBase<
   }
 
   reset() {
-    this.link.value = NavigationLinkType.LINKED;
+    this.link.value = 0;
   }
 
   restoreState(obj: any) {
@@ -944,10 +917,10 @@ abstract class LinkedBase<
   }
 
   copyToPeer() {
-    if (this.link.value !== NavigationLinkType.LINKED) {
-      this.link.value = NavigationLinkType.UNLINKED;
+    if (this.link.value !== 0) {
+      this.link.value = 2;
       this.peer.assign(this.value);
-      this.link.value = NavigationLinkType.LINKED;
+      this.link.value = 0;
     }
   }
 }
@@ -955,31 +928,8 @@ abstract class LinkedBase<
 abstract class SimpleLinkedBase<
     T extends RefCounted & Trackable & { assign(other: T): void },
   >
-  extends LinkedBase<T, TrackableNavigationSimpleLink>
+  extends LinkedBase<T, TrackableEnum<number>>
   implements Trackable {}
-
-export class LinkedPosition extends LinkedBase<Position> {
-  value = makeLinked(
-    new Position(this.peer.coordinateSpace),
-    this.peer,
-    this.link,
-    {
-      assign: (a: Position, b: Position) => a.assign(b),
-      isValid: (a: Position) => {
-        return a.valid;
-      },
-      difference: Position.getOffset,
-      add: Position.addOffset,
-      subtract: (
-        target: Position,
-        source: Position,
-        amount: Float32Array | undefined,
-      ) => {
-        Position.addOffset(target, source, amount, -1);
-      },
-    },
-  );
-}
 
 function quaternionIsIdentity(q: quat) {
   return q[0] === 0 && q[1] === 0 && q[2] === 0 && q[3] === 1;
@@ -1085,37 +1035,6 @@ export class OrientationState extends RefCounted {
   }
 }
 
-export class LinkedOrientationState extends LinkedBase<OrientationState> {
-  value = makeLinked(new OrientationState(), this.peer, this.link, {
-    assign: (a: OrientationState, b: OrientationState) => a.assign(b),
-    isValid: () => true,
-    difference: (a: OrientationState, b: OrientationState) => {
-      const temp = quat.create();
-      return quat.multiply(
-        temp,
-        quat.invert(temp, b.orientation),
-        a.orientation,
-      );
-    },
-    add: (target: OrientationState, source: OrientationState, amount: quat) => {
-      quat.multiply(target.orientation, source.orientation, amount);
-      target.changed.dispatch();
-    },
-    subtract: (
-      target: OrientationState,
-      source: OrientationState,
-      amount: quat,
-    ) => {
-      quat.multiply(
-        target.orientation,
-        source.orientation,
-        quat.invert(tempQuat, amount),
-      );
-      target.changed.dispatch();
-    },
-  });
-}
-
 export interface RelativeDisplayScales {
   /**
    * Array of length `coordinateSpace.rank` specifying scale factors on top of (will be multiply by)
@@ -1209,9 +1128,9 @@ export class TrackableRelativeDisplayScales
     newFactors.fill(1);
     for (let i = 0; i < rank; ++i) {
       const id = newDimensionIds[i];
-      const oldIndex = oldDimensionIds.indexOf(id);
-      if (oldIndex === -1) continue;
-      newFactors[i] = oldFactors[oldIndex];
+      const oldDim = oldDimensionIds.indexOf(id);
+      if (oldDim === -1) continue;
+      newFactors[i] = oldFactors[oldDim];
     }
     if (arraysEqual(newFactors, oldFactors)) return value;
     value = this.value_ = { factors: newFactors };
@@ -1248,62 +1167,13 @@ function mapPerDimensionValues<
   return output;
 }
 
-export class LinkedRelativeDisplayScales extends LinkedBase<TrackableRelativeDisplayScales> {
-  value = makeLinked(
+export class LinkedRelativeDisplayScales extends SimpleLinkedBase<TrackableRelativeDisplayScales> {
+  value = makeSimpleLinked(
     new TrackableRelativeDisplayScales(this.peer.coordinateSpace),
     this.peer,
     this.link,
     {
       assign: (target, source) => target.assign(source),
-      difference: (a, b) => {
-        const { factors: fa } = a.value;
-        const coordinateSpace = a.coordinateSpace.value;
-        const fb = b.value.factors;
-        return {
-          coordinateSpace,
-          offsets: vector.subtract(new Float64Array(fa.length), fa, fb),
-        };
-      },
-      add: (
-        target,
-        source,
-        delta: { offsets: Float64Array; coordinateSpace: CoordinateSpace },
-      ) => {
-        const newOffsets = mapPerDimensionValues(
-          Float64Array,
-          delta.offsets,
-          delta.coordinateSpace,
-          target.coordinateSpace.value,
-          () => 0,
-        );
-        target.setFactors(
-          vector.add(
-            new Float64Array(newOffsets.length),
-            newOffsets,
-            source.value.factors,
-          ),
-        );
-      },
-      subtract: (
-        target,
-        source,
-        delta: { offsets: Float64Array; coordinateSpace: CoordinateSpace },
-      ) => {
-        const newOffsets = mapPerDimensionValues(
-          Float64Array,
-          delta.offsets,
-          delta.coordinateSpace,
-          target.coordinateSpace.value,
-          () => 0,
-        );
-        target.setFactors(
-          vector.subtract(
-            new Float64Array(newOffsets.length),
-            source.value.factors,
-            newOffsets,
-          ),
-        );
-      },
       isValid: () => true,
     },
   );
@@ -1696,9 +1566,6 @@ export class DisplayPose extends RefCounted {
     this.registerDisposer(displayDimensionRenderInfo);
     this.registerDisposer(position.changed.add(this.changed.dispatch));
     this.registerDisposer(orientation.changed.add(this.changed.dispatch));
-    this.registerDisposer(
-      displayDimensionRenderInfo.changed.add(this.changed.dispatch),
-    );
   }
 
   get valid() {
@@ -2286,7 +2153,6 @@ export class NavigationState extends RefCounted {
     this.registerDisposer(depthRange);
     this.registerDisposer(this.pose.changed.add(this.changed.dispatch));
     this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
-    this.registerDisposer(this.depthRange.changed.add(this.changed.dispatch));
   }
 
   get coordinateSpace() {
