@@ -257,396 +257,22 @@ export class Position extends RefCounted {
   }
 }
 
-export enum VelocityBoundaryBehavior {
-  STOP = 0,
-  LOOP = 1,
-  REVERSE = 2,
-}
-
-export const DEFAULT_PLAYBACK_VELOCITY = 10;
-
-export class DimensionPlaybackVelocity {
-  // Velocity in global coordinates per second.
-  velocity: number = DEFAULT_PLAYBACK_VELOCITY;
-  atBoundary: VelocityBoundaryBehavior = VelocityBoundaryBehavior.REVERSE;
-  paused = true;
-}
-
-export class CoordinateSpacePlaybackVelocity extends RefCounted {
-  private velocities_: (Readonly<DimensionPlaybackVelocity> | undefined)[];
-  private curCoordinateSpace: CoordinateSpace | undefined;
-  changed = new NullarySignal();
-  constructor(
-    public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
-  ) {
-    super();
-    this.registerDisposer(
-      coordinateSpace.changed.add(() => {
-        this.handleCoordinateSpaceChanged();
-      }),
-    );
-    this.curCoordinateSpace = coordinateSpace.value;
-    this.velocities_ = new Array(this.curCoordinateSpace?.rank ?? 0);
-  }
-
-  get valid() {
-    return this.coordinateSpace.value.valid;
-  }
-
-  get value(): (Readonly<DimensionPlaybackVelocity> | undefined)[] {
-    this.handleCoordinateSpaceChanged();
-    return this.velocities_;
-  }
-
-  set value(velocities: (Readonly<DimensionPlaybackVelocity> | undefined)[]) {
-    const { curCoordinateSpace } = this;
-    if (
-      curCoordinateSpace === undefined ||
-      curCoordinateSpace.rank !== velocities.length
-    ) {
-      return;
-    }
-    this.velocities_ = velocities;
-    this.changed.dispatch();
-  }
-
-  get(id: DimensionId): DimensionPlaybackVelocity | undefined {
-    const ids = this.coordinateSpace.value?.ids;
-    if (ids === undefined) return;
-    const index = ids.indexOf(id);
-    if (index === -1) return;
-    const velocities = this.value;
-    return velocities[index];
-  }
-
-  dimensionVelocity(
-    owner: RefCounted,
-    id: DimensionId,
-  ): WatchableValueInterface<DimensionPlaybackVelocity | undefined> {
-    const changed = new NullarySignal();
-    let index = -1;
-    const updateIndex = () => {
-      const ids = this.coordinateSpace.value?.ids;
-      if (ids === undefined) {
-        index = -1;
-      } else if (index === -1 || ids[index] !== id) {
-        index = ids.indexOf(id);
-      }
-    };
-    const getVelocity = () => {
-      updateIndex();
-      if (index === -1) return undefined;
-      return this.value[index];
-    };
-    const setVelocity = (
-      newVelocity: Readonly<DimensionPlaybackVelocity> | undefined,
-    ) => {
-      updateIndex();
-      if (index === -1) return;
-      const velocities = this.value;
-      const oldVelocity = velocities[index];
-      if (oldVelocity === newVelocity) return;
-      velocities[index] = newVelocity;
-      this.changed.dispatch();
-    };
-    const prevVelocity = getVelocity();
-    owner.registerDisposer(
-      this.changed.add(() => {
-        const curVelocity = getVelocity();
-        if (curVelocity !== prevVelocity) {
-          changed.dispatch();
-        }
-      }),
-    );
-    return {
-      get value() {
-        return getVelocity();
-      },
-      set value(newVelocity: Readonly<DimensionPlaybackVelocity> | undefined) {
-        setVelocity(newVelocity);
-      },
-      changed,
-    };
-  }
-
-  modifyDimension(
-    id: DimensionId,
-    callback: (
-      oldInfo: DimensionPlaybackVelocity | undefined,
-    ) => DimensionPlaybackVelocity | undefined,
-  ) {
-    const ids = this.coordinateSpace.value?.ids;
-    if (ids === undefined) return;
-    const index = ids.indexOf(id);
-    if (index === -1) return;
-    const velocities = this.value;
-    const oldInfo = velocities[index];
-    const newInfo = callback(oldInfo);
-    if (oldInfo === newInfo) return;
-    velocities[index] = newInfo;
-    this.changed.dispatch();
-  }
-
-  togglePlayback(id: DimensionId, newValue: boolean | undefined = undefined) {
-    this.modifyDimension(id, (oldInfo = new DimensionPlaybackVelocity()) => {
-      return { ...oldInfo, paused: newValue ?? !oldInfo.paused };
-    });
-  }
-
-  playbackEnabled(id: DimensionId): WatchableValueInterface<boolean> {
-    const self = this;
-    return {
-      changed: this.changed,
-      get value() {
-        return self.get(id) !== undefined;
-      },
-      set value(enabled: boolean) {
-        self.modifyDimension(id, (oldInfo) =>
-          enabled ? oldInfo ?? new DimensionPlaybackVelocity() : undefined,
-        );
-      },
-    };
-  }
-
-  multiplyVelocity(id: DimensionId, factor: number) {
-    this.modifyDimension(id, (oldInfo = new DimensionPlaybackVelocity()) => {
-      let newVelocity = Math.round(oldInfo.velocity * factor);
-      if (newVelocity === 0) {
-        newVelocity = Math.sign(oldInfo.velocity) || 1;
-      }
-      return { ...oldInfo, velocity: newVelocity };
-    });
-  }
-
-  private handleCoordinateSpaceChanged() {
-    const coordinateSpace = this.coordinateSpace.value;
-    const prevCoordinateSpace = this.curCoordinateSpace;
-    if (coordinateSpace === prevCoordinateSpace) return;
-    this.curCoordinateSpace = coordinateSpace;
-    const { rank } = coordinateSpace;
-    if (!coordinateSpace.valid) return;
-    if (prevCoordinateSpace === undefined) {
-      let { velocities_ } = this;
-      if (velocities_.length === rank) {
-        // Use the existing velocities if rank is the same.  Otherwise, ignore.
-      } else {
-        velocities_ = new Array<
-          Readonly<DimensionPlaybackVelocity> | undefined
-        >(rank);
-      }
-      this.changed.dispatch();
-      return;
-    }
-    // Match dimensions by ID.
-    const newVelocities = new Array<
-      Readonly<DimensionPlaybackVelocity> | undefined
-    >(rank);
-    const prevVelocities = this.velocities_;
-    const { ids } = coordinateSpace;
-    const { ids: prevDimensionIds } = prevCoordinateSpace;
-    for (let newDim = 0; newDim < rank; ++newDim) {
-      const newDimId = ids[newDim];
-      const oldDim = prevDimensionIds.indexOf(newDimId);
-      if (oldDim !== -1) {
-        newVelocities[newDim] = prevVelocities[oldDim];
-      }
-    }
-    this.velocities_ = newVelocities;
-    this.changed.dispatch();
-  }
-
-  toJSON() {
-    this.handleCoordinateSpaceChanged();
-    const { velocities_: velocities, curCoordinateSpace } = this;
-    if (
-      !curCoordinateSpace?.valid ||
-      !velocities.some((velocity) => velocity !== undefined)
-    ) {
-      return undefined;
-    }
-    const obj: Record<string, any> = {};
-    const { names, rank } = curCoordinateSpace;
-    for (let i = 0; i < rank; ++i) {
-      const info = velocities[i];
-      if (info === undefined) continue;
-      obj[names[i]] = {
-        velocity: info.velocity,
-        atBoundary: VelocityBoundaryBehavior[info.atBoundary].toLowerCase(),
-        paused: info.paused ? undefined : false,
-      };
-    }
-    return obj;
-  }
-
-  reset() {
-    this.handleCoordinateSpaceChanged();
-    this.velocities_ = new Array(this.curCoordinateSpace?.rank ?? 0);
-  }
-
-  restoreState(obj: any) {
-    if (obj === undefined) {
-      this.reset();
-      return;
-    }
-    verifyObject(obj);
-    const curCoordinateSpace = (this.curCoordinateSpace =
-      this.coordinateSpace.value);
-    this.velocities_ = new Array(curCoordinateSpace?.rank ?? 0);
-    if (curCoordinateSpace === undefined) {
-      throw new Error("Must specify dimensions in order to specify velocities");
-    }
-    const velocities = (this.velocities_ = new Array(
-      curCoordinateSpace?.rank ?? 0,
-    ));
-    const { names } = curCoordinateSpace;
-    for (const key of Object.keys(obj)) {
-      const i = names.indexOf(key);
-      if (i === -1) {
-        throw new Error(`Invalid dimension name: ${JSON.stringify(key)}`);
-      }
-      const info = verifyObjectProperty(obj, key, (x) => {
-        if (x === undefined) return undefined;
-        const velocityInfo = x as any;
-        return {
-          velocity: verifyOptionalObjectProperty(
-            velocityInfo,
-            "velocity",
-            verifyFiniteFloat,
-            DEFAULT_PLAYBACK_VELOCITY,
-          ),
-          atBoundary: verifyOptionalObjectProperty(
-            velocityInfo,
-            "atBoundary",
-            (value) => verifyEnumString(value, VelocityBoundaryBehavior),
-            VelocityBoundaryBehavior.STOP,
-          ),
-          paused: verifyOptionalObjectProperty(
-            velocityInfo,
-            "paused",
-            verifyBoolean,
-            true,
-          ),
-        };
-      });
-      if (info !== undefined) {
-        velocities[i] = info;
-      }
-    }
-    this.changed.dispatch();
-  }
-
-  assign(other: Borrowed<CoordinateSpacePlaybackVelocity>) {
-    const otherVelocities = other.value;
-    const velocities = this.value;
-    const rank = velocities.length;
-    let changed = false;
-    for (let i = 0; i < rank; ++i) {
-      const newVelocity = otherVelocities[i];
-      const curVelocity = velocities[i];
-      if (newVelocity !== curVelocity) {
-        if (
-          curVelocity === undefined ||
-          newVelocity === undefined ||
-          !this.velocitiesEqual(curVelocity, newVelocity)
-        ) {
-          changed = true;
-        }
-        velocities[i] = newVelocity;
-      }
-    }
-    if (changed) {
-      this.changed.dispatch();
-    }
-  }
-
-  private velocitiesEqual(
-    a: Readonly<DimensionPlaybackVelocity>,
-    b: Readonly<DimensionPlaybackVelocity>,
-  ): boolean {
-    return (
-      a.velocity === b.velocity &&
-      a.atBoundary === b.atBoundary &&
-      a.paused === b.paused
-    );
-  }
-}
-
-export class LinkedCoordinateSpacePlaybackVelocity extends RefCounted {
-  changed = new NullarySignal();
-  velocity = this.registerDisposer(
-    new CoordinateSpacePlaybackVelocity(this.peer.coordinateSpace),
-  );
-
-  constructor(
-    public peer: Owned<CoordinateSpacePlaybackVelocity>,
-    public positionLink: TrackableEnum<number>,
-  ) {
-    super();
-    this.registerDisposer(peer);
-    this.velocity.changed.add(() => {
-      if (this.positionLink.value === 2) {
-        this.changed.dispatch();
-      } else {
-        this.peer.assign(this.velocity);
-      }
-    });
-    const updateSelf = () => {
-      if (this.positionLink.value !== 2) {
-        this.velocity.assign(this.peer);
-      }
-    };
-    this.registerDisposer(peer.changed.add(updateSelf));
-    updateSelf();
-  }
-
-  toJSON() {
-    if (this.positionLink.value !== 2) {
-      return undefined;
-    }
-    return this.velocity.toJSON();
-  }
-
-  reset() {
-    if (this.positionLink.value === 2) {
-      this.velocity.reset();
-    }
-  }
-
-  restoreState(obj: unknown) {
-    if (this.positionLink.value === 2) {
-      this.velocity.restoreState(obj);
-    }
-  }
-
-  copyToPeer() {
-    if (this.positionLink.value === 2) {
-      this.peer.assign(this.velocity);
-    }
-  }
-}
-
-interface DimensionPlaybackState {
-  dimensionIndex: number;
-  prevCoordinate: number;
-  prevTime: number;
-  generation: number;
-}
-
 export class PlaybackManager extends RefCounted {
-  private dimensionStates = new Map<DimensionId, DimensionPlaybackState>();
+  private dimensionStates = new Map<DimensionId, {
+    dimensionIndex: number;
+    prevCoordinate: number;
+    prevTime: number;
+    generation: number;
+  }>();
   private lastUpdateGeneration = 0;
   private unregisterUpdateStartedCallback: (() => void) | undefined;
 
   constructor(
     public display: { updateStarted: NullarySignal; scheduleRedraw(): void },
     public position: Position,
-    public velocity: CoordinateSpacePlaybackVelocity,
   ) {
     super();
     this.handleVelocityChanged();
-    this.registerDisposer(
-      velocity.changed.add(() => this.handleVelocityChanged()),
-    );
   }
 
   disposed() {
@@ -658,14 +284,10 @@ export class PlaybackManager extends RefCounted {
     const { dimensionStates } = this;
     const ids = this.position.coordinateSpace.value?.ids ?? [];
     const rank = ids.length;
-    const velocities = this.velocity.value;
     const generation = ++this.lastUpdateGeneration;
     const positionVector = this.position.value;
     const curTime = Date.now();
     for (let i = 0; i < rank; ++i) {
-      const velocity = velocities[i];
-      if (velocity === undefined) continue;
-      if (velocity.velocity === 0 || velocity.paused) continue;
       const id = ids[i];
       const state = dimensionStates.get(id);
       if (state === undefined) {
@@ -709,62 +331,31 @@ export class PlaybackManager extends RefCounted {
     const ids = coordinateSpace.ids;
     const positionVector = this.position.value;
     let positionChanged = false;
-    let velocityChanged = false;
     const curTime = Date.now();
-    const velocities = this.velocity.value;
     const {
       bounds: { lowerBounds, upperBounds },
     } = coordinateSpace;
     for (const [id, dimensionState] of this.dimensionStates) {
       const { dimensionIndex } = dimensionState;
       if (ids[dimensionIndex] !== id) continue;
-      const velocity = velocities[dimensionIndex];
       if (
         Math.floor(positionVector[dimensionIndex]) !==
         Math.floor(dimensionState.prevCoordinate)
       ) {
-        // Pause this dimension.
-        if (velocity?.paused === false) {
-          velocities[dimensionIndex] = { ...velocity, paused: true };
-          velocityChanged = true;
-        }
         continue;
       }
       const timeDelta = curTime - dimensionState.prevTime;
-      const velocityValue = velocity?.velocity ?? 0;
-      const delta = (timeDelta * velocityValue) / 1000;
+      const delta = (timeDelta * 10) / 1000; // Default velocity of 10
       if (delta === 0) continue;
       let newCoordinate = positionVector[dimensionIndex] + delta;
       const lowerBound = lowerBounds[dimensionIndex];
       const upperBound = Math.ceil(upperBounds[dimensionIndex] - 1);
       const limit = delta > 0 ? upperBound : lowerBound;
-      const oppositeLimit = delta > 0 ? lowerBound : upperBound;
-      const deltaSign = Math.sign(delta);
       if (
         Number.isFinite(limit) &&
-        newCoordinate * deltaSign >= limit * deltaSign
+        newCoordinate * Math.sign(delta) >= limit * Math.sign(delta)
       ) {
-        switch (velocity!.atBoundary) {
-          case VelocityBoundaryBehavior.LOOP:
-            if (Number.isFinite(oppositeLimit)) {
-              newCoordinate = oppositeLimit;
-              break;
-            }
-          // fallthrough
-          case VelocityBoundaryBehavior.STOP:
-            velocities[dimensionIndex] = { ...velocity!, paused: true };
-            velocityChanged = true;
-            newCoordinate = limit;
-            break;
-          case VelocityBoundaryBehavior.REVERSE:
-            velocities[dimensionIndex] = {
-              ...velocity!,
-              velocity: -velocityValue,
-            };
-            velocityChanged = true;
-            newCoordinate = limit;
-            break;
-        }
+        newCoordinate = limit;
       }
       positionVector[dimensionIndex] = newCoordinate;
       dimensionState.prevCoordinate = positionVector[dimensionIndex];
@@ -773,9 +364,6 @@ export class PlaybackManager extends RefCounted {
     }
     if (positionChanged) {
       this.position.changed.dispatch();
-    }
-    if (velocityChanged) {
-      this.velocity.changed.dispatch();
     }
     this.display.scheduleRedraw();
   }

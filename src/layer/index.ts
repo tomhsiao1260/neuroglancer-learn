@@ -38,9 +38,21 @@ import {
 } from "#src/layer/layer_data_source.js";
 import type { DisplayDimensions } from "#src/navigation_state.js";
 import {
-  CoordinateSpacePlaybackVelocity,
+  DisplayPose,
+  LinkedDisplayDimensions,
+  LinkedRelativeDisplayScales,
+  NavigationState,
+  OrientationState,
+  PlaybackManager,
   Position,
-} from "#src/navigation_state.js";
+  TrackableCrossSectionZoom,
+  TrackableDepthRange,
+  TrackableDisplayDimensions,
+  TrackableProjectionZoom,
+  TrackableRelativeDisplayScales,
+  WatchableDisplayDimensionRenderInfo,
+  displayDimensionRenderInfosEqual,
+} from '#src/navigation_state.js';
 import type { RenderLayerTransform } from "#src/render_coordinate_transform.js";
 import type { RenderLayer } from "#src/renderlayer.js";
 import type { VolumeType } from "#src/sliceview/volume/base.js";
@@ -61,15 +73,9 @@ import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
 import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
-
-const TOOL_JSON_KEY = "tool";
-const TOOL_BINDINGS_JSON_KEY = "toolBindings";
-const LOCAL_POSITION_JSON_KEY = "localPosition";
-const LOCAL_VELOCITY_JSON_KEY = "localVelocity";
-const LOCAL_COORDINATE_SPACE_JSON_KEY = "localDimensions";
-const SOURCE_JSON_KEY = "source";
-const TRANSFORM_JSON_KEY = "transform";
-const PICK_JSON_KEY = "pick";
+import { mixin } from '#src/util/mixin.js';
+import { TrackableBoolean } from '#src/trackable_boolean.js';
+import type { Disposable } from '#src/util/disposable.js';
 
 export interface UserLayerSelectionState {
   generation: number;
@@ -85,10 +91,6 @@ export interface UserLayerSelectionState {
 export class UserLayer extends RefCounted {
   get localPosition() {
     return this.managedLayer.localPosition;
-  }
-
-  get localVelocity() {
-    return this.managedLayer.localVelocity;
   }
 
   get localCoordinateSpaceCombiner() {
@@ -227,6 +229,11 @@ export class UserLayer extends RefCounted {
     return this.managedLayer.manager;
   }
 
+  pick = new TrackableBoolean(false);
+  panels = new TrackableBoolean(false);
+  tool = new TrackableBoolean(false);
+  toolBinder = new TrackableBoolean(false);
+
   constructor(public managedLayer: Borrowed<ManagedUserLayer>) {
     super();
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
@@ -362,7 +369,6 @@ export class UserLayer extends RefCounted {
       specification[LOCAL_COORDINATE_SPACE_JSON_KEY],
     );
     this.localPosition.restoreState(specification[LOCAL_POSITION_JSON_KEY]);
-    this.localVelocity.restoreState(specification[LOCAL_VELOCITY_JSON_KEY]);
     if ((this.constructor as typeof UserLayer).supportsPickOption) {
       this.pick.restoreState(specification[PICK_JSON_KEY]);
     }
@@ -437,7 +443,6 @@ export class UserLayer extends RefCounted {
       [TOOL_BINDINGS_JSON_KEY]: this.toolBinder.toJSON(),
       [LOCAL_COORDINATE_SPACE_JSON_KEY]: this.localCoordinateSpace.toJSON(),
       [LOCAL_POSITION_JSON_KEY]: this.localPosition.toJSON(),
-      [LOCAL_VELOCITY_JSON_KEY]: this.localVelocity.toJSON(),
       [PICK_JSON_KEY]: this.pick.toJSON(),
       ...this.panels.toJSON(),
     };
@@ -479,15 +484,10 @@ export class ManagedUserLayer extends RefCounted {
   localCoordinateSpace = new TrackableCoordinateSpace();
   localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
     this.localCoordinateSpace,
-    isLocalDimension,
   );
   localPosition = this.registerDisposer(
     new Position(this.localCoordinateSpace),
   );
-  localVelocity = this.registerDisposer(
-    new CoordinateSpacePlaybackVelocity(this.localCoordinateSpace),
-  );
-
   readyStateChanged = new NullarySignal();
   layerChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
@@ -796,3 +796,39 @@ export function registerVolumeLayerType(
 ) {
   volumeLayerTypes.set(volumeType, layerConstructor);
 }
+
+export interface PickState {
+  coordinateSpace: CoordinateSpace;
+  position: Float32Array;
+  displayDimensions: DisplayDimensions | undefined;
+  pickedRenderLayer: RenderLayer | null;
+  pickedValue: Uint64;
+  pickedOffset: number;
+}
+
+export interface LayerActionContext {
+  layer: UserLayer;
+  mouseState: MouseSelectionState;
+}
+
+export interface LayerListSpecification extends Disposable {
+  coordinateSpace: WatchableValueInterface<CoordinateSpace>;
+  coordinateSpaceCombiner: CoordinateSpaceCombiner;
+  root: {
+    globalPosition: Position;
+  };
+  dispose(): void;
+}
+
+function dataSourcesToJson(dataSources: LayerDataSource[]) {
+  return dataSources.map((x) => x.toJSON());
+}
+
+const TOOL_JSON_KEY = "tool";
+const TOOL_BINDINGS_JSON_KEY = "toolBindings";
+const LOCAL_POSITION_JSON_KEY = "localPosition";
+const LOCAL_VELOCITY_JSON_KEY = "localVelocity";
+const LOCAL_COORDINATE_SPACE_JSON_KEY = "localDimensions";
+const SOURCE_JSON_KEY = "source";
+const TRANSFORM_JSON_KEY = "transform";
+const PICK_JSON_KEY = "pick";
