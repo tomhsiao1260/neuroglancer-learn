@@ -23,7 +23,6 @@ import {
   dimensionNamesFromJson,
   emptyInvalidCoordinateSpace,
   getBoundingBoxCenter,
-  getCenterBound,
 } from "#src/coordinate_transform.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
@@ -33,22 +32,17 @@ import { mat3, mat4, quat, vec3 } from "#src/util/geom.js";
 import {
   parseArray,
   parseFiniteVec,
-  verifyBoolean,
-  verifyEnumString,
   verifyFiniteFloat,
   verifyFinitePositiveFloat,
   verifyObject,
   verifyObjectProperty,
-  verifyOptionalObjectProperty,
 } from "#src/util/json.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { Trackable } from "#src/util/trackable.js";
-import { optionallyRestoreFromJsonMember } from "#src/util/trackable.js";
 import { TrackableEnum } from "#src/util/trackable_enum.js";
 import * as vector from "#src/util/vector.js";
 
 const tempVec3 = vec3.create();
-const tempQuat = quat.create();
 
 function makeLinked<
   T extends RefCounted & { changed: NullarySignal },

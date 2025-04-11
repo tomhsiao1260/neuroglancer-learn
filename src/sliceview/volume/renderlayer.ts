@@ -66,7 +66,6 @@ import {
 } from "#src/webgl/lerp.js";
 import {
   defineLineShader,
-  drawLines,
   initializeLineShader,
   VERTICES_PER_LINE,
 } from "#src/webgl/lines.js";

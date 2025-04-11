@@ -39,7 +39,7 @@ import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
 import { CancellationTokenSource } from "#src/util/cancellation.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
-import { disposableOnce, RefCounted } from "#src/util/disposable.js";
+import { RefCounted } from "#src/util/disposable.js";
 import {
   verifyBoolean,
   verifyObject,

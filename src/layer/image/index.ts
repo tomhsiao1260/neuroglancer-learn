@@ -32,10 +32,6 @@ import {
 } from "#src/layer/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
 import { getChannelSpace } from "#src/render_coordinate_transform.js";
-import {
-  RenderScaleHistogram,
-  trackableRenderScaleTarget,
-} from "#src/render_scale_statistics.js";
 import { DataType, VolumeType } from "#src/sliceview/volume/base.js";
 import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import {
@@ -46,28 +42,12 @@ import type { WatchableValueInterface } from "#src/trackable_value.js";
 import {
   makeCachedDerivedWatchableValue,
   makeCachedLazyDerivedWatchableValue,
-  registerNested,
   WatchableValue,
 } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
-import { makeValueOrError } from "#src/util/error.js";
-import { verifyOptionalObjectProperty } from "#src/util/json.js";
 import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
-import { MessageList } from "#src/util/message_list.js";
-import type { AnyConstructor } from "#src/util/mixin.js";
-import { NullarySignal } from "#src/util/signal.js";
-import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
-import { addSignalBinding } from "#src/util/signal_binding_updater.js";
-import { Uint64 } from "#src/util/uint64.js";
-import { kEmptyFloat32Vec } from "#src/util/vector.js";
-import { mixin } from '#src/util/mixin.js';
-import { TrackableBoolean } from '#src/trackable_boolean.js';
-import type { Disposable } from '#src/util/disposable.js';
 
-const SHADER_JSON_KEY = "shader";
-const SHADER_CONTROLS_JSON_KEY = "shaderControls";
-const CROSS_SECTION_RENDER_SCALE_JSON_KEY = "crossSectionRenderScale";
 const CHANNEL_DIMENSIONS_JSON_KEY = "channelDimensions";
 
 export interface ImageLayerSelectionState extends UserLayerSelectionState {

@@ -18,7 +18,6 @@
  * Converts raw data volumes to the appropriate format required by the frontend.
  */
 
-import { DataType } from "#src/sliceview/base.js";
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 

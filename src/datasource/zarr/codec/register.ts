@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import { registerCodec } from "./simple_decode.ts";
-
 // Register all codecs
 import "./bytes/decode.ts";
 import "./crc32c/decode.ts"; 

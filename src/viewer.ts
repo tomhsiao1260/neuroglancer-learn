@@ -23,7 +23,6 @@ import {
 } from "#src/chunk_manager/frontend.js";
 import "#src/sliceview/uncompressed_chunk_format.js";
 import { TrackableCoordinateSpace } from "#src/coordinate_transform.js";
-import { InputEventBindings as DataPanelInputEventBindings } from "#src/data_panel_layout.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import type { DisplayContext } from "#src/display_context.js";

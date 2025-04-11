@@ -22,7 +22,6 @@ import {
   CoordinateSpaceCombiner,
   coordinateTransformSpecificationFromLegacyJson,
   emptyInvalidCoordinateSpace,
-  isLocalDimension,
   isLocalOrChannelDimension,
   TrackableCoordinateSpace,
 } from "#src/coordinate_transform.js";
@@ -38,20 +37,7 @@ import {
 } from "#src/layer/layer_data_source.js";
 import type { DisplayDimensions } from "#src/navigation_state.js";
 import {
-  DisplayPose,
-  LinkedDisplayDimensions,
-  LinkedRelativeDisplayScales,
-  NavigationState,
-  OrientationState,
-  PlaybackManager,
   Position,
-  TrackableCrossSectionZoom,
-  TrackableDepthRange,
-  TrackableDisplayDimensions,
-  TrackableProjectionZoom,
-  TrackableRelativeDisplayScales,
-  WatchableDisplayDimensionRenderInfo,
-  displayDimensionRenderInfosEqual,
 } from '#src/navigation_state.js';
 import type { RenderLayerTransform } from "#src/render_coordinate_transform.js";
 import type { RenderLayer } from "#src/renderlayer.js";
@@ -73,7 +59,6 @@ import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
 import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
-import { mixin } from '#src/util/mixin.js';
 import { TrackableBoolean } from '#src/trackable_boolean.js';
 import type { Disposable } from '#src/util/disposable.js';
 
