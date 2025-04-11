@@ -20,11 +20,6 @@ import type { CoordinateSpace } from "#src/coordinate_transform.js";
 import type { VisibleLayerInfo } from "#src/layer/index.js";
 import { UserLayer } from "#src/layer/index.js";
 import type { RenderLayerTransformOrError } from "#src/render_coordinate_transform.js";
-import type { RenderScaleHistogram } from "#src/render_scale_statistics.js";
-import {
-  numRenderScaleHistogramBins,
-  renderScaleHistogramBinSize,
-} from "#src/render_scale_statistics.js";
 import { SharedWatchableValue } from "#src/shared_watchable_value.js";
 import { getNormalizedChunkLayout } from "#src/sliceview/base.js";
 import type { FrontendTransformedSource } from "#src/sliceview/frontend.js";
@@ -38,7 +33,7 @@ import type {
   MultiscaleVolumeChunkSource,
   VolumeChunk,
   VolumeChunkSource,
-} from "#src/sliceview/volume/frontend.js";
+} from "#src/sliceview/volume/base.js";
 import { defineChunkDataShaderAccess } from "#src/sliceview/volume/frontend.js";
 import type {
   NestedStateManager,
@@ -87,9 +82,14 @@ import {
   setControlsInShader,
 } from "#src/webgl/shader_ui_controls.js";
 import { defineVertexId, VertexIdHelper } from "#src/webgl/vertex_id.js";
+import { NullarySignal } from "#src/util/signal.js";
+import type { MouseSelectionState } from "#src/mouse_selection_state.js";
+import type { RenderLayer } from "#src/render_layer.js";
+import type { LayerChunkProgressInfo } from "#src/layer_chunk_progress_info.js";
 
 export const VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE = 64;
 const VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_ORIGIN = 1;
+const VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_MAX = 10;
 const VOLUME_RENDERING_RESOLUTION_INDICATOR_BAR_HEIGHT = 10;
 
 const depthSamplerTextureUnit = Symbol("depthSamplerTextureUnit");
@@ -121,7 +121,6 @@ export interface VolumeRenderingRenderLayerOptions {
   channelCoordinateSpace: WatchableValueInterface<CoordinateSpace>;
   localPosition: WatchableValueInterface<Float32Array>;
   depthSamplesTarget: WatchableValueInterface<number>;
-  chunkResolutionHistogram: RenderScaleHistogram;
   mode: TrackableVolumeRenderingModeValue;
 }
 
@@ -137,11 +136,7 @@ export function getVolumeRenderingDepthSamplesBoundsLogScale(): [
   number,
   number,
 ] {
-  const logScaleMax = Math.round(
-    VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_ORIGIN +
-      numRenderScaleHistogramBins * renderScaleHistogramBinSize,
-  );
-  return [VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_ORIGIN, logScaleMax];
+  return [VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_ORIGIN, VOLUME_RENDERING_DEPTH_SAMPLES_LOG_SCALE_MAX];
 }
 
 function clampAndRoundResolutionTargetValue(value: number) {
@@ -154,7 +149,7 @@ function clampAndRoundResolutionTargetValue(value: number) {
   return clampToInterval(depthSamplesBounds, Math.round(value)) as number;
 }
 
-export class VolumeRenderingRenderLayer extends UserLayer {
+export class VolumeRenderingRenderLayer extends UserLayer implements RenderLayer {
   gain: WatchableValueInterface<number>;
   multiscaleSource: MultiscaleVolumeChunkSource;
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
@@ -162,10 +157,18 @@ export class VolumeRenderingRenderLayer extends UserLayer {
   localPosition: WatchableValueInterface<Float32Array>;
   shaderControlState: ShaderControlState;
   depthSamplesTarget: WatchableValueInterface<number>;
-  chunkResolutionHistogram: RenderScaleHistogram;
   mode: TrackableVolumeRenderingModeValue;
   backend: ChunkRenderLayerFrontend;
   private vertexIdHelper: VertexIdHelper;
+
+  layerChanged = new NullarySignal();
+  redrawNeeded = new NullarySignal();
+  layerChunkProgressInfo: LayerChunkProgressInfo = {
+    numVisibleChunksNeeded: 0,
+    numVisibleChunksAvailable: 0,
+    numPrefetchChunksNeeded: 0,
+    numPrefetchChunksAvailable: 0,
+  };
 
   private shaderGetter: ParameterizedContextDependentShaderGetter<
     { emitter: ShaderModule; chunkFormat: ChunkFormat; wireFrame: boolean },
@@ -185,6 +188,10 @@ export class VolumeRenderingRenderLayer extends UserLayer {
     return true;
   }
 
+  updateMouseState(mouseState: MouseSelectionState) {
+    // No-op
+  }
+
   constructor(options: VolumeRenderingRenderLayerOptions) {
     super();
     this.gain = options.gain;
@@ -194,7 +201,6 @@ export class VolumeRenderingRenderLayer extends UserLayer {
     this.shaderControlState = options.shaderControlState;
     this.localPosition = options.localPosition;
     this.depthSamplesTarget = options.depthSamplesTarget;
-    this.chunkResolutionHistogram = options.chunkResolutionHistogram;
     this.mode = options.mode;
     this.registerDisposer(
       this.chunkResolutionHistogram.visibility.add(this.visibility),

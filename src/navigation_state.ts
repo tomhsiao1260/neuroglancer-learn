@@ -189,9 +189,9 @@ export class Position extends RefCounted {
     getBoundingBoxCenter(this.coordinates_, bounds);
     const { voxelCenterAtIntegerCoordinates } = bounds;
     for (let i = 0; i < 3; ++i) {
-      if (voxelCenterAtIntegerCoordinates[i]) {
+          if (voxelCenterAtIntegerCoordinates[i]) {
         this.coordinates_[i] = Math.round(this.coordinates_[i]);
-      } else {
+          } else {
         this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
       }
     }
@@ -237,12 +237,12 @@ export class Position extends RefCounted {
   static getOffset(a: Position, b: Position): Float32Array | undefined {
     const aCoordinates = a.coordinates_;
     const bCoordinates = b.coordinates_;
-    return vector.subtract(
+      return vector.subtract(
       new Float32Array(3),
-      aCoordinates,
-      bCoordinates,
-    );
-  }
+        aCoordinates,
+        bCoordinates,
+      );
+    }
 
   static addOffset(
     target: Position,
@@ -259,10 +259,10 @@ export class Position extends RefCounted {
 
 export class PlaybackManager extends RefCounted {
   private dimensionStates = new Map<DimensionId, {
-    dimensionIndex: number;
-    prevCoordinate: number;
-    prevTime: number;
-    generation: number;
+  dimensionIndex: number;
+  prevCoordinate: number;
+  prevTime: number;
+  generation: number;
   }>();
   private lastUpdateGeneration = 0;
   private unregisterUpdateStartedCallback: (() => void) | undefined;
@@ -355,7 +355,7 @@ export class PlaybackManager extends RefCounted {
         Number.isFinite(limit) &&
         newCoordinate * Math.sign(delta) >= limit * Math.sign(delta)
       ) {
-        newCoordinate = limit;
+            newCoordinate = limit;
       }
       positionVector[dimensionIndex] = newCoordinate;
       dimensionState.prevCoordinate = positionVector[dimensionIndex];
@@ -629,29 +629,6 @@ export class TrackableRelativeDisplayScales
   assign(other: TrackableRelativeDisplayScales) {
     this.setFactors(other.value.factors);
   }
-}
-
-function mapPerDimensionValues<
-  T,
-  A extends { length: number; [index: number]: T },
-  C extends { new (n: number): A },
->(
-  arrayConstructor: C,
-  input: A,
-  oldCoordinateSpace: CoordinateSpace,
-  newCoordinateSpace: CoordinateSpace,
-  defaultValue: (index: number) => T,
-): A {
-  if (oldCoordinateSpace === newCoordinateSpace) return input;
-  const { ids: oldDimensionIds } = oldCoordinateSpace;
-  const { rank: newRank, ids: newDimensionIds } = newCoordinateSpace;
-  const output = new arrayConstructor(newRank);
-  for (let newDim = 0; newDim < newRank; ++newDim) {
-    const id = newDimensionIds[newDim];
-    const oldDim = oldDimensionIds.indexOf(id);
-    output[newDim] = oldDim === -1 ? defaultValue(newDim) : input[oldDim];
-  }
-  return output;
 }
 
 export class LinkedRelativeDisplayScales extends SimpleLinkedBase<TrackableRelativeDisplayScales> {
@@ -1222,8 +1199,8 @@ abstract class TrackableZoom
 
 export class TrackableCrossSectionZoom extends TrackableZoom {
   protected getDefaultValue() {
-    // Default is 1 voxel per viewport pixel.
-    return 1;
+      // Default is 1 voxel per viewport pixel.
+      return 1;
   }
 }
 

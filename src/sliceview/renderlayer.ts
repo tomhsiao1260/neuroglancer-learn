@@ -21,8 +21,6 @@ import type {
   ChunkTransformParameters,
   RenderLayerTransformOrError,
 } from "#src/render_coordinate_transform.js";
-import type { RenderScaleHistogram } from "#src/render_scale_statistics.js";
-import { trackableRenderScaleTarget } from "#src/render_scale_statistics.js";
 import type {
   ThreeDimensionalReadyRenderContext,
   ThreeDimensionalRenderContext,
@@ -58,7 +56,6 @@ export interface SliceViewRenderLayerOptions {
    */
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
   renderScaleTarget?: WatchableValueInterface<number>;
-  renderScaleHistogram?: RenderScaleHistogram;
 
   /**
    * Specifies the position within the "local" coordinate space.
@@ -93,16 +90,7 @@ export abstract class SliceViewRenderLayer<
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
 
   renderScaleTarget: WatchableValueInterface<number>;
-  renderScaleHistogram?: RenderScaleHistogram;
-
-  // This is only used by `ImageRenderLayer` currently, but is defined here because
-  // `sliceview/frontend.ts` is responsible for providing the texture buffers used for accumulating
-  // histograms.
   dataHistogramSpecifications: HistogramSpecifications;
-
-  getDataHistogramCount() {
-    return this.dataHistogramSpecifications.visibleHistograms;
-  }
 
   /**
    * Currently visible sources for this render layer.
@@ -178,9 +166,8 @@ export abstract class SliceViewRenderLayer<
   ) {
     super();
 
-    const { renderScaleTarget = trackableRenderScaleTarget(1) } = options;
+    const { renderScaleTarget = constantWatchableValue(1) } = options;
     this.renderScaleTarget = renderScaleTarget;
-    this.renderScaleHistogram = options.renderScaleHistogram;
     this.transform = options.transform;
     this.localPosition = options.localPosition;
     this.rpcTransfer = options.rpcTransfer || {};
