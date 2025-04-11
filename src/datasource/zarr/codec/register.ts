@@ -15,5 +15,4 @@
  */
 
 // Register all codecs
-import "./bytes/decode.ts";
-import "./crc32c/decode.ts"; 
+import "./bytes/decode.ts"; 

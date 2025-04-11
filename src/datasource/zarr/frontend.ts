@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-import "#src/datasource/zarr/codec/blosc/resolve.js";
-import "#src/datasource/zarr/codec/zstd/resolve.js";
-
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { WithParameters } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
@@ -32,10 +29,7 @@ import type {
 import { DataSourceProvider } from "#src/datasource/index.js";
 import { VolumeChunkSourceParameters } from "#src/datasource/zarr/base.js";
 import "#src/datasource/zarr/codec/bytes/resolve.js";
-import "#src/datasource/zarr/codec/crc32c/resolve.js";
 import "#src/datasource/zarr/codec/gzip/resolve.js";
-import "#src/datasource/zarr/codec/sharding_indexed/resolve.js";
-import "#src/datasource/zarr/codec/transpose/resolve.js";
 import type {
   ArrayMetadata,
   Metadata,
