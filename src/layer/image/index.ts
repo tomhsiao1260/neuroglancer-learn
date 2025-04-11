@@ -52,15 +52,6 @@ import {
 import type { Borrowed } from "#src/util/disposable.js";
 import { makeValueOrError } from "#src/util/error.js";
 import { verifyOptionalObjectProperty } from "#src/util/json.js";
-import {
-  trackableShaderModeValue,
-  VolumeRenderingModes,
-} from "#src/volume_rendering/trackable_volume_rendering_mode.js";
-import {
-  getVolumeRenderingDepthSamplesBoundsLogScale,
-  VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE,
-  VolumeRenderingRenderLayer,
-} from "#src/volume_rendering/volume_render_layer.js";
 import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 import { MessageList } from "#src/util/message_list.js";
@@ -78,25 +69,16 @@ const SHADER_JSON_KEY = "shader";
 const SHADER_CONTROLS_JSON_KEY = "shaderControls";
 const CROSS_SECTION_RENDER_SCALE_JSON_KEY = "crossSectionRenderScale";
 const CHANNEL_DIMENSIONS_JSON_KEY = "channelDimensions";
-const VOLUME_RENDERING_JSON_KEY = "volumeRendering";
-const VOLUME_RENDERING_GAIN_JSON_KEY = "volumeRenderingGain";
-const VOLUME_RENDERING_DEPTH_SAMPLES_JSON_KEY = "volumeRenderingDepthSamples";
 
 export interface ImageLayerSelectionState extends UserLayerSelectionState {
   value: any;
 }
 
-const [
-  volumeRenderingDepthSamplesOriginLogScale,
-  volumeRenderingDepthSamplesMaxLogScale,
-] = getVolumeRenderingDepthSamplesBoundsLogScale();
 export class ImageUserLayer extends UserLayer {
   fragmentMain = getTrackableFragmentMain();
   shaderError = makeWatchableShaderError();
   dataType = new WatchableValue<DataType | undefined>(undefined);
   sliceViewRenderScaleTarget = new WatchableValue(1);
-  volumeRenderingDepthSamplesTarget = new WatchableValue(VOLUME_RENDERING_DEPTH_SAMPLES_DEFAULT_VALUE);
-  volumeRenderingGain = new WatchableValue(1);
   channelCoordinateSpace = new TrackableCoordinateSpace();
   channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
     this.channelCoordinateSpace,
@@ -108,7 +90,6 @@ export class ImageUserLayer extends UserLayer {
       this.channelCoordinateSpace,
     ),
   );
-  volumeRenderingMode = trackableShaderModeValue();
   shaderControlState = this.registerDisposer(
     new ShaderControlState(
       this.fragmentMain,
@@ -132,10 +113,10 @@ export class ImageUserLayer extends UserLayer {
   );
 
   markLoading() {
-    const baseDisposer = super.markLoading();
+    const baseDisposer = super.markLoading?.();
     const channelDisposer = this.channelCoordinateSpaceCombiner.retain();
     return () => {
-      baseDisposer();
+      baseDisposer?.();
       channelDisposer();
     };
   }
@@ -159,12 +140,7 @@ export class ImageUserLayer extends UserLayer {
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalDimension;
     this.fragmentMain.changed.add(this.specificationChanged.dispatch);
-    this.shaderControlState.changed.add(this.specificationChanged.dispatch);
     this.sliceViewRenderScaleTarget.changed.add(
-      this.specificationChanged.dispatch,
-    );
-    this.volumeRenderingMode.changed.add(this.specificationChanged.dispatch);
-    this.volumeRenderingDepthSamplesTarget.changed.add(
       this.specificationChanged.dispatch,
     );
   }
@@ -199,32 +175,6 @@ export class ImageUserLayer extends UserLayer {
             channelCoordinateSpace: this.channelCoordinateSpace,
           }),
         );
-        const volumeRenderLayer = context.registerDisposer(
-          new VolumeRenderingRenderLayer({
-            gain: this.volumeRenderingGain,
-            multiscaleSource: volume,
-            shaderControlState: this.shaderControlState,
-            shaderError: this.shaderError,
-            transform: loadedSubsource.getRenderLayerTransform(
-              this.channelCoordinateSpace,
-            ),
-            depthSamplesTarget: this.volumeRenderingDepthSamplesTarget,
-            localPosition: this.localPosition,
-            channelCoordinateSpace: this.channelCoordinateSpace,
-            mode: this.volumeRenderingMode,
-          }),
-        );
-        context.registerDisposer(
-          loadedSubsource.messages.addChild(volumeRenderLayer.messages),
-        );
-        context.registerDisposer(
-          registerNested((context, volumeRenderingMode) => {
-            if (volumeRenderingMode === VolumeRenderingModes.OFF) return;
-            context.registerDisposer(
-              this.addRenderLayer(volumeRenderLayer.addRef()),
-            );
-          }, this.volumeRenderingMode),
-        );
         this.shaderError.changed.dispatch();
       });
     }
@@ -239,49 +189,16 @@ export class ImageUserLayer extends UserLayer {
     if (specification.sliceViewRenderScaleTarget !== undefined) {
       this.sliceViewRenderScaleTarget.value = specification.sliceViewRenderScaleTarget;
     }
-    if (specification.volumeRenderingDepthSamplesTarget !== undefined) {
-      this.volumeRenderingDepthSamplesTarget.value = specification.volumeRenderingDepthSamplesTarget;
-    }
-    this.shaderControlState.restoreState(
-      specification[SHADER_CONTROLS_JSON_KEY],
-    );
     this.sliceViewRenderScaleTarget.changed.dispatch();
-    this.volumeRenderingMode.changed.dispatch();
-    this.volumeRenderingDepthSamplesTarget.changed.dispatch();
     this.channelCoordinateSpace.restoreState(
       specification[CHANNEL_DIMENSIONS_JSON_KEY],
-    );
-    verifyOptionalObjectProperty(
-      specification,
-      VOLUME_RENDERING_JSON_KEY,
-      (volumeRenderingMode) => {
-        if (typeof volumeRenderingMode === "boolean") {
-          this.volumeRenderingMode.value = volumeRenderingMode
-            ? VolumeRenderingModes.ON
-            : VolumeRenderingModes.OFF;
-        } else {
-          this.volumeRenderingMode.restoreState(volumeRenderingMode);
-        }
-      },
-    );
-    verifyOptionalObjectProperty(
-      specification,
-      VOLUME_RENDERING_GAIN_JSON_KEY,
-      (volumeRenderingGain) =>
-        this.volumeRenderingGain.restoreState(volumeRenderingGain),
     );
   }
   toJSON() {
     const x = super.toJSON();
     x.shader = this.fragmentMain.toJSON();
     x.sliceViewRenderScaleTarget = this.sliceViewRenderScaleTarget.value;
-    x.volumeRenderingDepthSamplesTarget = this.volumeRenderingDepthSamplesTarget.value;
-    x[SHADER_CONTROLS_JSON_KEY] = this.shaderControlState.toJSON();
-    x[CROSS_SECTION_RENDER_SCALE_JSON_KEY] = this.sliceViewRenderScaleTarget.value;
     x[CHANNEL_DIMENSIONS_JSON_KEY] = this.channelCoordinateSpace.toJSON();
-    x[VOLUME_RENDERING_JSON_KEY] = this.volumeRenderingMode.toJSON();
-    x[VOLUME_RENDERING_GAIN_JSON_KEY] = this.volumeRenderingGain.toJSON();
-    x[VOLUME_RENDERING_DEPTH_SAMPLES_JSON_KEY] = this.volumeRenderingDepthSamplesTarget.value;
     return x;
   }
 

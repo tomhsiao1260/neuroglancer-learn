@@ -478,6 +478,10 @@ export class UserLayer extends RefCounted {
     localPosition.changed.dispatch();
     globalPosition.changed.dispatch();
   }
+
+  markLoading() {
+    return () => {};
+  }
 }
 
 export class ManagedUserLayer extends RefCounted {
