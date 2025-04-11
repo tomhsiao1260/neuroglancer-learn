@@ -946,6 +946,7 @@ export class OrientationState extends RefCounted {
     }
     this.orientation = orientation;
   }
+
   toJSON() {
     const { orientation } = this;
     quat.normalize(this.orientation, this.orientation);
@@ -954,6 +955,7 @@ export class OrientationState extends RefCounted {
     }
     return Array.prototype.slice.call(this.orientation);
   }
+
   restoreState(obj: any) {
     try {
       parseFiniteVec(this.orientation, obj);
@@ -969,28 +971,8 @@ export class OrientationState extends RefCounted {
     this.changed.dispatch();
   }
 
-  snap() {
-    const mat = mat3.create();
-    mat3.fromQuat(mat, this.orientation);
-    const usedAxes = [false, false, false];
-    for (let i = 0; i < 3; ++i) {
-      let maxComponent = 0;
-      let argmaxComponent = 0;
-      for (let j = 0; j < 3; ++j) {
-        const value = mat[i * 3 + j];
-        mat[i * 3 + j] = 0;
-        if (usedAxes[j]) {
-          continue;
-        }
-        if (Math.abs(value) > Math.abs(maxComponent)) {
-          maxComponent = value;
-          argmaxComponent = j;
-        }
-      }
-      mat[i * 3 + argmaxComponent] = Math.sign(maxComponent);
-      usedAxes[argmaxComponent] = true;
-    }
-    quat.fromMat3(this.orientation, mat);
+  assign(other: Borrowed<OrientationState>) {
+    quat.copy(this.orientation, other.orientation);
     this.changed.dispatch();
   }
 
@@ -1027,11 +1009,6 @@ export class OrientationState extends RefCounted {
       }),
     );
     return self;
-  }
-
-  assign(other: Borrowed<OrientationState>) {
-    quat.copy(this.orientation, other.orientation);
-    this.changed.dispatch();
   }
 }
 
@@ -1637,11 +1614,9 @@ export class DisplayPose extends RefCounted {
   }
 
   /**
-   * Snaps the orientation to the nearest axis-aligned orientation, and
-   * snaps the position to the nearest voxel.
+   * Snaps the position to the nearest voxel.
    */
   snap() {
-    this.orientation.snap();
     this.position.snapToVoxel();
     this.changed.dispatch();
   }
@@ -1771,129 +1746,27 @@ export type TrackableZoomInterface =
   | TrackableProjectionZoom
   | TrackableCrossSectionZoom;
 
-export class LinkedZoomState<
-  T extends TrackableProjectionZoom | TrackableCrossSectionZoom,
-> extends LinkedBase<T> {
-  constructor(
-    peer: Owned<T>,
-    displayDimensionRenderInfo: Owned<WatchableDisplayDimensionRenderInfo>,
-  ) {
-    super(peer);
-    this.value = (() => {
-      const self: T = new (peer.constructor as any)(displayDimensionRenderInfo);
-      const assign = (target: T, source: T) => {
-        target.assign(source);
-      };
-      const difference = (a: T, b: T) => {
-        return (
-          (a.value / b.value) *
-          (a.canonicalVoxelPhysicalSize / b.canonicalVoxelPhysicalSize)
-        );
-      };
-      const add = (target: T, source: T, amount: number) => {
-        target.setPhysicalScale(
-          source.value * amount,
-          source.canonicalVoxelPhysicalSize,
-        );
-      };
-      const subtract = (target: T, source: T, amount: number) => {
-        target.setPhysicalScale(
-          source.value / amount,
-          source.canonicalVoxelPhysicalSize,
-        );
-      };
-      const isValid = (x: T) =>
-        x.coordinateSpaceValue.valid && x.canonicalVoxelPhysicalSize !== 0;
-      makeLinked(
-        self as RefCounted & { changed: NullarySignal },
-        this.peer,
-        this.link,
-        {
-          assign,
-          isValid,
-          difference,
-          add,
-          subtract,
-        },
-      );
-      return self;
-    })();
-  }
-}
-
-export function linkedStateLegacyJsonView<
-  T extends LinkableState<T> & { readonly legacyJsonView: Trackable },
->(linked: LinkedBase<T>) {
-  return {
-    changed: linked.changed,
-    toJSON() {
-      return linked.toJSON();
-    },
-    restoreState(obj: unknown) {
-      restoreLinkedFromJson(linked.link, linked.value.legacyJsonView, obj);
-    },
-    reset() {
-      linked.reset();
-    },
-  };
-}
-
 abstract class TrackableZoom
   extends RefCounted
   implements Trackable, WatchableValueInterface<number>
 {
   readonly changed = new NullarySignal();
-  private curCanonicalVoxelPhysicalSize = 0;
   private value_: number = Number.NaN;
-  protected legacyValue_: number = Number.NaN;
 
   /**
    * Zoom factor.  For cross section views, in canonical voxels per viewport pixel.  For projection
    * views, in canonical voxels per viewport height (for orthographic projection).
    */
   get value() {
-    this.handleCoordinateSpaceChanged();
     return this.value_;
   }
 
   set value(value: number) {
-    const { canonicalVoxelPhysicalSize } = this;
-    if (
-      Object.is(value, this.value_) &&
-      canonicalVoxelPhysicalSize === this.curCanonicalVoxelPhysicalSize
-    ) {
+    if (Object.is(value, this.value_)) {
       return;
     }
-    this.curCanonicalVoxelPhysicalSize = canonicalVoxelPhysicalSize;
-    this.legacyValue_ = Number.NaN;
     this.value_ = value;
     this.changed.dispatch();
-  }
-
-  get canonicalVoxelPhysicalSize() {
-    return this.displayDimensionRenderInfo.value.canonicalVoxelPhysicalSize;
-  }
-
-  get coordinateSpaceValue() {
-    return this.displayDimensionRenderInfo.relativeDisplayScales.coordinateSpace
-      .value;
-  }
-
-  /**
-   * Sets the zoom factor in the legacy units.  For cross section views, `1e-9` spatial units per
-   * viewport pixel.  For projection views, `2 * 100 * Math.tan(Math.PI / 8) * 1e-9` spatial units
-   * per viewport height (for orthographic projection).
-   */
-  set legacyValue(value: number) {
-    if (Object.is(value, this.legacyValue_)) return;
-    this.value_ = Number.NaN;
-    this.legacyValue_ = value;
-    this.curCanonicalVoxelPhysicalSize = 0;
-    this.changed.dispatch();
-  }
-
-  get legacyValue() {
-    return this.legacyValue_;
   }
 
   constructor(
@@ -1901,51 +1774,7 @@ abstract class TrackableZoom
   ) {
     super();
     this.registerDisposer(displayDimensionRenderInfo);
-    this.registerDisposer(
-      displayDimensionRenderInfo.changed.add(() =>
-        this.handleCoordinateSpaceChanged(),
-      ),
-    );
-    this.registerDisposer(
-      displayDimensionRenderInfo.relativeDisplayScales.coordinateSpace.changed.add(
-        () => this.handleCoordinateSpaceChanged(),
-      ),
-    );
-    this.handleCoordinateSpaceChanged();
-  }
-
-  handleCoordinateSpaceChanged() {
-    const { value_ } = this;
-    const {
-      displayDimensionRenderInfo: {
-        value: { canonicalVoxelPhysicalSize },
-        relativeDisplayScales: {
-          coordinateSpace: { value: coordinateSpace },
-        },
-      },
-    } = this;
-    const { curCanonicalVoxelPhysicalSize } = this;
-    if (
-      !Number.isNaN(value_) &&
-      canonicalVoxelPhysicalSize === curCanonicalVoxelPhysicalSize
-    ) {
-      return;
-    }
-    if (!Number.isNaN(value_)) {
-      if (curCanonicalVoxelPhysicalSize !== 0) {
-        this.value_ =
-          value_ * (curCanonicalVoxelPhysicalSize / canonicalVoxelPhysicalSize);
-        this.curCanonicalVoxelPhysicalSize = canonicalVoxelPhysicalSize;
-        this.changed.dispatch();
-      }
-      return;
-    }
-    if (!coordinateSpace.valid || canonicalVoxelPhysicalSize === 0) {
-      return;
-    }
-    this.curCanonicalVoxelPhysicalSize = canonicalVoxelPhysicalSize;
     this.value_ = this.getDefaultValue();
-    this.changed.dispatch();
   }
 
   protected abstract getDefaultValue(): number;
@@ -1956,10 +1785,8 @@ abstract class TrackableZoom
   }
 
   restoreState(obj: any) {
-    this.curCanonicalVoxelPhysicalSize = 0;
-    this.legacyValue_ = Number.NaN;
     if (obj === undefined) {
-      this.value_ = Number.NaN;
+      this.value_ = this.getDefaultValue();
     } else {
       this.value_ = verifyFinitePositiveFloat(obj);
     }
@@ -1967,84 +1794,36 @@ abstract class TrackableZoom
   }
 
   reset() {
-    this.curCanonicalVoxelPhysicalSize = 0;
-    this.value_ = Number.NaN;
-    this.legacyValue_ = Number.NaN;
+    this.value_ = this.getDefaultValue();
     this.changed.dispatch();
   }
 
-  get legacyJsonView() {
-    const self = this;
-    return {
-      changed: self.changed,
-      toJSON() {
-        return self.toJSON();
-      },
-      reset() {
-        return self.reset();
-      },
-      restoreState(obj: any) {
-        self.legacyValue = verifyFinitePositiveFloat(obj);
-      },
-    };
-  }
-
-  setPhysicalScale(
-    scaleInCanonicalVoxels: number,
-    canonicalVoxelPhysicalSize: number,
-  ) {
-    const curCanonicalVoxelPhysicalSize = (this.curCanonicalVoxelPhysicalSize =
-      this.canonicalVoxelPhysicalSize);
-    this.value =
-      scaleInCanonicalVoxels *
-      (canonicalVoxelPhysicalSize / curCanonicalVoxelPhysicalSize);
-  }
-
   assign(source: TrackableZoomInterface) {
-    const { legacyValue } = source;
-    if (!Number.isNaN(legacyValue)) {
-      this.legacyValue = legacyValue;
-    } else {
-      this.setPhysicalScale(source.value, source.canonicalVoxelPhysicalSize);
-    }
+    this.value = source.value;
   }
 }
 
 export class TrackableCrossSectionZoom extends TrackableZoom {
   protected getDefaultValue() {
-    const { legacyValue_ } = this;
-    if (Number.isNaN(legacyValue_)) {
-      // Default is 1 voxel per viewport pixel.
-      return 1;
-    }
-    const { canonicalVoxelPhysicalSize } = this;
-    return (this.legacyValue_ * 1e-9) / canonicalVoxelPhysicalSize;
+    // Default is 1 voxel per viewport pixel.
+    return 1;
   }
 }
 
 export class TrackableProjectionZoom extends TrackableZoom {
   protected getDefaultValue() {
-    const { legacyValue_ } = this;
-    if (!Number.isNaN(legacyValue_)) {
-      this.legacyValue_ = Number.NaN;
-      const { canonicalVoxelPhysicalSize } = this;
-      return (
-        (2 * 100 * Math.tan(Math.PI / 8) * 1e-9 * legacyValue_) /
-        canonicalVoxelPhysicalSize
-      );
-    }
     const {
-      coordinateSpaceValue: {
-        bounds: { lowerBounds, upperBounds },
+      displayDimensionRenderInfo: {
+        value: { displayDimensionScales, displayDimensionIndices },
       },
     } = this;
-    const { canonicalVoxelFactors, displayDimensionIndices } =
-      this.displayDimensionRenderInfo.value;
-    let value = canonicalVoxelFactors.reduce((x, factor, i) => {
+    let value = 0;
+    for (let i = 0; i < displayDimensionIndices.length; ++i) {
       const dim = displayDimensionIndices[i];
-      const extent = (upperBounds[dim] - lowerBounds[dim]) * factor;
-      return Math.max(x, extent);
-    }, 0);
+      if (dim === -1) continue;
+      const scale = displayDimensionScales[i];
+      value = Math.max(value, scale);
+    }
     if (!Number.isFinite(value)) {
       // Default to showing 1024 voxels if there is no bounds information.
       value = 1024;
