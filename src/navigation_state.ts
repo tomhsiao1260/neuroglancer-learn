@@ -272,48 +272,6 @@ export class DimensionPlaybackVelocity {
   paused = true;
 }
 
-export function dimensionVelocitiesEqual(
-  a: DimensionPlaybackVelocity,
-  b: DimensionPlaybackVelocity,
-): boolean {
-  return (
-    a.velocity === b.velocity &&
-    a.atBoundary === b.atBoundary &&
-    a.paused === b.paused
-  );
-}
-
-function dimensionVelocityFromJson(obj: unknown) {
-  verifyObject(obj);
-  return {
-    velocity: verifyOptionalObjectProperty(
-      obj,
-      "velocity",
-      verifyFiniteFloat,
-      DEFAULT_PLAYBACK_VELOCITY,
-    ),
-    atBoundary: verifyOptionalObjectProperty(
-      obj,
-      "atBoundary",
-      (value) => verifyEnumString(value, VelocityBoundaryBehavior),
-      VelocityBoundaryBehavior.STOP,
-    ),
-    paused: verifyOptionalObjectProperty(obj, "paused", verifyBoolean, true),
-  };
-}
-
-function dimensionVelocityToJson(info: DimensionPlaybackVelocity) {
-  const { velocity, atBoundary, paused } = info;
-  return {
-    velocity: velocity,
-    atBoundary:
-      atBoundary === VelocityBoundaryBehavior.STOP
-        ? undefined
-        : VelocityBoundaryBehavior[atBoundary].toLowerCase(),
-    paused: paused ? undefined : false,
-  };
-}
-
 export class CoordinateSpacePlaybackVelocity extends RefCounted {
   private velocities_: (Readonly<DimensionPlaybackVelocity> | undefined)[];
   private curCoordinateSpace: CoordinateSpace | undefined;
@@ -511,7 +469,11 @@ export class CoordinateSpacePlaybackVelocity extends RefCounted {
     for (let i = 0; i < rank; ++i) {
       const info = velocities[i];
       if (info === undefined) continue;
-      obj[names[i]] = dimensionVelocityToJson(info);
+      obj[names[i]] = {
+        velocity: info.velocity,
+        atBoundary: VelocityBoundaryBehavior[info.atBoundary].toLowerCase(),
+        paused: info.paused ? undefined : false,
+      };
     }
     return obj;
   }
@@ -542,7 +504,33 @@ export class CoordinateSpacePlaybackVelocity extends RefCounted {
       if (i === -1) {
         throw new Error(`Invalid dimension name: ${JSON.stringify(key)}`);
       }
-      velocities[i] = verifyObjectProperty(obj, key, dimensionVelocityFromJson);
+      const info = verifyObjectProperty(obj, key, (x) => {
+        if (x === undefined) return undefined;
+        const velocityInfo = x as any;
+        return {
+          velocity: verifyOptionalObjectProperty(
+            velocityInfo,
+            "velocity",
+            verifyFiniteFloat,
+            DEFAULT_PLAYBACK_VELOCITY,
+          ),
+          atBoundary: verifyOptionalObjectProperty(
+            velocityInfo,
+            "atBoundary",
+            (value) => verifyEnumString(value, VelocityBoundaryBehavior),
+            VelocityBoundaryBehavior.STOP,
+          ),
+          paused: verifyOptionalObjectProperty(
+            velocityInfo,
+            "paused",
+            verifyBoolean,
+            true,
+          ),
+        };
+      });
+      if (info !== undefined) {
+        velocities[i] = info;
+      }
     }
     this.changed.dispatch();
   }
@@ -559,7 +547,7 @@ export class CoordinateSpacePlaybackVelocity extends RefCounted {
         if (
           curVelocity === undefined ||
           newVelocity === undefined ||
-          !dimensionVelocitiesEqual(curVelocity, newVelocity)
+          !this.velocitiesEqual(curVelocity, newVelocity)
         ) {
           changed = true;
         }
@@ -569,6 +557,17 @@ export class CoordinateSpacePlaybackVelocity extends RefCounted {
     if (changed) {
       this.changed.dispatch();
     }
+  }
+
+  private velocitiesEqual(
+    a: Readonly<DimensionPlaybackVelocity>,
+    b: Readonly<DimensionPlaybackVelocity>,
+  ): boolean {
+    return (
+      a.velocity === b.velocity &&
+      a.atBoundary === b.atBoundary &&
+      a.paused === b.paused
+    );
   }
 }
 
@@ -1732,20 +1731,6 @@ export class TrackableDepthRange
       this.value = obj;
     }
   }
-
-  setValueAbsolute(value: number, sourceCanonicalVoxelPhysicalSize: number) {
-    if (value > 0) {
-      const { canonicalVoxelPhysicalSize } =
-        this.displayDimensionRenderInfo.value;
-      value =
-        value * (sourceCanonicalVoxelPhysicalSize / canonicalVoxelPhysicalSize);
-    }
-    this.value = value;
-  }
-
-  assign(other: TrackableDepthRange) {
-    this.setValueAbsolute(other.value, other.canonicalVoxelPhysicalSize);
-  }
 }
 
 export class NavigationState extends RefCounted {
@@ -1768,14 +1753,6 @@ export class NavigationState extends RefCounted {
     return this.pose.position.coordinateSpace;
   }
 
-  /**
-   * Resets everything.
-   */
-  reset() {
-    this.pose.reset();
-    this.zoomFactor.reset();
-  }
-
   get position() {
     return this.pose.position;
   }
@@ -1793,16 +1770,6 @@ export class NavigationState extends RefCounted {
   }
   toMat3(mat: mat3) {
     this.pose.toMat3(mat, this.zoomFactor.value);
-  }
-
-  get relativeDepthRange() {
-    let depthRange = this.depthRange.value;
-    if (depthRange > 0) {
-      depthRange /= this.zoomFactor.value;
-    } else {
-      depthRange *= -1;
-    }
-    return depthRange;
   }
 
   get valid() {
