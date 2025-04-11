@@ -144,9 +144,9 @@ function makeSimpleLinked<T extends RefCounted & { changed: NullarySignal }>(
 }
 
 export class Position extends RefCounted {
-  private coordinates_: Float32Array = vector.kEmptyFloat32Vec;
-  private curCoordinateSpace: CoordinateSpace | undefined;
+  private coordinates_: Float32Array = new Float32Array(3);
   changed = new NullarySignal();
+
   constructor(
     public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
@@ -166,84 +166,41 @@ export class Position extends RefCounted {
    * Returns the position in voxels.
    */
   get value() {
-    this.handleCoordinateSpaceChanged();
     return this.coordinates_;
   }
 
   reset() {
-    this.curCoordinateSpace = undefined;
-    this.coordinates_ = vector.kEmptyFloat32Vec;
+    this.coordinates_ = new Float32Array(3);
     this.changed.dispatch();
   }
 
   set value(coordinates: Float32Array) {
-    const { curCoordinateSpace } = this;
-    if (
-      curCoordinateSpace === undefined ||
-      !curCoordinateSpace.valid ||
-      curCoordinateSpace.rank !== coordinates.length
-    ) {
+    if (coordinates.length !== 3) {
       return;
     }
-    const { coordinates_ } = this;
-    coordinates_.set(coordinates);
+    this.coordinates_.set(coordinates);
     this.changed.dispatch();
   }
 
   private handleCoordinateSpaceChanged() {
     const coordinateSpace = this.coordinateSpace.value;
-    const prevCoordinateSpace = this.curCoordinateSpace;
-    if (coordinateSpace === prevCoordinateSpace) return;
-    this.curCoordinateSpace = coordinateSpace;
-    const { rank } = coordinateSpace;
     if (!coordinateSpace.valid) return;
-    if (prevCoordinateSpace === undefined || !prevCoordinateSpace.valid) {
-      let { coordinates_ } = this;
-      if (coordinates_ !== undefined && coordinates_.length === rank) {
-        // Use the existing voxel coordinates if rank is the same.  Otherwise, ignore.
+    const { bounds } = coordinateSpace;
+    getBoundingBoxCenter(this.coordinates_, bounds);
+    const { voxelCenterAtIntegerCoordinates } = bounds;
+    for (let i = 0; i < 3; ++i) {
+      if (voxelCenterAtIntegerCoordinates[i]) {
+        this.coordinates_[i] = Math.round(this.coordinates_[i]);
       } else {
-        coordinates_ = this.coordinates_ = new Float32Array(rank);
-        getBoundingBoxCenter(coordinates_, coordinateSpace.bounds);
-        const { voxelCenterAtIntegerCoordinates } = coordinateSpace.bounds;
-        for (let i = 0; i < rank; ++i) {
-          if (voxelCenterAtIntegerCoordinates[i]) {
-            coordinates_[i] = Math.round(coordinates_[i]);
-          } else {
-            coordinates_[i] = Math.floor(coordinates_[i]) + 0.5;
-          }
-        }
-      }
-      this.changed.dispatch();
-      return;
-    }
-    // Match dimensions by ID.
-    const newCoordinates = new Float32Array(rank);
-    const prevCoordinates = this.coordinates_;
-    const { ids, scales: newScales } = coordinateSpace;
-    const { ids: prevDimensionIds, scales: oldScales } = prevCoordinateSpace;
-    for (let newDim = 0; newDim < rank; ++newDim) {
-      const newDimId = ids[newDim];
-      const oldDim = prevDimensionIds.indexOf(newDimId);
-      if (oldDim === -1) {
-        newCoordinates[newDim] = getCenterBound(
-          coordinateSpace.bounds.lowerBounds[newDim],
-          coordinateSpace.bounds.upperBounds[newDim],
-        );
-      } else {
-        newCoordinates[newDim] =
-          prevCoordinates[oldDim] * (oldScales[oldDim] / newScales[newDim]);
+        this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
       }
     }
-    this.coordinates_ = newCoordinates;
     this.changed.dispatch();
   }
 
   toJSON() {
-    if (!this.valid && this.coordinates_.length === 0) return undefined;
-    this.handleCoordinateSpaceChanged();
-    const { value } = this;
-    if (value.length === 0) return undefined;
-    return Array.from(value);
+    if (!this.valid) return undefined;
+    return Array.from(this.coordinates_);
   }
 
   restoreState(obj: any) {
@@ -251,34 +208,26 @@ export class Position extends RefCounted {
       this.reset();
       return;
     }
-    this.curCoordinateSpace = undefined;
     this.coordinates_ = Float32Array.from(parseArray(obj, verifyFiniteFloat));
-    this.handleCoordinateSpaceChanged();
     this.changed.dispatch();
   }
 
   snapToVoxel() {
-    this.handleCoordinateSpaceChanged();
     const {
       bounds: { voxelCenterAtIntegerCoordinates },
     } = this.coordinateSpace.value;
-    const { coordinates_ } = this;
-    const rank = coordinates_.length;
-    for (let i = 0; i < rank; ++i) {
+    for (let i = 0; i < 3; ++i) {
       if (voxelCenterAtIntegerCoordinates[i]) {
-        coordinates_[i] = Math.round(coordinates_[i]);
+        this.coordinates_[i] = Math.round(this.coordinates_[i]);
       } else {
-        coordinates_[i] = Math.floor(coordinates_[i]) + 0.5;
+        this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
       }
     }
     this.changed.dispatch();
   }
 
   assign(other: Borrowed<Position>) {
-    other.handleCoordinateSpaceChanged();
-    const { curCoordinateSpace, coordinates_ } = other;
-    this.curCoordinateSpace = curCoordinateSpace;
-    this.coordinates_ = Float32Array.from(coordinates_);
+    this.coordinates_.set(other.coordinates_);
     this.changed.dispatch();
   }
 
@@ -288,49 +237,23 @@ export class Position extends RefCounted {
   static getOffset(a: Position, b: Position): Float32Array | undefined {
     const aCoordinates = a.coordinates_;
     const bCoordinates = b.coordinates_;
-    const rank = aCoordinates.length;
-    if (rank === bCoordinates.length) {
-      return vector.subtract(
-        new Float32Array(aCoordinates.length),
-        aCoordinates,
-        bCoordinates,
-      );
-    }
-    return undefined;
+    return vector.subtract(
+      new Float32Array(3),
+      aCoordinates,
+      bCoordinates,
+    );
   }
+
   static addOffset(
     target: Position,
     source: Position,
     offset: Float32Array | undefined,
     scale = 1,
   ): void {
-    target.handleCoordinateSpaceChanged();
-    const { value: sourceCoordinates } = source;
-    if (offset !== undefined && sourceCoordinates.length === offset.length) {
-      vector.scaleAndAdd(target.value, sourceCoordinates, offset, scale);
+    if (offset !== undefined) {
+      vector.scaleAndAdd(target.coordinates_, source.coordinates_, offset, scale);
       target.changed.dispatch();
     }
-  }
-
-  get legacyJsonView() {
-    const self = this;
-    return {
-      changed: self.changed,
-      toJSON() {
-        return self.toJSON();
-      },
-      reset() {
-        self.reset();
-      },
-      restoreState(obj: unknown) {
-        if (obj === undefined || Array.isArray(obj)) {
-          self.restoreState(obj);
-          return;
-        }
-        verifyObject(obj);
-        optionallyRestoreFromJsonMember(obj, "voxelCoordinates", self);
-      },
-    };
   }
 }
 
@@ -1613,29 +1536,6 @@ export class DisplayPose extends RefCounted {
     }
   }
 
-  /**
-   * Snaps the position to the nearest voxel.
-   */
-  snap() {
-    this.position.snapToVoxel();
-    this.changed.dispatch();
-  }
-
-  translateDimensionRelative(dimensionIndex: number, adjustment: number) {
-    if (!this.valid) {
-      return;
-    }
-    const { position } = this;
-    const { value: voxelCoordinates } = position;
-    const { bounds } = position.coordinateSpace.value;
-    voxelCoordinates[dimensionIndex] = clampAndRoundCoordinateToVoxelCenter(
-      bounds,
-      dimensionIndex,
-      voxelCoordinates[dimensionIndex] + adjustment,
-    );
-    position.changed.dispatch();
-  }
-
   translateVoxelsRelative(translation: vec3) {
     if (!this.valid) {
       return;
@@ -1669,76 +1569,6 @@ export class DisplayPose extends RefCounted {
     const orientation = this.orientation.orientation;
     quat.multiply(orientation, orientation, temp);
     this.orientation.changed.dispatch();
-  }
-
-  rotateAbsolute(axis: vec3, angle: number, fixedPoint: Float32Array) {
-    const {
-      coordinateSpace: { value: coordinateSpace },
-      value: voxelCoordinates,
-    } = this.position;
-    if (coordinateSpace === undefined) return;
-    const {
-      relativeDisplayScales: {
-        value: { factors: relativeDisplayScales },
-      },
-      displayDimensions: {
-        value: { displayDimensionIndices, displayRank },
-      },
-    } = this;
-    const { scales } = coordinateSpace;
-    const temp = quat.create();
-    quat.setAxisAngle(temp, axis, angle);
-    const orientation = this.orientation.orientation;
-
-    // We want the coordinates in the transformed coordinate frame of the fixed point to remain
-    // the same after the rotation.
-
-    // We have the invariants:
-    // oldOrienation * fixedPointLocal + oldPosition == fixedPoint.
-    // newOrientation * fixedPointLocal + newPosition == fixedPoint.
-
-    // Therefore, we compute fixedPointLocal by:
-    // fixedPointLocal == inverse(oldOrientation) * (fixedPoint - oldPosition).
-    const fixedPointLocal = tempVec3;
-    tempVec3.fill(0);
-    for (let i = 0; i < displayRank; ++i) {
-      const dim = displayDimensionIndices[i];
-      const diff = fixedPoint[dim] - voxelCoordinates[dim];
-      fixedPointLocal[i] = diff * scales[dim] * relativeDisplayScales[dim];
-    }
-    const invOrientation = quat.invert(tempQuat, orientation);
-    vec3.transformQuat(fixedPointLocal, fixedPointLocal, invOrientation);
-
-    // We then compute the newPosition by:
-    // newPosition := fixedPoint - newOrientation * fixedPointLocal.
-    quat.multiply(orientation, temp, orientation);
-    vec3.transformQuat(fixedPointLocal, fixedPointLocal, orientation);
-
-    for (let i = 0; i < displayRank; ++i) {
-      const dim = displayDimensionIndices[i];
-      voxelCoordinates[dim] =
-        fixedPoint[dim] -
-        fixedPointLocal[i] / (scales[dim] * relativeDisplayScales[dim]);
-    }
-    this.position.changed.dispatch();
-    this.orientation.changed.dispatch();
-  }
-
-  translateNonDisplayDimension(
-    nonSpatialDimensionIndex: number,
-    adjustment: number,
-  ) {
-    if (!this.valid) return;
-    const { displayDimensionIndices } = this.displayDimensions.value;
-    const { position } = this;
-    const rank = position.coordinateSpace.value.rank;
-    for (let i = 0; i < rank; ++i) {
-      if (displayDimensionIndices.indexOf(i) !== -1) continue;
-      if (nonSpatialDimensionIndex-- === 0) {
-        this.translateDimensionRelative(i, adjustment);
-        return;
-      }
-    }
   }
 }
 
