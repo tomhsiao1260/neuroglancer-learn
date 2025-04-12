@@ -16,7 +16,6 @@
 
 import type {
   CoordinateSpace,
-  DimensionId,
 } from "#src/coordinate_transform.js";
 import {
   clampAndRoundCoordinateToVoxelCenter,
@@ -39,103 +38,9 @@ import {
 } from "#src/util/json.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { Trackable } from "#src/util/trackable.js";
-import { TrackableEnum } from "#src/util/trackable_enum.js";
 import * as vector from "#src/util/vector.js";
 
 const tempVec3 = vec3.create();
-
-function makeLinked<
-  T extends RefCounted & { changed: NullarySignal },
-  Difference,
->(
-  self: T,
-  peer: T,
-  link: TrackableEnum<number>,
-  operations: {
-    assign: (target: T, source: T) => void;
-    isValid: (a: T) => boolean;
-    difference: (a: T, b: T) => Difference;
-    add: (target: T, source: T, amount: Difference) => void;
-    subtract: (target: T, source: T, amount: Difference) => void;
-  },
-): T {
-  let updatingSelf = false;
-  const updatingPeer = false;
-  let selfMinusPeer: Difference | undefined;
-  self.registerDisposer(peer);
-  const handlePeerUpdate = () => {
-    if (updatingPeer) {
-      return;
-    }
-    updatingSelf = true;
-    switch (link.value) {
-      case 2: // UNLINKED
-        if (operations.isValid(self)) {
-          break;
-        }
-      // fallthrough
-      case 0: // LINKED
-        operations.assign(self, peer);
-        break;
-      case 1: // RELATIVE
-        operations.add(self, peer, selfMinusPeer!);
-        break;
-    }
-    updatingSelf = false;
-  };
-  const handleSelfUpdate = () => {
-    if (updatingSelf) {
-      return;
-    }
-    switch (link.value) {
-      case 2: // UNLINKED
-        break;
-      case 0: // LINKED
-        operations.assign(peer, self);
-        break;
-      case 1: // RELATIVE
-        operations.subtract(peer, self, selfMinusPeer!);
-        break;
-    }
-  };
-  let previousLinkValue = 2; // UNLINKED
-  const handleLinkUpdate = () => {
-    const linkValue = link.value;
-    if (linkValue !== previousLinkValue) {
-      switch (linkValue) {
-        case 2: // UNLINKED
-          selfMinusPeer = undefined;
-          break;
-        case 0: // LINKED
-          selfMinusPeer = undefined;
-          operations.assign(self, peer);
-          break;
-        case 1: // RELATIVE
-          selfMinusPeer = operations.difference(self, peer);
-          break;
-      }
-    }
-    previousLinkValue = linkValue;
-    self.changed.dispatch();
-  };
-  self.registerDisposer(self.changed.add(handleSelfUpdate));
-  self.registerDisposer(peer.changed.add(handlePeerUpdate));
-  self.registerDisposer(link.changed.add(handleLinkUpdate));
-  handleLinkUpdate();
-  return self;
-}
-
-function makeSimpleLinked<T extends RefCounted & { changed: NullarySignal }>(
-  self: T,
-  peer: T,
-  link: TrackableEnum<number>,
-  operations: {
-    assign: (target: T, source: T) => void;
-    isValid: (a: T) => boolean;
-  },
-) {
-  return makeLinked(self, peer, link, operations as any);
-}
 
 export class Position extends RefCounted {
   private coordinates_: Float32Array = new Float32Array(3);
@@ -249,194 +154,6 @@ export class Position extends RefCounted {
       target.changed.dispatch();
     }
   }
-}
-
-export class PlaybackManager extends RefCounted {
-  private dimensionStates = new Map<DimensionId, {
-  dimensionIndex: number;
-  prevCoordinate: number;
-  prevTime: number;
-  generation: number;
-  }>();
-  private lastUpdateGeneration = 0;
-  private unregisterUpdateStartedCallback: (() => void) | undefined;
-
-  constructor(
-    public display: { updateStarted: NullarySignal; scheduleRedraw(): void },
-    public position: Position,
-  ) {
-    super();
-    this.handleVelocityChanged();
-  }
-
-  disposed() {
-    this.unregisterUpdateStartedCallback?.();
-    super.disposed();
-  }
-
-  private handleVelocityChanged() {
-    const { dimensionStates } = this;
-    const ids = this.position.coordinateSpace.value?.ids ?? [];
-    const rank = ids.length;
-    const generation = ++this.lastUpdateGeneration;
-    const positionVector = this.position.value;
-    const curTime = Date.now();
-    for (let i = 0; i < rank; ++i) {
-      const id = ids[i];
-      const state = dimensionStates.get(id);
-      if (state === undefined) {
-        dimensionStates.set(id, {
-          prevTime: curTime,
-          dimensionIndex: i,
-          prevCoordinate: positionVector[i],
-          generation,
-        });
-      } else {
-        state.generation = generation;
-        state.dimensionIndex = i;
-      }
-    }
-    for (const [id, state] of dimensionStates) {
-      if (state.generation !== generation) {
-        dimensionStates.delete(id);
-      }
-    }
-    if (dimensionStates.size === 0) {
-      const { unregisterUpdateStartedCallback } = this;
-      if (unregisterUpdateStartedCallback !== undefined) {
-        unregisterUpdateStartedCallback();
-        this.unregisterUpdateStartedCallback = undefined;
-      }
-    } else {
-      if (this.unregisterUpdateStartedCallback === undefined) {
-        this.unregisterUpdateStartedCallback = this.display.updateStarted.add(
-          () => this.updateStarted(),
-        );
-        this.display.scheduleRedraw();
-      }
-    }
-  }
-
-  private updateStarted() {
-    const coordinateSpace = this.position.coordinateSpace.value;
-    if (coordinateSpace === undefined) {
-      return;
-    }
-    const ids = coordinateSpace.ids;
-    const positionVector = this.position.value;
-    let positionChanged = false;
-    const curTime = Date.now();
-    const {
-      bounds: { lowerBounds, upperBounds },
-    } = coordinateSpace;
-    for (const [id, dimensionState] of this.dimensionStates) {
-      const { dimensionIndex } = dimensionState;
-      if (ids[dimensionIndex] !== id) continue;
-      if (
-        Math.floor(positionVector[dimensionIndex]) !==
-        Math.floor(dimensionState.prevCoordinate)
-      ) {
-        continue;
-      }
-      const timeDelta = curTime - dimensionState.prevTime;
-      const delta = (timeDelta * 10) / 1000; // Default velocity of 10
-      if (delta === 0) continue;
-      let newCoordinate = positionVector[dimensionIndex] + delta;
-      const lowerBound = lowerBounds[dimensionIndex];
-      const upperBound = Math.ceil(upperBounds[dimensionIndex] - 1);
-      const limit = delta > 0 ? upperBound : lowerBound;
-      if (
-        Number.isFinite(limit) &&
-        newCoordinate * Math.sign(delta) >= limit * Math.sign(delta)
-      ) {
-            newCoordinate = limit;
-      }
-      positionVector[dimensionIndex] = newCoordinate;
-      dimensionState.prevCoordinate = positionVector[dimensionIndex];
-      dimensionState.prevTime = curTime;
-      positionChanged = true;
-    }
-    if (positionChanged) {
-      this.position.changed.dispatch();
-    }
-    this.display.scheduleRedraw();
-  }
-}
-
-function restoreLinkedFromJson(
-  link: TrackableEnum<number>,
-  value: { restoreState(obj: unknown): void },
-  json: any,
-) {
-  if (json === undefined || Object.keys(json).length === 0) {
-    link.value = 0;
-    return;
-  }
-  verifyObject(json);
-  link.value = 2;
-  verifyObjectProperty(json, "value", (x) => {
-    if (x !== undefined) {
-      value.restoreState(x);
-    }
-  });
-  verifyObjectProperty(json, "link", (x) => link.restoreState(x));
-}
-
-interface LinkableState<T> extends RefCounted, Trackable {
-  assign(other: T): void;
-}
-
-abstract class LinkedBase<
-  T extends LinkableState<T>,
-  Link extends TrackableEnum<number> = TrackableEnum<number>,
-> implements Trackable
-{
-  value: T;
-  get changed() {
-    return this.value.changed;
-  }
-  constructor(
-    public peer: Owned<T>,
-    public link: Link = new TrackableEnum({LINKED: 0, RELATIVE: 1, UNLINKED: 2}, 0) as any,
-  ) {}
-
-  toJSON() {
-    const { link } = this;
-    if (link.value === 0) {
-      return undefined;
-    }
-    return { link: link.toJSON(), value: this.getValueJson() };
-  }
-
-  protected getValueJson(): any {
-    return this.value.toJSON();
-  }
-
-  reset() {
-    this.link.value = 0;
-  }
-
-  restoreState(obj: any) {
-    restoreLinkedFromJson(this.link, this.value, obj);
-  }
-
-  copyToPeer() {
-    if (this.link.value !== 0) {
-      this.link.value = 2;
-      this.peer.assign(this.value);
-      this.link.value = 0;
-    }
-  }
-}
-
-abstract class SimpleLinkedBase<
-    T extends RefCounted & Trackable & { assign(other: T): void },
-  >
-  extends LinkedBase<T, TrackableEnum<number>>
-  implements Trackable {}
-
-function quaternionIsIdentity(q: quat) {
-  return q[0] === 0 && q[1] === 0 && q[2] === 0 && q[3] === 1;
 }
 
 export class OrientationState extends RefCounted {
@@ -623,18 +340,6 @@ export class TrackableRelativeDisplayScales
   assign(other: TrackableRelativeDisplayScales) {
     this.setFactors(other.value.factors);
   }
-}
-
-export class LinkedRelativeDisplayScales extends SimpleLinkedBase<TrackableRelativeDisplayScales> {
-  value = makeSimpleLinked(
-    new TrackableRelativeDisplayScales(this.peer.coordinateSpace),
-    this.peer,
-    this.link,
-    {
-      assign: (target, source) => target.assign(source),
-      isValid: () => true,
-    },
-  );
 }
 
 export interface DisplayDimensionRenderInfo {
@@ -988,18 +693,6 @@ export class TrackableDisplayDimensions
       this.setDimensionIndices(displayRank, displayDimensionIndices);
     }
   }
-}
-
-export class LinkedDisplayDimensions extends SimpleLinkedBase<TrackableDisplayDimensions> {
-  value = makeSimpleLinked(
-    new TrackableDisplayDimensions(this.peer.coordinateSpace),
-    this.peer,
-    this.link,
-    {
-      assign: (target, source) => target.assign(source),
-      isValid: () => true,
-    },
-  );
 }
 
 export class DisplayPose extends RefCounted {
