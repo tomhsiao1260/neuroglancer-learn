@@ -915,88 +915,16 @@ export class TrackableProjectionZoom extends TrackableZoom {
   }
 }
 
-export class TrackableDepthRange
-  extends RefCounted
-  implements WatchableValueInterface<number>
-{
-  changed = new NullarySignal();
-
-  constructor(
-    public readonly defaultValue: number,
-    public displayDimensionRenderInfo: WatchableValueInterface<DisplayDimensionRenderInfo>,
-  ) {
-    super();
-    this.value_ = defaultValue;
-    this.canonicalVoxelPhysicalSize =
-      displayDimensionRenderInfo.value.canonicalVoxelPhysicalSize;
-    this.registerDisposer(
-      displayDimensionRenderInfo.changed.add(() => {
-        this.value;
-      }),
-    );
-  }
-
-  private value_: number;
-  canonicalVoxelPhysicalSize: number;
-
-  get value() {
-    let { value_ } = this;
-    if (value_ > 0) {
-      const { canonicalVoxelPhysicalSize } =
-        this.displayDimensionRenderInfo.value;
-      const prevCanonicalVoxelPhysicalSize = this.canonicalVoxelPhysicalSize;
-      if (canonicalVoxelPhysicalSize !== prevCanonicalVoxelPhysicalSize) {
-        this.canonicalVoxelPhysicalSize = canonicalVoxelPhysicalSize;
-        value_ =
-          this.value_ =
-          value_ =
-            prevCanonicalVoxelPhysicalSize / canonicalVoxelPhysicalSize;
-        this.changed.dispatch();
-      }
-    }
-    return value_;
-  }
-
-  set value(value: number) {
-    if (value === this.value) return;
-    this.value_ = value;
-    const { canonicalVoxelPhysicalSize } =
-      this.displayDimensionRenderInfo.value;
-    this.canonicalVoxelPhysicalSize = canonicalVoxelPhysicalSize;
-    this.changed.dispatch();
-  }
-
-  toJSON() {
-    const { value } = this;
-    if (value === this.defaultValue) return undefined;
-    return value;
-  }
-
-  reset() {
-    this.value = this.defaultValue;
-  }
-
-  restoreState(obj: unknown) {
-    if (typeof obj !== "number" || !Number.isFinite(obj) || obj === 0) {
-      this.value = this.defaultValue;
-    } else {
-      this.value = obj;
-    }
-  }
-}
-
 export class NavigationState extends RefCounted {
   changed = new NullarySignal();
 
   constructor(
     public pose: Owned<DisplayPose>,
     public zoomFactor: any,
-    public depthRange: Owned<TrackableDepthRange>,
   ) {
     super();
     this.registerDisposer(pose);
     this.registerDisposer(zoomFactor);
-    this.registerDisposer(depthRange);
     this.registerDisposer(this.pose.changed.add(this.changed.dispatch));
     this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
   }

@@ -68,7 +68,6 @@ export function makeState(
         ),
       ),
       viewerState.navigationState.zoomFactor.addRef(),
-      viewerState.navigationState.depthRange.addRef(),
     );
   }
   return navigationState;

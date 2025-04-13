@@ -816,7 +816,6 @@ function dataSourcesToJson(dataSources: LayerDataSource[]) {
 const TOOL_JSON_KEY = "tool";
 const TOOL_BINDINGS_JSON_KEY = "toolBindings";
 const LOCAL_POSITION_JSON_KEY = "localPosition";
-const LOCAL_VELOCITY_JSON_KEY = "localVelocity";
 const LOCAL_COORDINATE_SPACE_JSON_KEY = "localDimensions";
 const SOURCE_JSON_KEY = "source";
 const TRANSFORM_JSON_KEY = "transform";

@@ -39,7 +39,6 @@ import {
   OrientationState,
   Position,
   TrackableCrossSectionZoom,
-  TrackableDepthRange,
   TrackableDisplayDimensions,
   TrackableRelativeDisplayScales,
   WatchableDisplayDimensionRenderInfo,
@@ -137,9 +136,6 @@ export class Viewer extends RefCounted {
   crossSectionScale = this.registerDisposer(
     new TrackableCrossSectionZoom(this.displayDimensionRenderInfo.addRef()),
   );
-  crossSectionDepthRange = this.registerDisposer(
-    new TrackableDepthRange(-10, this.displayDimensionRenderInfo),
-  );
 
   navigationState = this.registerDisposer(
     new NavigationState(
@@ -149,7 +145,6 @@ export class Viewer extends RefCounted {
         this.crossSectionOrientation.addRef(),
       ),
       this.crossSectionScale.addRef(),
-      this.crossSectionDepthRange.addRef(),
     ),
   );
 
