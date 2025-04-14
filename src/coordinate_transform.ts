@@ -20,10 +20,8 @@ import type { TypedArray } from "#src/util/array.js";
 import {
   arraysEqual,
   arraysEqualWithPredicate,
-  getInsertPermutation,
 } from "#src/util/array.js";
 import {
-  getDependentTransformInputDimensions,
   mat4,
   quat,
   vec3,
@@ -32,7 +30,6 @@ import {
   expectArray,
   parseArray,
   parseFiniteVec,
-  parseFixedLengthArray,
   verifyFiniteFloat,
   verifyFinitePositiveFloat,
   verifyIntegerArray,
@@ -46,7 +43,6 @@ import * as matrix from "#src/util/matrix.js";
 import {
   scaleByExp10,
   supportedUnits,
-  unitFromJson,
 } from "#src/util/si_units.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { Trackable } from "#src/util/trackable.js";
@@ -201,18 +197,6 @@ export function coordinateSpacesEqual(a: CoordinateSpace, b: CoordinateSpace) {
       coordinateArraysEqual,
     )
   );
-}
-
-export function unitsFromJson(
-  units: string[],
-  scaleExponents: Float64Array,
-  obj: any,
-) {
-  parseFixedLengthArray(units, obj, (x: any, index: number) => {
-    const result = unitFromJson(x);
-    scaleExponents[index] = result.exponent;
-    return result.unit;
-  });
 }
 
 export function makeCoordinateSpace(space: {
@@ -389,19 +373,6 @@ export function roundCoordinateToVoxelCenter(
     coordinate = Math.floor(coordinate) + 0.5;
   }
   return coordinate;
-}
-
-export function getDisplayLowerUpperBounds(
-  bounds: CoordinateSpaceBounds,
-  dimIndex: number,
-) {
-  let lower = bounds.lowerBounds[dimIndex];
-  let upper = bounds.upperBounds[dimIndex];
-  if (bounds.voxelCenterAtIntegerCoordinates[dimIndex]) {
-    lower += 0.5;
-    upper += 0.5;
-  }
-  return [lower, upper];
 }
 
 // Clamps `coordinate` to `[lower, upper - 1]`.  This is intended to be used with
@@ -637,35 +608,6 @@ export interface CoordinateSpaceTransform {
    * correspond to input dimensions and rows correspond to output dimensions.
    */
   readonly transform: Float64Array;
-}
-
-export function coordinateSpaceTransformsEquivalent(
-  defaultTransform: CoordinateSpaceTransform,
-  transform: CoordinateSpaceTransform,
-) {
-  const { rank, sourceRank } = defaultTransform;
-  if (rank !== transform.rank || sourceRank !== transform.sourceRank)
-    return false;
-  const { inputSpace: defaultInputSpace } = defaultTransform;
-  const { inputSpace } = transform;
-  if (
-    !arraysEqual(inputSpace.scales, defaultInputSpace.scales) ||
-    !arraysEqual(inputSpace.units, defaultInputSpace.units) ||
-    !arraysEqual(
-      transform.outputSpace.names,
-      defaultTransform.outputSpace.names,
-    )
-  ) {
-    return false;
-  }
-  return isTransformDerivableFromDefault(
-    defaultTransform.transform,
-    rank,
-    defaultTransform.outputSpace.scales,
-    transform.transform,
-    rank,
-    transform.outputSpace.scales,
-  );
 }
 
 export function makeIdentityTransform(
@@ -1872,89 +1814,4 @@ export function coordinateTransformSpecificationToJson(
   };
 }
 
-export function permuteTransformedBoundingBox(
-  boundingBox: TransformedBoundingBox,
-  newToOld: readonly number[],
-  oldOutputRank: number,
-): TransformedBoundingBox | undefined {
-  const { box, transform } = boundingBox;
-  const inputRank = boundingBox.box.lowerBounds.length;
-  const outputRank = newToOld.length;
-  const newTransform = new Float64Array((inputRank + 1) * outputRank);
-  matrix.permuteRows(
-    newTransform,
-    outputRank,
-    transform,
-    oldOutputRank,
-    newToOld,
-    inputRank + 1,
-  );
-  if (newTransform.every((x) => x === 0)) return undefined;
-  return {
-    transform: newTransform,
-    box,
-  };
-}
 
-export function permuteCoordinateSpace(
-  existing: CoordinateSpace,
-  newToOld: readonly number[],
-) {
-  const { ids, names, scales, units, timestamps, coordinateArrays } = existing;
-  return makeCoordinateSpace({
-    rank: newToOld.length,
-    valid: existing.valid,
-    ids: newToOld.map((i) => ids[i]),
-    names: newToOld.map((i) => names[i]),
-    timestamps: newToOld.map((i) => timestamps[i]),
-    scales: Float64Array.from(newToOld, (i) => scales[i]),
-    units: newToOld.map((i) => units[i]),
-    coordinateArrays: newToOld.map((i) => coordinateArrays[i]),
-    boundingBoxes: existing.boundingBoxes
-      .map((b) => permuteTransformedBoundingBox(b, newToOld, existing.rank))
-      .filter((b) => b !== undefined) as TransformedBoundingBox[],
-  });
-}
-
-export function insertDimensionAt(
-  existing: CoordinateSpace,
-  targetIndex: number,
-  sourceIndex: number,
-) {
-  if (targetIndex === sourceIndex) return existing;
-  return permuteCoordinateSpace(
-    existing,
-    getInsertPermutation(existing.rank, sourceIndex, targetIndex),
-  );
-}
-
-export function getInferredOutputScale(
-  transform: CoordinateSpaceTransform,
-  outputDim: number,
-): { scale: number; unit: string } | undefined {
-  const { transform: transformMatrix, rank } = transform;
-  const inputDims = getDependentTransformInputDimensions(
-    transformMatrix,
-    rank,
-    [outputDim],
-  );
-  if (inputDims.length !== 1) return undefined;
-  const [inputDim] = inputDims;
-  const coeff = Math.abs(transformMatrix[(rank + 1) * inputDim + outputDim]);
-  const { inputSpace } = transform;
-  return {
-    scale: inputSpace.scales[inputDim] * coeff,
-    unit: inputSpace.units[inputDim],
-  };
-}
-
-export function getDefaultInputScale(
-  transform: WatchableCoordinateSpaceTransform,
-  inputDim: number,
-): { scale: number; unit: string } | undefined {
-  const { scales: defaultScales, units: defaultUnits } =
-    transform.defaultInputSpace;
-  return inputDim < defaultScales.length
-    ? { scale: defaultScales[inputDim], unit: defaultUnits[inputDim] }
-    : undefined;
-}

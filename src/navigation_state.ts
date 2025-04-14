@@ -24,7 +24,7 @@ import {
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { mat3, mat4, quat, vec3 } from "#src/util/geom.js";
+import { mat4, quat, vec3 } from "#src/util/geom.js";
 import {
   parseArray,
   verifyFiniteFloat,
