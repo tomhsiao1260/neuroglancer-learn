@@ -19,7 +19,6 @@ import type {
   CoordinateTransformSpecification,
 } from "#src/coordinate_transform.js";
 import {
-  coordinateTransformSpecificationFromJson,
   coordinateTransformSpecificationToJson,
   makeCoordinateSpace,
   makeIdentityTransform,
@@ -40,105 +39,9 @@ import { arraysEqual } from "#src/util/array.js";
 import { CancellationTokenSource } from "#src/util/cancellation.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import {
-  verifyBoolean,
-  verifyObject,
-  verifyObjectAsMap,
-  verifyObjectProperty,
-  verifyOptionalObjectProperty,
-  verifyString,
-} from "#src/util/json.js";
 import * as matrix from "#src/util/matrix.js";
 import { MessageList, MessageSeverity } from "#src/util/message_list.js";
 import { NullarySignal } from "#src/util/signal.js";
-
-export function parseDataSubsourceSpecificationFromJson(
-  json: unknown,
-): DataSubsourceSpecification {
-  if (typeof json === "boolean") {
-    return { enabled: json };
-  }
-  verifyObject(json);
-  return {
-    enabled: verifyOptionalObjectProperty(json, "enabled", verifyBoolean),
-  };
-}
-
-export function layerDataSourceSpecificationFromJson(
-  obj: unknown,
-  legacyTransform: CoordinateTransformSpecification | undefined = undefined,
-): DataSourceSpecification {
-  if (typeof obj === "string") {
-    return {
-      url: obj,
-      transform: legacyTransform,
-      enableDefaultSubsources: true,
-      subsources: new Map(),
-    };
-  }
-  verifyObject(obj);
-  return {
-    url: verifyObjectProperty(obj, "url", verifyString),
-    transform:
-      verifyObjectProperty(
-        obj,
-        "transform",
-        coordinateTransformSpecificationFromJson,
-      ) || legacyTransform,
-    enableDefaultSubsources: verifyOptionalObjectProperty(
-      obj,
-      "enableDefaultSubsources",
-      verifyBoolean,
-      true,
-    ),
-    subsources: verifyOptionalObjectProperty(
-      obj,
-      "subsources",
-      (subsourcesObj) =>
-        verifyObjectAsMap(
-          subsourcesObj,
-          parseDataSubsourceSpecificationFromJson,
-        ),
-      new Map<string, DataSubsourceSpecification>(),
-    ),
-    state: verifyOptionalObjectProperty(obj, "state", verifyObject),
-  };
-}
-
-function dataSubsourceSpecificationToJson(spec: DataSubsourceSpecification) {
-  return spec.enabled;
-}
-
-export function layerDataSourceSpecificationToJson(
-  spec: DataSourceSpecification,
-) {
-  const transform = coordinateTransformSpecificationToJson(spec.transform);
-  const subsourcesJson: any = {};
-  let emptySubsources = true;
-  for (const [id, subsource] of spec.subsources) {
-    const j = dataSubsourceSpecificationToJson(subsource);
-    if (j !== undefined) {
-      subsourcesJson[id] = j;
-      emptySubsources = false;
-    }
-  }
-  if (
-    transform === undefined &&
-    emptySubsources &&
-    spec.enableDefaultSubsources === true &&
-    spec.state === undefined
-  ) {
-    return spec.url;
-  }
-  return {
-    url: spec.url,
-    transform,
-    subsources: emptySubsources ? undefined : subsourcesJson,
-    enableDefaultSubsources:
-      spec.enableDefaultSubsources === true ? undefined : false,
-    state: spec.state,
-  };
-}
 
 export class LoadedDataSubsource {
   subsourceToModelSubspaceTransform: Float32Array;
@@ -462,34 +365,5 @@ export class LayerDataSource extends RefCounted {
     if (refCounted !== undefined) {
       refCounted.dispose();
     }
-  }
-
-  toJSON() {
-    const { loadState } = this;
-    if (loadState === undefined || loadState.error !== undefined) {
-      return layerDataSourceSpecificationToJson(this.spec);
-    }
-    return layerDataSourceSpecificationToJson({
-      url: this.spec.url,
-      transform: loadState.transform.spec,
-      enableDefaultSubsources: loadState.enableDefaultSubsources,
-      subsources: new Map(
-        Array.from(loadState.subsources, (loadedSubsource) => {
-          const defaultEnabledValue =
-            loadState.enableDefaultSubsources &&
-            loadedSubsource.subsourceEntry.default;
-          return [
-            loadedSubsource.subsourceEntry.id,
-            {
-              enabled:
-                loadedSubsource.enabled !== defaultEnabledValue
-                  ? loadedSubsource.enabled
-                  : undefined,
-            },
-          ];
-        }),
-      ),
-      state: this.spec.state,
-    });
   }
 }

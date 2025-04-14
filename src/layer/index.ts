@@ -16,11 +16,9 @@
 
 import type {
   CoordinateSpace,
-  CoordinateTransformSpecification,
 } from "#src/coordinate_transform.js";
 import {
   CoordinateSpaceCombiner,
-  coordinateTransformSpecificationFromLegacyJson,
   emptyInvalidCoordinateSpace,
   isLocalOrChannelDimension,
   TrackableCoordinateSpace,
@@ -29,11 +27,9 @@ import type {
   DataSourceSpecification,
   DataSubsource,
 } from "#src/datasource/index.js";
-import { makeEmptyDataSourceSpecification } from "#src/datasource/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
 import {
   LayerDataSource,
-  layerDataSourceSpecificationFromJson,
 } from "#src/layer/layer_data_source.js";
 import type { DisplayDimensions } from "#src/navigation_state.js";
 import {
@@ -49,7 +45,6 @@ import { invokeDisposers, RefCounted } from "#src/util/disposable.js";
 import {
   parseFixedLengthArray,
   verifyFiniteFloat,
-  verifyObjectProperty,
   verifyOptionalObjectProperty,
 } from "#src/util/json.js";
 import { MessageList } from "#src/util/message_list.js";
@@ -299,53 +294,14 @@ export class UserLayer extends RefCounted {
     this.decrementLoadingCounter();
   }
 
-  getLegacyDataSourceSpecifications(
-    sourceSpec: string | undefined,
-    layerSpec: any,
-    legacyTransform: CoordinateTransformSpecification | undefined,
-    explicitSpecs: DataSourceSpecification[],
-  ): DataSourceSpecification[] {
-    layerSpec;
-    explicitSpecs;
-    if (sourceSpec === undefined) return [];
-    return [layerDataSourceSpecificationFromJson(sourceSpec, legacyTransform)];
-  }
-
   getDataSourceSpecifications(layerSpec: any): DataSourceSpecification[] {
-    let legacySpec: any = undefined;
-    let specs = verifyObjectProperty(
-      layerSpec,
-      SOURCE_JSON_KEY,
-      (sourcesObj) => {
-        if (Array.isArray(sourcesObj)) {
-          return sourcesObj.map((source) =>
-            layerDataSourceSpecificationFromJson(source),
-          );
-        }
-        if (typeof sourcesObj === "object") {
-          return [layerDataSourceSpecificationFromJson(sourcesObj)];
-        }
-        legacySpec = sourcesObj;
-        return [];
-      },
-    );
-    const legacyTransform = verifyObjectProperty(
-      layerSpec,
-      TRANSFORM_JSON_KEY,
-      coordinateTransformSpecificationFromLegacyJson,
-    );
-    specs.push(
-      ...this.getLegacyDataSourceSpecifications(
-        legacySpec,
-        layerSpec,
-        legacyTransform,
-        specs,
-      ),
-    );
-    specs = specs.filter((spec) => spec.url);
-    if (specs.length === 0) {
-      specs.push(makeEmptyDataSourceSpecification());
-    }
+    const specs = []
+    specs.push({
+      enableDefaultSubsources: true,
+      subsources: new Map(),
+      transform: undefined,
+      url:  "zarr2://http://localhost:9000/scroll.zarr/"
+    })
     return specs;
   }
 
@@ -418,19 +374,6 @@ export class UserLayer extends RefCounted {
 
   transformPickedValue(value: any) {
     return value;
-  }
-
-  toJSON(): any {
-    return {
-      type: this.type,
-      [SOURCE_JSON_KEY]: dataSourcesToJson(this.dataSources),
-      [TOOL_JSON_KEY]: this.tool.toJSON(),
-      [TOOL_BINDINGS_JSON_KEY]: this.toolBinder.toJSON(),
-      [LOCAL_COORDINATE_SPACE_JSON_KEY]: this.localCoordinateSpace.toJSON(),
-      [LOCAL_POSITION_JSON_KEY]: this.localPosition.toJSON(),
-      [PICK_JSON_KEY]: this.pick.toJSON(),
-      ...this.panels.toJSON(),
-    };
   }
 
   // Derived classes should override.
@@ -809,14 +752,6 @@ export interface LayerListSpecification extends Disposable {
   dispose(): void;
 }
 
-function dataSourcesToJson(dataSources: LayerDataSource[]) {
-  return dataSources.map((x) => x.toJSON());
-}
-
-const TOOL_JSON_KEY = "tool";
-const TOOL_BINDINGS_JSON_KEY = "toolBindings";
 const LOCAL_POSITION_JSON_KEY = "localPosition";
 const LOCAL_COORDINATE_SPACE_JSON_KEY = "localDimensions";
-const SOURCE_JSON_KEY = "source";
-const TRANSFORM_JSON_KEY = "transform";
 const PICK_JSON_KEY = "pick";
