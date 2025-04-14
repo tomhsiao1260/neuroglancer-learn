@@ -705,7 +705,7 @@ export function getVolumetricTransformedSources(
   }
   const layerRank = transform.rank;
   const chunkRank = transform.unpaddedRank;
-  const { displayDimensionIndices, displayRank, canonicalVoxelFactors } =
+  const { displayDimensionIndices, displayRank } =
     displayDimensionRenderInfo;
   const layerDisplayDimensionMapping = getLayerDisplayDimensionMapping(
     transform,
@@ -718,7 +718,7 @@ export function getVolumetricTransformedSources(
   for (let displayDim = 0; displayDim < displayRank; ++displayDim) {
     const layerDim = displayToLayerDimensionIndices[displayDim];
     if (layerDim === -1) continue;
-    const factor = canonicalVoxelFactors[displayDim];
+    const factor = 1;
     for (let chunkDim = 0; chunkDim < chunkRank; ++chunkDim) {
       multiscaleToViewTransform[displayRank * chunkDim + displayDim] =
         modelToRenderLayerTransform[(layerRank + 1) * chunkDim + layerDim] *
@@ -730,7 +730,6 @@ export function getVolumetricTransformedSources(
     multiscaleToViewTransform: multiscaleToViewTransform,
     modelChannelDimensionIndices: transform.channelToRenderLayerDimensions,
   });
-  const { voxelPhysicalScales: globalScales } = displayDimensionRenderInfo;
   try {
     const getTransformedSource = (
       singleResolutionSource: SliceViewSingleResolutionSource,
@@ -837,11 +836,6 @@ export function getVolumetricTransformedSources(
         vec3.create(),
         /*baseVoxelSize=*/ kOneVec,
       );
-      for (let i = 0; i < displayRank; ++i) {
-        effectiveVoxelSize[i] = Math.abs(
-          effectiveVoxelSize[i] * globalScales[i],
-        );
-      }
       effectiveVoxelSize.fill(1, displayRank);
       return {
         layerRank,

@@ -19,11 +19,9 @@ import type {
 } from "#src/coordinate_transform.js";
 import {
   clampAndRoundCoordinateToVoxelCenter,
-  dimensionNamesFromJson,
   getBoundingBoxCenter,
 } from "#src/coordinate_transform.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { arraysEqual } from "#src/util/array.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { mat3, mat4, quat, vec3 } from "#src/util/geom.js";
@@ -251,127 +249,30 @@ export interface DisplayDimensionRenderInfo {
    * dimensions that are displayed.  The remaining elements are `-1`.
    */
   displayDimensionIndices: Int32Array;
-
-  voxelPhysicalScales: Float64Array;
-
-  /**
-   * Unit corresponding to each dimension in `displayDimensionIndices`.  `displayDimensionUnits[i]`
-   * is equal to `coordinateSpace.units[displayDimensionIndices[i]]`, or `''` if
-   * `displayDimensionIndices[i] == -1`.
-   */
-  displayDimensionUnits: readonly string[];
-
-  /**
-   * Scale corresponding to each dimension in `displayDimensionIndices`.
-   * `displayDimensionScales[i]` is equal to `coordinateSpace.scales[displayDimensionIndices[i]]`,
-   * or `1` if `displayDimensionIndices[i] == -1`.
-   */
-  displayDimensionScales: Float64Array;
-
-  /**
-   * Physical scale corresponding to the canonical voxel.  Equal to minimum of
-   * `voxelPhysicalScales.slice(0, rank)`, or `1` if `rank == 0`.
-   */
-  canonicalVoxelPhysicalSize: number;
-
-  /**
-   * Array of length 3.  Amount by which the voxel coordinates of each display dimensions must be
-   * multiplied to convert to canonical voxels.  canonicalVoxelFactors[i] = voxelPhysicalScales[d] /
-   * canonicalVoxelPhysicalSize, where d = dimensionIndices[i], or `1` for `i >= rank`.
-   */
-  canonicalVoxelFactors: Float64Array;
 }
 
 function getDisplayDimensionRenderInfo(
-  coordinateSpace: CoordinateSpace,
-  displayDimensions: DisplayDimensions,
 ): DisplayDimensionRenderInfo {
-  const {
-    rank: globalRank,
-    names: globalDimensionNames,
-  } = coordinateSpace;
-  const { displayRank, displayDimensionIndices } = displayDimensions;
-  const canonicalVoxelFactors = new Float64Array(3);
-  const voxelPhysicalScales = new Float64Array(3);
-  let canonicalVoxelPhysicalSize: number;
-  const displayDimensionUnits = new Array<string>(3);
-  const displayDimensionScales = new Float64Array(3);
-  canonicalVoxelFactors.fill(1);
-  voxelPhysicalScales.fill(1);
-  displayDimensionScales.fill(1);
-  displayDimensionUnits.fill("");
-  canonicalVoxelPhysicalSize = 1; // displayRank === 0
+  const globalRank = 3;
+  const displayRank = 3;
+  const globalDimensionNames = ['z', 'y', 'x']
+  const displayDimensionIndices = new Int32Array([0, 1, 2])
+
   return {
     globalRank,
     globalDimensionNames,
     displayRank,
     displayDimensionIndices,
-    displayDimensionUnits,
-    displayDimensionScales,
-    canonicalVoxelFactors,
-    voxelPhysicalScales,
-    canonicalVoxelPhysicalSize,
   };
 }
 
-export function displayDimensionRenderInfosEqual(
-  a: DisplayDimensionRenderInfo,
-  b: DisplayDimensionRenderInfo,
-) {
-  return (
-    arraysEqual(a.globalDimensionNames, b.globalDimensionNames) &&
-    arraysEqual(a.displayDimensionIndices, b.displayDimensionIndices) &&
-    arraysEqual(a.canonicalVoxelFactors, b.canonicalVoxelFactors) &&
-    arraysEqual(a.voxelPhysicalScales, b.voxelPhysicalScales) &&
-    a.canonicalVoxelPhysicalSize === b.canonicalVoxelPhysicalSize &&
-    arraysEqual(a.displayDimensionUnits, b.displayDimensionUnits) &&
-    arraysEqual(a.displayDimensionScales, b.displayDimensionScales)
-  );
-}
-
 export class WatchableDisplayDimensionRenderInfo extends RefCounted {
-  changed = new NullarySignal();
-  private curDisplayDimensions: DisplayDimensions =
-    this.displayDimensions.value;
-  private curCoordinateSpace: CoordinateSpace =
-    this.displayDimensions.coordinateSpace.value;
-  private value_: DisplayDimensionRenderInfo = getDisplayDimensionRenderInfo(
-    this.curCoordinateSpace,
-    this.curDisplayDimensions,
-  );
+  private value_: DisplayDimensionRenderInfo = getDisplayDimensionRenderInfo();
   get value() {
-    const {
-      displayDimensions: { value: displayDimensions },
-      curDisplayDimensions,
-      curCoordinateSpace,
-    } = this;
-    let value = this.value_;
-    if (
-      curDisplayDimensions !== displayDimensions ||
-      curCoordinateSpace !==  displayDimensions.coordinateSpace
-    ) {
-      this.curDisplayDimensions = displayDimensions;
-      this.curCoordinateSpace =  displayDimensions.coordinateSpace;
-      const newValue = getDisplayDimensionRenderInfo(
-        displayDimensions.coordinateSpace,
-        displayDimensions,
-      );
-      if (!displayDimensionRenderInfosEqual(value, newValue)) {
-        this.value_ = value = newValue;
-        this.changed.dispatch();
-      }
-    }
-    return value;
+    return this.value_;
   }
-  constructor(
-    public displayDimensions: Owned<TrackableDisplayDimensions>,
-  ) {
+  constructor() {
     super();
-    this.registerDisposer(displayDimensions);
-    const maybeUpdateValue = () => {
-      this.value;
-    };
-    this.registerDisposer(displayDimensions.changed.add(maybeUpdateValue));
   }
 }
 
@@ -381,176 +282,8 @@ export interface DisplayDimensions {
   displayDimensionIndices: Int32Array;
 }
 
-export class TrackableDisplayDimensions
-  extends RefCounted
-  implements Trackable
-{
-  changed = new NullarySignal();
-  private default_ = true;
-  private value_: DisplayDimensions | undefined = undefined;
-
-  constructor(
-    public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
-  ) {
-    super();
-    this.registerDisposer(
-      this.coordinateSpace.changed.add(this.changed.dispatch),
-    );
-    this.update();
-  }
-
-  get value() {
-    this.update();
-    return this.value_!;
-  }
-
-  private update() {
-    const {
-      coordinateSpace: { value: coordinateSpace },
-    } = this;
-    const value = this.value_;
-    if (value !== undefined && value.coordinateSpace === coordinateSpace) {
-      return;
-    }
-    if (value === undefined || this.default_) {
-      this.setToDefault(coordinateSpace);
-      return;
-    }
-    const newDimensionIndices = new Int32Array(3);
-    const { ids: oldDimensionIds } = value.coordinateSpace;
-    const { ids: newDimensionIds } = coordinateSpace;
-    const oldDimensionIndices = value.displayDimensionIndices;
-    const oldRank = value.displayRank;
-    let newRank = 0;
-    for (let i = 0; i < oldRank; ++i) {
-      const newDim = newDimensionIds.indexOf(
-        oldDimensionIds[oldDimensionIndices[i]],
-      );
-      if (newDim === -1) continue;
-      newDimensionIndices[newRank] = newDim;
-      ++newRank;
-    }
-    newDimensionIndices.fill(-1, newRank);
-    if (newRank === 0) {
-      this.default_ = true;
-      this.setToDefault(coordinateSpace);
-      return;
-    }
-    this.assignValue(coordinateSpace, newRank, newDimensionIndices);
-    this.changed.dispatch();
-  }
-
-  private setToDefault(coordinateSpace: CoordinateSpace) {
-    const displayRank = Math.min(coordinateSpace.rank, 3);
-    const displayDimensionIndices = new Int32Array(3);
-    displayDimensionIndices.fill(-1);
-    for (let i = 0; i < displayRank; ++i) {
-      displayDimensionIndices[i] = i;
-    }
-    this.assignValue(coordinateSpace, displayRank, displayDimensionIndices);
-  }
-
-  private assignValue(
-    coordinateSpace: CoordinateSpace,
-    displayRank: number,
-    displayDimensionIndices: Int32Array,
-  ) {
-    this.value_ = {
-      coordinateSpace,
-      displayRank,
-      displayDimensionIndices,
-    };
-    this.changed.dispatch();
-  }
-
-  reset() {
-    this.default_ = true;
-    this.value_ = undefined;
-    this.changed.dispatch();
-  }
-
-  restoreState(obj: any) {
-    if (obj === undefined) {
-      this.reset();
-      return;
-    }
-    const displayDimensionNames = dimensionNamesFromJson(obj);
-    if (displayDimensionNames.length > 3) {
-      throw new Error("Number of spatial dimensions must be <= 3");
-    }
-    const {
-      coordinateSpace: { value: coordinateSpace },
-    } = this;
-    const displayDimensionIndices = new Int32Array(3);
-    displayDimensionIndices.fill(-1);
-    const { names } = coordinateSpace;
-    let displayRank = 0;
-    for (const name of displayDimensionNames) {
-      const index = names.indexOf(name);
-      if (index === -1) continue;
-      displayDimensionIndices[displayRank++] = index;
-    }
-    if (displayRank === 0) {
-      this.reset();
-      return;
-    }
-    this.default_ = false;
-    this.assignValue(coordinateSpace, displayRank, displayDimensionIndices);
-  }
-
-  get default() {
-    this.update();
-    return this.default_;
-  }
-
-  set default(value: boolean) {
-    if (this.default_ === value) return;
-    if (value) {
-      this.default_ = true;
-      this.setToDefault(this.coordinateSpace.value);
-    } else {
-      this.default_ = false;
-      this.changed.dispatch();
-    }
-  }
-
-  setDimensionIndices(rank: number, dimensionIndices: Int32Array) {
-    this.default_ = false;
-    this.assignValue(this.coordinateSpace.value, rank, dimensionIndices);
-  }
-
-  toJSON() {
-    if (this.default_) return undefined;
-    const { value } = this;
-    const displayDimensionNames: string[] = [];
-    const {
-      displayRank,
-      displayDimensionIndices,
-      coordinateSpace: { names },
-    } = value;
-    if (displayRank === 0) return undefined;
-    for (let i = 0; i < displayRank; ++i) {
-      displayDimensionNames[i] = names[displayDimensionIndices[i]];
-    }
-    return displayDimensionNames;
-  }
-
-  assign(other: TrackableDisplayDimensions) {
-    if (other.default) {
-      this.default = true;
-    } else {
-      const { displayRank, displayDimensionIndices } = other.value;
-      this.setDimensionIndices(displayRank, displayDimensionIndices);
-    }
-  }
-}
-
 export class DisplayPose extends RefCounted {
   changed = new NullarySignal();
-
-  get displayDimensions(): Borrowed<TrackableDisplayDimensions> {
-    return this.displayDimensionRenderInfo.displayDimensions;
-  }
 
   constructor(
     public position: Owned<Position>,
@@ -569,15 +302,6 @@ export class DisplayPose extends RefCounted {
     return this.position.valid;
   }
 
-  /**
-   * Resets everything.
-   */
-  reset() {
-    this.position.reset();
-    this.orientation.reset();
-    this.displayDimensions.reset();
-  }
-
   updateDisplayPosition(
     fun: (pos: vec3) => boolean | void,
     temp: vec3 = tempVec3,
@@ -586,8 +310,8 @@ export class DisplayPose extends RefCounted {
       coordinateSpace: { value: coordinateSpace },
       value: voxelCoordinates,
     } = this.position;
-    const { displayDimensionIndices, displayRank } =
-      this.displayDimensions.value;
+    const displayRank = 3;
+    const displayDimensionIndices = new Int32Array([0, 1, 2]);
     if (coordinateSpace === undefined) return false;
     temp.fill(0);
     for (let i = 0; i < displayRank; ++i) {
@@ -609,11 +333,11 @@ export class DisplayPose extends RefCounted {
   toMat4(mat: mat4, zoom: number) {
     mat4.fromQuat(mat, this.orientation.orientation);
     const { value: voxelCoordinates } = this.position;
-    const { canonicalVoxelFactors, displayDimensionIndices } =
+    const { displayDimensionIndices } =
       this.displayDimensionRenderInfo.value;
     for (let i = 0; i < 3; ++i) {
       const dim = displayDimensionIndices[i];
-      const scale = zoom / canonicalVoxelFactors[i];
+      const scale = zoom;
       mat[i] *= scale;
       mat[4 + i] *= scale;
       mat[8 + i] *= scale;
@@ -623,10 +347,10 @@ export class DisplayPose extends RefCounted {
 
   toMat3(mat: mat3, zoom: number) {
     mat3.fromQuat(mat, this.orientation.orientation);
-    const { canonicalVoxelFactors, displayRank } =
+    const { displayRank } =
       this.displayDimensionRenderInfo.value;
     for (let i = 0; i < displayRank; ++i) {
-      const scale = zoom / canonicalVoxelFactors[i];
+      const scale = zoom;
       mat[i] *= scale;
       mat[3 + i] *= scale;
       mat[6 + i] *= scale;
@@ -644,8 +368,8 @@ export class DisplayPose extends RefCounted {
     );
     const { position } = this;
     const { value: voxelCoordinates } = position;
-    const { displayDimensionIndices, displayRank } =
-      this.displayDimensions.value;
+    const displayRank = 3;
+    const displayDimensionIndices = new Int32Array([0, 1, 2]);
     const { bounds } = position.coordinateSpace.value;
     for (let i = 0; i < displayRank; ++i) {
       const dim = displayDimensionIndices[i];
@@ -696,11 +420,8 @@ abstract class TrackableZoom
     this.changed.dispatch();
   }
 
-  constructor(
-    public displayDimensionRenderInfo: Owned<WatchableDisplayDimensionRenderInfo>,
-  ) {
+  constructor() {
     super();
-    this.registerDisposer(displayDimensionRenderInfo);
     this.value_ = this.getDefaultValue();
   }
 
@@ -724,40 +445,12 @@ abstract class TrackableZoom
     this.value_ = this.getDefaultValue();
     this.changed.dispatch();
   }
-
-  assign(source: TrackableZoomInterface) {
-    this.value = source.value;
-  }
 }
 
 export class TrackableCrossSectionZoom extends TrackableZoom {
   protected getDefaultValue() {
       // Default is 1 voxel per viewport pixel.
       return 1;
-  }
-}
-
-export class TrackableProjectionZoom extends TrackableZoom {
-  protected getDefaultValue() {
-    const {
-      displayDimensionRenderInfo: {
-        value: { displayDimensionScales, displayDimensionIndices },
-      },
-    } = this;
-    let value = 0;
-    for (let i = 0; i < displayDimensionIndices.length; ++i) {
-      const dim = displayDimensionIndices[i];
-      if (dim === -1) continue;
-      const scale = displayDimensionScales[i];
-      value = Math.max(value, scale);
-    }
-    if (!Number.isFinite(value)) {
-      // Default to showing 1024 voxels if there is no bounds information.
-      value = 1024;
-    } else {
-      value = 2 ** Math.ceil(Math.log2(value));
-    }
-    return value;
   }
 }
 
