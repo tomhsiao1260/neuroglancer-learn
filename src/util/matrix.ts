@@ -124,23 +124,6 @@ export function copy<T extends TypedArray>(
   return b;
 }
 
-export function extendHomogeneousTransform<T extends TypedArray>(
-  b: T,
-  bRank: number,
-  a: T,
-  aRank: number,
-) {
-  copy(b, bRank + 1, a, aRank + 1, aRank, aRank);
-  for (let i = 0; i < aRank; ++i) {
-    b[(bRank + 1) * bRank + i] = a[(aRank + 1) * aRank + i];
-  }
-  b[b.length - 1] = 1;
-  for (let i = aRank; i < bRank; ++i) {
-    b[(bRank + 1) * i + i] = 1;
-  }
-  return b;
-}
-
 let pivots: Uint32Array | undefined;
 
 /**

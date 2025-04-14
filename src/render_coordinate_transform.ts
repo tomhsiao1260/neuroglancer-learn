@@ -20,9 +20,7 @@ import type {
 } from "#src/coordinate_transform.js";
 import {
   emptyValidCoordinateSpace,
-  homogeneousTransformSubmatrix,
 } from "#src/coordinate_transform.js";
-import type { DisplayDimensionRenderInfo } from "#src/navigation_state.js";
 import type {
   CachedWatchableValue,
   WatchableValueInterface,
@@ -31,9 +29,8 @@ import {
   constantWatchableValue,
   makeCachedDerivedWatchableValue,
 } from "#src/trackable_value.js";
-import { arraysEqual, scatterUpdate } from "#src/util/array.js";
+import { arraysEqual } from "#src/util/array.js";
 import type { ValueOrError } from "#src/util/error.js";
-import type { vec3 } from "#src/util/geom.js";
 import { mat4, getDependentTransformInputDimensions } from "#src/util/geom.js";
 import * as matrix from "#src/util/matrix.js";
 import * as vector from "#src/util/vector.js";
@@ -139,30 +136,6 @@ export type RenderLayerTransformOrError = ValueOrError<RenderLayerTransform>;
 export type WatchableRenderLayerTransform =
   WatchableValueInterface<RenderLayerTransformOrError>;
 
-function scaleTransformSubmatrix(
-  transform: Float32Array,
-  rank: number,
-  baseInputSpace: CoordinateSpace,
-  inputToBaseDimensions: readonly number[],
-  baseOutputSpace: CoordinateSpace,
-  baseToOutputDimensions: readonly number[],
-) {
-  const { scales: baseInputScales } = baseInputSpace;
-  const { scales: baseOutputScales, rank: baseOutputRank } = baseOutputSpace;
-  const stride = rank + 1;
-  for (let baseOutputDim = 0; baseOutputDim < baseOutputRank; ++baseOutputDim) {
-    const outputDim = baseToOutputDimensions[baseOutputDim];
-    if (outputDim === -1) continue;
-    const baseOutputScale = baseOutputScales[baseOutputDim];
-    for (let inputDim = 0; inputDim < rank; ++inputDim) {
-      const baseInputDim = inputToBaseDimensions[inputDim];
-      const baseInputScale = baseInputScales[baseInputDim];
-      transform[stride * inputDim + outputDim] *=
-        baseInputScale / baseOutputScale;
-    }
-  }
-}
-
 export function getRenderLayerTransform(
   globalCoordinateSpace: CoordinateSpace,
   localCoordinateSpace: CoordinateSpace,
@@ -182,169 +155,18 @@ export function getRenderLayerTransform(
     outputSpace: layerSpace,
     transform: oldTransform,
   } = modelToLayerTransform;
-  const { names: modelDimensionNames } = modelSpace;
-  const { names: transformOutputDimensions } = layerSpace;
-  let requiredInputDims: number[];
-  if (subsourceEntry !== undefined) {
-    requiredInputDims = Array.from(
-      subsourceEntry.modelSubspaceDimensionIndices,
-    );
-  } else {
-    requiredInputDims = [];
-    for (let i = 0; i < sourceRank; ++i) {
-      requiredInputDims[i] = i;
-    }
-  }
-  const unpaddedRank = requiredInputDims.length;
-  for (let i = sourceRank; i < fullRank; ++i) {
-    requiredInputDims.push(i);
-  }
-  const requiredOutputDims = getDependentTransformInputDimensions(
-    modelToLayerTransform.transform,
-    fullRank,
-    requiredInputDims,
-    true,
-  );
-  const subspaceRank = requiredInputDims.length;
-  const modelSubspaceDimensionNames = requiredInputDims.map(
-    (i) => modelDimensionNames[i] || `${i}`,
-  );
-  const layerSubspaceDimensionNames = requiredOutputDims.map(
-    (i) => transformOutputDimensions[i],
-  );
-  if (subspaceRank !== requiredOutputDims.length) {
-    return {
-      error:
-        "Rank mismatch between model subspace dimensions (" +
-        modelSubspaceDimensionNames.join(", ") +
-        ") and corresponding layer/global dimensions (" +
-        layerSubspaceDimensionNames.join(", ") +
-        ")",
-    };
-  }
-  let newTransform = homogeneousTransformSubmatrix(
-    Float32Array,
-    oldTransform,
-    fullRank,
-    requiredOutputDims,
-    requiredInputDims,
-  );
-  const renderLayerDimensions = requiredOutputDims.map(
-    (i) => transformOutputDimensions[i],
-  );
-  const localToRenderLayerDimensions = localCoordinateSpace.names.map((x) =>
-    renderLayerDimensions.indexOf(x),
-  );
-  const globalToRenderLayerDimensions = globalCoordinateSpace.names.map((x) =>
-    renderLayerDimensions.indexOf(x),
-  );
-  scaleTransformSubmatrix(
-    newTransform,
-    subspaceRank,
-    modelSpace,
-    requiredInputDims,
-    globalCoordinateSpace,
-    globalToRenderLayerDimensions,
-  );
-  scaleTransformSubmatrix(
-    newTransform,
-    subspaceRank,
-    modelSpace,
-    requiredInputDims,
-    localCoordinateSpace,
-    localToRenderLayerDimensions,
-  );
-  const channelToRenderLayerDimensions = channelCoordinateSpace.names.map((x) =>
-    renderLayerDimensions.indexOf(x),
-  );
-  scaleTransformSubmatrix(
-    newTransform,
-    subspaceRank,
-    modelSpace,
-    requiredInputDims,
-    channelCoordinateSpace,
-    channelToRenderLayerDimensions,
-  );
-  const channelToModelSubspaceDimensions: number[] = [];
-  const channelRank = channelCoordinateSpace.rank;
-  if (subsourceEntry !== undefined) {
-    let { subsourceToModelSubspaceTransform } = subsourceEntry;
-    if (unpaddedRank !== subspaceRank) {
-      subsourceToModelSubspaceTransform = matrix.extendHomogeneousTransform(
-        new Float32Array((subspaceRank + 1) ** 2),
-        subspaceRank,
-        subsourceToModelSubspaceTransform,
-        unpaddedRank,
-      );
-    }
-    newTransform = matrix.multiply(
-      new Float32Array((subspaceRank + 1) ** 2),
-      subspaceRank + 1,
-      newTransform,
-      subspaceRank + 1,
-      subsourceToModelSubspaceTransform,
-      subspaceRank + 1,
-      subspaceRank + 1,
-      subspaceRank + 1,
-      subspaceRank + 1,
-    );
-  }
-  const channelSpaceShape = new Uint32Array(channelRank);
-  const {
-    lowerBounds: channelLowerBounds,
-    upperBounds: channelUpperBounds,
-    voxelCenterAtIntegerCoordinates: channelVoxelCenterAtIntegerCoordinates,
-  } = channelCoordinateSpace.bounds;
-  for (let channelDim = 0; channelDim < channelRank; ++channelDim) {
-    let lower = channelLowerBounds[channelDim];
-    let upper = channelUpperBounds[channelDim];
-    if (channelVoxelCenterAtIntegerCoordinates[channelDim]) {
-      lower += 0.5;
-      upper += 0.5;
-    }
-    if (
-      lower !== 0 ||
-      !Number.isInteger(upper) ||
-      upper <= 0 ||
-      upper >= 2 ** 32
-    ) {
-      return {
-        error:
-          `Channel dimension ${channelCoordinateSpace.names[channelDim]} must have ` +
-          `lower bound of 0 and positive integer upper bound; current bounds are [${lower}, ${upper}]`,
-      };
-    }
-    channelSpaceShape[channelDim] = upper;
-    const layerDim = channelToRenderLayerDimensions[channelDim];
-    let correspondingModelSubspaceDim = -1;
-    if (layerDim !== -1) {
-      for (let chunkDim = 0; chunkDim < subspaceRank; ++chunkDim) {
-        const coeff = newTransform[layerDim + chunkDim * (subspaceRank + 1)];
-        if (coeff === 0) continue;
-        if (coeff !== 1 || correspondingModelSubspaceDim !== -1) {
-          return {
-            error:
-              `Channel dimension ${layerSubspaceDimensionNames[layerDim]} ` +
-              "must map to a single source dimension",
-          };
-        }
-        correspondingModelSubspaceDim = chunkDim;
-      }
-    }
-    channelToModelSubspaceDimensions[channelDim] =
-      correspondingModelSubspaceDim;
-  }
+
   return {
-    rank: subspaceRank,
-    unpaddedRank,
-    modelDimensionNames: modelSubspaceDimensionNames,
-    layerDimensionNames: layerSubspaceDimensionNames,
-    localToRenderLayerDimensions,
-    globalToRenderLayerDimensions,
-    channelToRenderLayerDimensions,
-    modelToRenderLayerTransform: newTransform,
-    channelToModelDimensions: channelToModelSubspaceDimensions,
-    channelSpaceShape,
+    rank: 3,
+    unpaddedRank: 3,
+    modelDimensionNames: ['z', 'y', 'x'],
+    layerDimensionNames: ['z', 'y', 'x'],
+    localToRenderLayerDimensions: [],
+    globalToRenderLayerDimensions: [0, 1, 2],
+    channelToRenderLayerDimensions: [],
+    modelToRenderLayerTransform: oldTransform,
+    channelToModelDimensions: [],
+    channelSpaceShape: new Uint32Array(),
   };
 }
 
@@ -459,72 +281,6 @@ export interface ChunkTransformParameters extends ChunkChannelAccessParameters {
   layerRank: number;
 }
 
-export function layerToDisplayCoordinates(
-  displayPosition: vec3,
-  layerPosition: Float32Array,
-  modelTransform: RenderLayerTransform,
-  displayDimensionIndices: Int32Array,
-) {
-  const { globalToRenderLayerDimensions } = modelTransform;
-  for (let displayDim = 0; displayDim < 3; ++displayDim) {
-    let v = 0;
-    const globalDim = displayDimensionIndices[displayDim];
-    if (globalDim !== -1) {
-      const layerDim = globalToRenderLayerDimensions[globalDim];
-      if (layerDim !== -1) {
-        v = layerPosition[layerDim];
-      }
-    }
-    displayPosition[displayDim] = v;
-  }
-}
-
-export function displayToLayerCoordinates(
-  layerPosition: Float32Array,
-  displayPosition: vec3,
-  modelTransform: RenderLayerTransform,
-  displayDimensionIndices: Int32Array,
-) {
-  const { globalToRenderLayerDimensions } = modelTransform;
-  for (let displayDim = 0; displayDim < 3; ++displayDim) {
-    const globalDim = displayDimensionIndices[displayDim];
-    if (globalDim !== -1) {
-      const layerDim = globalToRenderLayerDimensions[globalDim];
-      if (layerDim !== -1) {
-        layerPosition[layerDim] = displayPosition[displayDim];
-      }
-    }
-  }
-}
-
-export function chunkToDisplayCoordinates(
-  displayPosition: vec3,
-  chunkPosition: Float32Array,
-  chunkTransform: ChunkTransformParameters,
-  displayDimensionIndices: Int32Array,
-): vec3 {
-  const { globalToRenderLayerDimensions } = chunkTransform.modelTransform;
-  const { layerRank, chunkToLayerTransform } = chunkTransform;
-  const stride = layerRank + 1;
-  for (let displayDim = 0; displayDim < 3; ++displayDim) {
-    let sum = 0;
-    const globalDim = displayDimensionIndices[displayDim];
-    if (globalDim !== -1) {
-      const layerDim = globalToRenderLayerDimensions[globalDim];
-      if (layerDim !== -1) {
-        sum = chunkToLayerTransform[stride * layerRank + layerDim];
-        for (let chunkDim = 0; chunkDim < layerRank; ++chunkDim) {
-          sum +=
-            chunkToLayerTransform[stride * chunkDim + layerDim] *
-            chunkPosition[chunkDim];
-        }
-      }
-    }
-    displayPosition[displayDim] = sum;
-  }
-  return displayPosition;
-}
-
 export interface ChunkDisplayTransformParameters {
   modelTransform: RenderLayerTransform;
   chunkTransform: ChunkTransformParameters;
@@ -541,14 +297,6 @@ export function getChunkTransformParameters(
   const layerRank = modelTransform.rank;
   const unpaddedRank = modelTransform.unpaddedRank;
   let chunkToLayerTransform: Float32Array;
-  if (unpaddedRank !== layerRank && chunkToModelTransform !== undefined) {
-    chunkToModelTransform = matrix.extendHomogeneousTransform(
-      new Float32Array((layerRank + 1) ** 2),
-      layerRank,
-      chunkToModelTransform,
-      unpaddedRank,
-    );
-  }
   if (chunkToModelTransform !== undefined) {
     chunkToLayerTransform = new Float32Array((layerRank + 1) * (layerRank + 1));
     matrix.multiply(
@@ -806,68 +554,4 @@ export function getChunkPositionFromCombinedGlobalLocalPositions(
     }
   }
   return valid;
-}
-
-export function getLayerPositionFromCombinedGlobalLocalPositions(
-  layerPosition: Float32Array,
-  globalPosition: Float32Array,
-  localPosition: Float32Array,
-  modelTransform: RenderLayerTransform,
-) {
-  scatterUpdate(
-    layerPosition,
-    globalPosition,
-    modelTransform.globalToRenderLayerDimensions,
-  );
-  scatterUpdate(
-    layerPosition,
-    localPosition,
-    modelTransform.localToRenderLayerDimensions,
-  );
-  return layerPosition;
-}
-
-export function get3dModelToDisplaySpaceMatrix(
-  out: mat4,
-  displayDimensionRenderInfo: DisplayDimensionRenderInfo,
-  transform: RenderLayerTransform,
-) {
-  out.fill(0);
-  out[15] = 1;
-  let fullRank = true;
-  const { displayDimensionIndices } = displayDimensionRenderInfo;
-  const { globalToRenderLayerDimensions, modelToRenderLayerTransform } =
-    transform;
-  const layerRank = transform.rank;
-  for (let displayDim = 0; displayDim < 3; ++displayDim) {
-    const globalDim = displayDimensionIndices[displayDim];
-    if (globalDim === -1) {
-      fullRank = false;
-      continue;
-    }
-    const layerDim = globalToRenderLayerDimensions[globalDim];
-    if (layerDim === -1) {
-      fullRank = false;
-      continue;
-    }
-    out[displayDim + 12] =
-      modelToRenderLayerTransform[layerDim + layerRank * (layerRank + 1)];
-    for (let modelDim = 0; modelDim < 3; ++modelDim) {
-      out[displayDim + 4 * modelDim] =
-        modelToRenderLayerTransform[layerDim + (layerRank + 1) * modelDim];
-    }
-  }
-  if (!fullRank) {
-    const { globalDimensionNames } = displayDimensionRenderInfo;
-    const displayDimDesc = Array.from(
-      displayDimensionIndices.filter((i) => i !== -1),
-      (i) => globalDimensionNames[i],
-    ).join(",\u00a0");
-    throw new Error(
-      `Transform from model dimensions (${transform.modelDimensionNames.join(
-        ",\u00a0",
-      )}) ` +
-        `to display dimensions (${displayDimDesc}) does not have full rank`,
-    );
-  }
 }

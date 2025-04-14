@@ -16,7 +16,6 @@
 
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { WatchableValue } from "#src/trackable_value.js";
-import type { TypedArray } from "#src/util/array.js";
 import {
   arraysEqual,
   arraysEqualWithPredicate,
@@ -499,28 +498,6 @@ export class WatchableCoordinateSpaceTransform
       get value() {
         return self.value.outputSpace;
       },
-      set value(newOutputSpace: CoordinateSpace) {
-        const { value } = self;
-        if (coordinateSpacesEqual(value.outputSpace, newOutputSpace)) return;
-        if (value.rank !== newOutputSpace.rank) return;
-        const transform = convertTransformOutputScales(
-          value.transform,
-          value.outputSpace.scales,
-          newOutputSpace.scales,
-        );
-        self.value_ = {
-          sourceRank: value.sourceRank,
-          rank: value.rank,
-          inputSpace: value.inputSpace,
-          outputSpace: getOutputSpaceWithTransformedBoundingBoxes(
-            value.inputSpace,
-            transform,
-            newOutputSpace,
-          ),
-          transform,
-        };
-        self.changed.dispatch();
-      },
     };
     this.inputSpace = {
       changed: self.inputSpaceChanged,
@@ -618,39 +595,7 @@ export class CoordinateSpaceCombiner {
       for (let i = 0; i < rank; ++i) {
         const name = names[i];
         if (!include(name)) continue;
-        if (prevValue !== undefined) {
-          const id = ids[i];
-          const prevIndex = prevValue.ids.indexOf(id);
-          if (prevIndex !== -1) {
-            const combinedId = mappedDimensionIds[prevIndex];
-            if (combinedId !== undefined) {
-              const combinedIndex = mergedIds.indexOf(combinedId);
-              if (combinedIndex !== -1) {
-                newMappedDimensionIds[i] = combinedId;
-                ++dimensionRefs[combinedIndex];
-                combinedIndices[i] = combinedIndex;
-                const timestamp = timestamps[i];
-                if (
-                  timestamp !== undefined &&
-                  !(timestamp <= mergedTimestamps[combinedIndex])
-                ) {
-                  mergedNames[combinedIndex] = name;
-                  mergedScales[combinedIndex] = scales[i];
-                  mergedUnits[combinedIndex] = units[i];
-                  mergedTimestamps[combinedIndex] = timestamp;
-                }
-                continue;
-              }
-            }
-          }
-        }
         let combinedIndex = mergedNames.indexOf(name);
-        if (combinedIndex !== -1) {
-          newMappedDimensionIds[i] = mergedIds[combinedIndex];
-          ++dimensionRefs[combinedIndex];
-          combinedIndices[i] = combinedIndex;
-          continue;
-        }
         combinedIndex = mergedNames.length;
         combinedIndices[i] = combinedIndex;
         dimensionRefs[combinedIndex] = 1 + retainExisting;
@@ -694,25 +639,6 @@ export class CoordinateSpaceCombiner {
           ++count;
         }
         dimensionRefCounts.set(name, count);
-      }
-      if (
-        !arraysEqual(units, space.units) ||
-        !arraysEqual(scales, space.scales) ||
-        !arraysEqual(names, space.names) ||
-        !arraysEqual(timestamps, space.timestamps)
-      ) {
-        const newSpace = makeCoordinateSpace({
-          valid: space.valid,
-          ids: space.ids,
-          scales,
-          units,
-          names,
-          timestamps,
-          boundingBoxes: space.boundingBoxes,
-          coordinateArrays: space.coordinateArrays,
-        });
-        binding.prevValue = newSpace;
-        binding.space.value = newSpace;
       }
     }
 
@@ -779,11 +705,6 @@ export class CoordinateSpaceCombiner {
       boundingBoxes: mergedBoundingBoxes,
       coordinateArrays: mergedCoordinateArrays,
     });
-    if (retainExisting) {
-      for (let i = 0; i < newRank; ++i) {
-        --dimensionRefs[i];
-      }
-    }
     if (!coordinateSpacesEqual(existing, newCombined)) {
       this.prevCombined = newCombined;
       combined.value = newCombined;
@@ -795,15 +716,6 @@ export class CoordinateSpaceCombiner {
     this.update();
   };
 
-  retain() {
-    ++this.retainCount;
-    return () => {
-      if (--this.retainCount === 0) {
-        this.update();
-      }
-    };
-  }
-
   bind(space: WatchableValueInterface<CoordinateSpace>) {
     const binding = { space, mappedDimensionIds: [], prevValue: undefined };
     const { bindings } = this;
@@ -812,7 +724,7 @@ export class CoordinateSpaceCombiner {
     }
     bindings.add(binding);
 
-    const changed5Disposer = space.changed.add(() => {
+    const changedDisposer = space.changed.add(() => {
       if (space.value === binding.prevValue) return;
       this.update();
     });
@@ -828,29 +740,6 @@ export class CoordinateSpaceCombiner {
     this.update();
     return disposer;
   }
-}
-
-export function homogeneousTransformSubmatrix<T extends TypedArray>(
-  arrayConstructor: { new (n: number): T },
-  oldTransform: TypedArray,
-  oldRank: number,
-  oldRows: readonly number[],
-  oldCols: readonly number[],
-): T {
-  const newRank = oldCols.length;
-  const newTransform = new arrayConstructor((newRank + 1) ** 2);
-  newTransform[newTransform.length - 1] = 1;
-  for (let newRow = 0; newRow < newRank; ++newRow) {
-    const oldRow = oldRows[newRow];
-    newTransform[(newRank + 1) * newRank + newRow] =
-      oldTransform[(oldRank + 1) * oldRank + oldRow];
-    for (let newCol = 0; newCol < newRank; ++newCol) {
-      const oldCol = oldCols[newCol];
-      newTransform[(newRank + 1) * newCol + newRow] =
-        oldTransform[(oldRank + 1) * oldCol + oldRow];
-    }
-  }
-  return newTransform;
 }
 
 export interface CoordinateTransformSpecification {

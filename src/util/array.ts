@@ -282,23 +282,6 @@ export function getInsertPermutation(
   return newToOld;
 }
 
-export function scatterUpdate<
-  T,
-  Dest extends { [index: number]: T },
-  Source extends { readonly [index: number]: T },
->(dest: Dest, source: Source, indices: ArrayLike<number>): Dest {
-  for (
-    let sourceIndex = 0, length = indices.length;
-    sourceIndex < length;
-    ++sourceIndex
-  ) {
-    const destIndex = indices[sourceIndex];
-    if (destIndex === -1) continue;
-    dest[destIndex] = source[sourceIndex];
-  }
-  return dest;
-}
-
 export function gatherUpdate<
   T,
   Dest extends { [index: number]: T },

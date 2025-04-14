@@ -29,7 +29,6 @@ import type { DisplayContext } from "#src/display_context.js";
 import {
   ManagedUserLayer,
   LayerManager,
-  LayerSelectedValues,
   MouseSelectionState,
 } from "#src/layer/index.js";
 import { ImageUserLayer } from "#src/layer/image/index.js";
@@ -138,9 +137,6 @@ export class Viewer extends RefCounted {
 
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
-  layerSelectedValues = this.registerDisposer(
-    new LayerSelectedValues(this.layerManager, this.mouseState),
-  );
 
   visibility: WatchableVisibilityPriority;
   inputEventBindings: any;
@@ -166,7 +162,6 @@ export class Viewer extends RefCounted {
     addNewLayer({
       chunkManager: this.chunkManager,
       layerManager: this.layerManager,
-      layerSelectedValues: this.layerSelectedValues,
       dataSourceProviderRegistry: this.dataSourceProvider,
       coordinateSpace: this.navigationState.coordinateSpace,
     });
