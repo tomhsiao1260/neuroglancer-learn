@@ -40,7 +40,6 @@ import {
   Position,
   TrackableCrossSectionZoom,
   TrackableDisplayDimensions,
-  TrackableRelativeDisplayScales,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import type { Borrowed } from "#src/util/disposable.js";
@@ -120,15 +119,11 @@ export class DataManagementContext extends RefCounted {
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   position = this.registerDisposer(new Position(this.coordinateSpace));
-  relativeDisplayScales = this.registerDisposer(
-    new TrackableRelativeDisplayScales(this.coordinateSpace),
-  );
   displayDimensions = this.registerDisposer(
     new TrackableDisplayDimensions(this.coordinateSpace),
   );
   displayDimensionRenderInfo = this.registerDisposer(
     new WatchableDisplayDimensionRenderInfo(
-      this.relativeDisplayScales.addRef(),
       this.displayDimensions.addRef(),
     ),
   );
