@@ -22,18 +22,14 @@ import {
   getBoundingBoxCenter,
 } from "#src/coordinate_transform.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import type { Borrowed, Owned } from "#src/util/disposable.js";
+import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { mat3, mat4, quat, vec3 } from "#src/util/geom.js";
 import {
   parseArray,
-  parseFiniteVec,
   verifyFiniteFloat,
-  verifyFinitePositiveFloat,
 } from "#src/util/json.js";
 import { NullarySignal } from "#src/util/signal.js";
-import type { Trackable } from "#src/util/trackable.js";
-import * as vector from "#src/util/vector.js";
 
 const tempVec3 = vec3.create();
 
@@ -45,6 +41,7 @@ export class Position extends RefCounted {
     public coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
     super();
+
     this.registerDisposer(
       coordinateSpace.changed.add(() => {
         this.handleCoordinateSpaceChanged();
@@ -68,33 +65,16 @@ export class Position extends RefCounted {
     this.changed.dispatch();
   }
 
-  set value(coordinates: Float32Array) {
-    if (coordinates.length !== 3) {
-      return;
-    }
-    this.coordinates_.set(coordinates);
-    this.changed.dispatch();
-  }
-
   private handleCoordinateSpaceChanged() {
     const coordinateSpace = this.coordinateSpace.value;
     if (!coordinateSpace.valid) return;
     const { bounds } = coordinateSpace;
     getBoundingBoxCenter(this.coordinates_, bounds);
-    const { voxelCenterAtIntegerCoordinates } = bounds;
     for (let i = 0; i < 3; ++i) {
-          if (voxelCenterAtIntegerCoordinates[i]) {
-        this.coordinates_[i] = Math.round(this.coordinates_[i]);
-          } else {
         this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
-      }
+      // }
     }
     this.changed.dispatch();
-  }
-
-  toJSON() {
-    if (!this.valid) return undefined;
-    return Array.from(this.coordinates_);
   }
 
   restoreState(obj: any) {
@@ -104,50 +84,6 @@ export class Position extends RefCounted {
     }
     this.coordinates_ = Float32Array.from(parseArray(obj, verifyFiniteFloat));
     this.changed.dispatch();
-  }
-
-  snapToVoxel() {
-    const {
-      bounds: { voxelCenterAtIntegerCoordinates },
-    } = this.coordinateSpace.value;
-    for (let i = 0; i < 3; ++i) {
-      if (voxelCenterAtIntegerCoordinates[i]) {
-        this.coordinates_[i] = Math.round(this.coordinates_[i]);
-      } else {
-        this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
-      }
-    }
-    this.changed.dispatch();
-  }
-
-  assign(other: Borrowed<Position>) {
-    this.coordinates_.set(other.coordinates_);
-    this.changed.dispatch();
-  }
-
-  /**
-   * Get the offset of `a` relative to `b`.
-   */
-  static getOffset(a: Position, b: Position): Float32Array | undefined {
-    const aCoordinates = a.coordinates_;
-    const bCoordinates = b.coordinates_;
-      return vector.subtract(
-      new Float32Array(3),
-        aCoordinates,
-        bCoordinates,
-      );
-    }
-
-  static addOffset(
-    target: Position,
-    source: Position,
-    offset: Float32Array | undefined,
-    scale = 1,
-  ): void {
-    if (offset !== undefined) {
-      vector.scaleAndAdd(target.coordinates_, source.coordinates_, offset, scale);
-      target.changed.dispatch();
-    }
   }
 }
 
@@ -163,35 +99,6 @@ export class OrientationState extends RefCounted {
     this.orientation = orientation;
   }
 
-  toJSON() {
-    const { orientation } = this;
-    quat.normalize(this.orientation, this.orientation);
-    if (quaternionIsIdentity(orientation)) {
-      return undefined;
-    }
-    return Array.prototype.slice.call(this.orientation);
-  }
-
-  restoreState(obj: any) {
-    try {
-      parseFiniteVec(this.orientation, obj);
-      quat.normalize(this.orientation, this.orientation);
-    } catch (ignoredError) {
-      quat.identity(this.orientation);
-    }
-    this.changed.dispatch();
-  }
-
-  reset() {
-    quat.identity(this.orientation);
-    this.changed.dispatch();
-  }
-
-  assign(other: Borrowed<OrientationState>) {
-    quat.copy(this.orientation, other.orientation);
-    this.changed.dispatch();
-  }
-
   /**
    * Returns a new OrientationState with orientation fixed to peerToSelf * peer.orientation.  Any
    * changes to the returned OrientationState will cause a corresponding change in peer, and vice
@@ -200,29 +107,6 @@ export class OrientationState extends RefCounted {
   static makeRelative(peer: OrientationState, peerToSelf: quat) {
     const self = new OrientationState(
       quat.multiply(quat.create(), peer.orientation, peerToSelf),
-    );
-    let updatingPeer = false;
-    self.registerDisposer(
-      peer.changed.add(() => {
-        if (!updatingPeer) {
-          updatingSelf = true;
-          quat.multiply(self.orientation, peer.orientation, peerToSelf);
-          self.changed.dispatch();
-          updatingSelf = false;
-        }
-      }),
-    );
-    let updatingSelf = false;
-    const selfToPeer = quat.invert(quat.create(), peerToSelf);
-    self.registerDisposer(
-      self.changed.add(() => {
-        if (!updatingSelf) {
-          updatingPeer = true;
-          quat.multiply(peer.orientation, self.orientation, selfToPeer);
-          peer.changed.dispatch();
-          updatingPeer = false;
-        }
-      }),
     );
     return self;
   }
@@ -274,12 +158,6 @@ export class WatchableDisplayDimensionRenderInfo extends RefCounted {
   constructor() {
     super();
   }
-}
-
-export interface DisplayDimensions {
-  coordinateSpace: CoordinateSpace;
-  displayRank: number;
-  displayDimensionIndices: Int32Array;
 }
 
 export class DisplayPose extends RefCounted {
@@ -345,18 +223,6 @@ export class DisplayPose extends RefCounted {
     }
   }
 
-  toMat3(mat: mat3, zoom: number) {
-    mat3.fromQuat(mat, this.orientation.orientation);
-    const { displayRank } =
-      this.displayDimensionRenderInfo.value;
-    for (let i = 0; i < displayRank; ++i) {
-      const scale = zoom;
-      mat[i] *= scale;
-      mat[3 + i] *= scale;
-      mat[6 + i] *= scale;
-    }
-  }
-
   translateVoxelsRelative(translation: vec3) {
     if (!this.valid) {
       return;
@@ -383,31 +249,13 @@ export class DisplayPose extends RefCounted {
     }
     this.position.changed.dispatch();
   }
-
-  rotateRelative(axis: vec3, angle: number) {
-    const temp = quat.create();
-    quat.setAxisAngle(temp, axis, angle);
-    const orientation = this.orientation.orientation;
-    quat.multiply(orientation, orientation, temp);
-    this.orientation.changed.dispatch();
-  }
 }
 
-export type TrackableZoomInterface =
-  | TrackableProjectionZoom
-  | TrackableCrossSectionZoom;
-
-abstract class TrackableZoom
-  extends RefCounted
-  implements Trackable, WatchableValueInterface<number>
+export class TrackableZoom extends RefCounted
 {
   readonly changed = new NullarySignal();
   private value_: number = Number.NaN;
 
-  /**
-   * Zoom factor.  For cross section views, in canonical voxels per viewport pixel.  For projection
-   * views, in canonical voxels per viewport height (for orthographic projection).
-   */
   get value() {
     return this.value_;
   }
@@ -422,35 +270,7 @@ abstract class TrackableZoom
 
   constructor() {
     super();
-    this.value_ = this.getDefaultValue();
-  }
-
-  protected abstract getDefaultValue(): number;
-
-  toJSON() {
-    const { value } = this;
-    return Number.isNaN(value) ? undefined : value;
-  }
-
-  restoreState(obj: any) {
-    if (obj === undefined) {
-      this.value_ = this.getDefaultValue();
-    } else {
-      this.value_ = verifyFinitePositiveFloat(obj);
-    }
-    this.changed.dispatch();
-  }
-
-  reset() {
-    this.value_ = this.getDefaultValue();
-    this.changed.dispatch();
-  }
-}
-
-export class TrackableCrossSectionZoom extends TrackableZoom {
-  protected getDefaultValue() {
-      // Default is 1 voxel per viewport pixel.
-      return 1;
+    this.value_ = 1;
   }
 }
 
@@ -475,19 +295,12 @@ export class NavigationState extends RefCounted {
   get position() {
     return this.pose.position;
   }
-  get displayDimensions() {
-    return this.pose.displayDimensions;
-  }
   get displayDimensionRenderInfo() {
     return this.pose.displayDimensionRenderInfo;
   }
   toMat4(mat: mat4) {
     this.pose.toMat4(mat, this.zoomFactor.value);
   }
-  toMat3(mat: mat3) {
-    this.pose.toMat3(mat, this.zoomFactor.value);
-  }
-
   get valid() {
     return this.pose.valid && !Number.isNaN(this.zoomFactor.value);
   }
