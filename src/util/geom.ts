@@ -355,31 +355,6 @@ export function isAABBIntersectingPlane(
   return true;
 }
 
-/**
- * Returns the list (in sorted order) of input dimensions that depend on any of the specified output
- * dimensions.
- */
-export function getDependentTransformInputDimensions(
-  transform: Float32Array | Float64Array,
-  rank: number,
-  outputDimensions: readonly number[],
-  transpose = false,
-): number[] {
-  const numOutputDimensions = outputDimensions.length;
-  const isDependentInputDimension: boolean[] = [];
-  const inputStride = transpose ? 1 : rank + 1;
-  const outputStride = transpose ? rank + 1 : 1;
-  for (let i = 0; i < numOutputDimensions; ++i) {
-    const outputDim = outputDimensions[i];
-    for (let inputDim = 0; inputDim < rank; ++inputDim) {
-      if (transform[inputDim * inputStride + outputDim * outputStride] !== 0) {
-        isDependentInputDimension[inputDim] = true;
-      }
-    }
-  }
-  return findMatchingIndices(isDependentInputDimension, true);
-}
-
 export function scaleMat3Input(out: mat3, input: mat3, scales: TypedArray) {
   for (let j = 0; j < 3; ++j) {
     const s = scales[j];

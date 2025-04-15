@@ -29,7 +29,6 @@ import {
 } from "#src/sliceview/base.js";
 import { DATA_TYPE_BYTES, DataType } from "#src/util/data_type.js";
 import type { vec3 } from "#src/util/geom.js";
-import { getDependentTransformInputDimensions } from "#src/util/geom.js";
 import * as matrix from "#src/util/matrix.js";
 import { Uint64 } from "#src/util/uint64.js";
 import * as vector from "#src/util/vector.js";
@@ -277,11 +276,7 @@ export function makeDefaultVolumeChunkSpecifications(
   }
   const { lowerVoxelBound, upperVoxelBound } = options;
   if (modelChannelDimensionIndices.length !== 0) {
-    for (const chunkDim of getDependentTransformInputDimensions(
-      chunkToMultiscaleTransform,
-      rank,
-      modelChannelDimensionIndices,
-    )) {
+    for (const chunkDim of [0, 1, 2]) {
       let size = upperVoxelBound[chunkDim];
       if (lowerVoxelBound !== undefined) {
         size -= lowerVoxelBound[chunkDim];

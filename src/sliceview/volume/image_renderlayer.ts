@@ -102,7 +102,6 @@ export class ImageRenderLayer extends SliceViewVolumeRenderLayer<ShaderControlsB
       ...options,
       fallbackShaderParameters: shaderParameters,
       shaderParameters: shaderControlState.builderState,
-      dataHistogramSpecifications: shaderControlState.histogramSpecifications,
     });
     this.shaderControlState = shaderControlState;
     this.registerDisposer(

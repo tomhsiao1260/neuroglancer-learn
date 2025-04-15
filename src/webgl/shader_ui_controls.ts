@@ -22,10 +22,9 @@ import type {
 import {
   constantWatchableValue,
   makeCachedDerivedWatchableValue,
-  makeCachedLazyDerivedWatchableValue,
   TrackableValue,
 } from "#src/trackable_value.js";
-import { arraysEqual, arraysEqualWithPredicate } from "#src/util/array.js";
+import { arraysEqual } from "#src/util/array.js";
 import { parseRGBColorSpecification, TrackableRGB } from "#src/util/color.js";
 import type { DataType } from "#src/util/data_type.js";
 import { RefCounted } from "#src/util/disposable.js";
@@ -51,7 +50,6 @@ import {
 import { NullarySignal } from "#src/util/signal.js";
 import type { Trackable } from "#src/util/trackable.js";
 import type { GL } from "#src/webgl/context.js";
-import type { HistogramChannelSpecification } from "#src/webgl/empirical_cdf.js";
 import { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
 import {
   defineInvlerpShaderFunction,
@@ -1090,53 +1088,6 @@ export class ShaderControlState
       },
       [this.parseResult, this],
       (a, b) => a.key === b.key,
-    );
-    const histogramChannels = makeCachedDerivedWatchableValue(
-      (state) => {
-        const channels: HistogramChannelSpecification[] = [];
-        for (const { control, trackable } of state.values()) {
-          if (control.type !== "imageInvlerp") continue;
-          channels.push({ channel: trackable.value.channel });
-        }
-        return channels;
-      },
-      [this],
-      (a, b) =>
-        arraysEqualWithPredicate(a, b, (ca, cb) =>
-          arraysEqual(ca.channel, cb.channel),
-        ),
-    );
-    const histogramProperties = makeCachedDerivedWatchableValue(
-      (state) => {
-        const properties: string[] = [];
-        for (const { control, trackable } of state.values()) {
-          if (control.type !== "propertyInvlerp") continue;
-          properties.push(trackable.value.property);
-        }
-        return properties;
-      },
-      [this],
-      arraysEqual,
-    );
-    const histogramBounds = makeCachedLazyDerivedWatchableValue((state) => {
-      const bounds: DataTypeInterval[] = [];
-      for (const { control, trackable } of state.values()) {
-        if (control.type === "imageInvlerp") {
-          bounds.push(trackable.value.window);
-        } else if (control.type === "propertyInvlerp") {
-          const { dataType, range, window } =
-            trackable.value as PropertyInvlerpParameters;
-          bounds.push(window ?? range ?? defaultDataTypeRange[dataType]);
-        }
-      }
-      return bounds;
-    }, this);
-    this.histogramSpecifications = this.registerDisposer(
-      new HistogramSpecifications(
-        histogramChannels,
-        histogramProperties,
-        histogramBounds,
-      ),
     );
   }
 

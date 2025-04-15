@@ -16,7 +16,6 @@
 
 import type { DisplayDimensionRenderInfo } from "#src/navigation_state.js";
 import { ProjectionParameters } from "#src/projection_parameters.js";
-import { getChunkPositionFromCombinedGlobalLocalPositions } from "#src/render_coordinate_transform.js";
 import { ChunkLayout } from "#src/sliceview/chunk_layout.js";
 import type {
   WatchableValueChangeInterface,
@@ -170,52 +169,6 @@ export interface SliceViewRenderLayer {
     sliceView: any,
     sources: readonly TransformedSource[],
   ): Iterable<TransformedSource>;
-}
-
-function updateFixedCurPositionInChunks<
-  RLayer extends MultiscaleVolumetricDataRenderLayer,
->(
-  tsource: TransformedSource<RLayer, SliceViewChunkSource>,
-  globalPosition: Float32Array,
-  localPosition: Float32Array,
-): boolean {
-  const { curPositionInChunks, fixedPositionWithinChunk } = tsource;
-  const { nonDisplayLowerClipBound, nonDisplayUpperClipBound } = tsource;
-  const { rank, chunkDataSize } = tsource.source.spec;
-  if (
-    !getChunkPositionFromCombinedGlobalLocalPositions(
-      curPositionInChunks,
-      globalPosition,
-      localPosition,
-      tsource.layerRank,
-      tsource.fixedLayerToChunkTransform,
-    )
-  ) {
-    return false;
-  }
-  for (let chunkDim = 0; chunkDim < rank; ++chunkDim) {
-    const x = curPositionInChunks[chunkDim];
-    if (
-      x < nonDisplayLowerClipBound[chunkDim] ||
-      x >= nonDisplayUpperClipBound[chunkDim]
-    ) {
-      if (DEBUG_VISIBLE_SOURCES) {
-        console.log(
-          "excluding source",
-          tsource,
-          `because of chunkDim=${chunkDim}, sum=${x}`,
-          nonDisplayLowerClipBound,
-          nonDisplayUpperClipBound,
-          tsource.fixedLayerToChunkTransform,
-        );
-      }
-      return false;
-    }
-    const chunkSize = chunkDataSize[chunkDim];
-    const chunk = (curPositionInChunks[chunkDim] = Math.floor(x / chunkSize));
-    fixedPositionWithinChunk[chunkDim] = x - chunk * chunkSize;
-  }
-  return true;
 }
 
 function pickBestAlternativeSource<
@@ -859,15 +812,6 @@ export function forEachVisibleVolumetricChunk<
   transformedSource: TransformedSource<RLayer>,
   callback: (positionInChunks: vec3, clippingPlanes: Float32Array) => void,
 ) {
-  if (
-    !updateFixedCurPositionInChunks(
-      transformedSource,
-      projectionParameters.globalPosition,
-      localPosition,
-    )
-  ) {
-    return;
-  }
   const { size: chunkSize } = transformedSource.chunkLayout;
   const modelViewProjection = mat4.multiply(
     tempVisibleVolumetricModelViewProjection,
@@ -904,15 +848,6 @@ export function forEachPlaneIntersectingVolumetricChunk<
   chunkLayout: ChunkLayout,
   callback: (positionInChunks: vec3) => void,
 ) {
-  if (
-    !updateFixedCurPositionInChunks(
-      transformedSource,
-      projectionParameters.globalPosition,
-      localPosition,
-    )
-  ) {
-    return;
-  }
   const { size: chunkSize } = chunkLayout;
   const modelViewProjection = mat4.multiply(
     tempVisibleVolumetricModelViewProjection,

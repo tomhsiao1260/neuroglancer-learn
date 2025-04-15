@@ -18,7 +18,6 @@ import { ChunkState } from "#src/chunk_manager/base.js";
 import type { CoordinateSpace } from "#src/coordinate_transform.js";
 import { emptyInvalidCoordinateSpace } from "#src/coordinate_transform.js";
 import type { ProjectionParameters } from "#src/projection_parameters.js";
-import { getChunkPositionFromCombinedGlobalLocalPositions } from "#src/render_coordinate_transform.js";
 import { getNormalizedChunkLayout } from "#src/sliceview/base.js";
 import {
   computeVertexPositionDebug,
@@ -458,28 +457,6 @@ void main() {
 
   get dataType() {
     return this.multiscaleSource.dataType;
-  }
-
-  getValueAt(globalPosition: Float32Array) {
-    const { tempChunkPosition } = this;
-    for (const { source, chunkTransform } of this.visibleSourcesList) {
-      if (
-        !getChunkPositionFromCombinedGlobalLocalPositions(
-          tempChunkPosition,
-          globalPosition,
-          this.localPosition.value,
-          chunkTransform.layerRank,
-          chunkTransform.combinedGlobalLocalToChunkTransform,
-        )
-      ) {
-        continue;
-      }
-      const result = source.getValueAt(tempChunkPosition, chunkTransform);
-      if (result != null) {
-        return result;
-      }
-    }
-    return null;
   }
 
   beginChunkFormat(

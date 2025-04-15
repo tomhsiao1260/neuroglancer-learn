@@ -133,13 +133,6 @@ class CachedLazyDerivedWatchableValue<U>
   }
 }
 
-export function makeCachedLazyDerivedWatchableValue<U, T extends any[]>(
-  f: (...v: T) => U,
-  ...ws: { [K in keyof T]: WatchableValueInterface<T[K]> }
-) {
-  return new CachedLazyDerivedWatchableValue(f, ws);
-}
-
 export class CachedWatchableValue<T>
   extends RefCounted
   implements WatchableValueInterface<T>

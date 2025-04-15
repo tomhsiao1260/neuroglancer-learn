@@ -31,7 +31,6 @@ import {
   UserLayer,
 } from "#src/layer/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
-import { getChannelSpace } from "#src/render_coordinate_transform.js";
 import { DataType, VolumeType } from "#src/sliceview/volume/base.js";
 import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import {
@@ -41,7 +40,6 @@ import {
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import {
   makeCachedDerivedWatchableValue,
-  makeCachedLazyDerivedWatchableValue,
   WatchableValue,
 } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
@@ -63,12 +61,6 @@ export class ImageUserLayer extends UserLayer {
   channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
     this.channelCoordinateSpace,
     isChannelDimension,
-  );
-  channelSpace = this.registerDisposer(
-    makeCachedLazyDerivedWatchableValue(
-      (channelSpace) => getChannelSpace(channelSpace),
-      this.channelCoordinateSpace,
-    ),
   );
   shaderControlState = this.registerDisposer(
     new ShaderControlState(

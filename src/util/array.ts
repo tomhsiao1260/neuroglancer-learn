@@ -243,19 +243,6 @@ export function arraysEqual<T>(a: ArrayLike<T>, b: ArrayLike<T>) {
   return true;
 }
 
-export function arraysEqualWithPredicate<T>(
-  a: ArrayLike<T>,
-  b: ArrayLike<T>,
-  elementsEqual: (a: T, b: T) => boolean = (a, b) => a === b,
-) {
-  const length = a.length;
-  if (b.length !== length) return false;
-  for (let i = 0; i < length; ++i) {
-    if (!elementsEqual(a[i], b[i])) return false;
-  }
-  return true;
-}
-
 export function getInsertPermutation(
   n: number,
   sourceIndex: number,

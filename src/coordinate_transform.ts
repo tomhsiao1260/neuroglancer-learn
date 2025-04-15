@@ -18,7 +18,6 @@ import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { WatchableValue } from "#src/trackable_value.js";
 import {
   arraysEqual,
-  arraysEqualWithPredicate,
 } from "#src/util/array.js";
 import * as matrix from "#src/util/matrix.js";
 import { NullarySignal } from "#src/util/signal.js";
@@ -108,28 +107,6 @@ export function transformedBoundingBoxesEqual(
 ) {
   return (
     arraysEqual(a.transform, b.transform) && boundingBoxesEqual(a.box, b.box)
-  );
-}
-
-export function coordinateSpacesEqual(a: CoordinateSpace, b: CoordinateSpace) {
-  return (
-    a.valid === b.valid &&
-    a.rank === b.rank &&
-    arraysEqual(a.names, b.names) &&
-    arraysEqual(a.ids, b.ids) &&
-    arraysEqual(a.timestamps, b.timestamps) &&
-    arraysEqual(a.units, b.units) &&
-    arraysEqual(a.scales, b.scales) &&
-    arraysEqualWithPredicate(
-      a.boundingBoxes,
-      b.boundingBoxes,
-      transformedBoundingBoxesEqual,
-    ) &&
-    arraysEqualWithPredicate(
-      a.coordinateArrays,
-      b.coordinateArrays,
-      coordinateArraysEqual,
-    )
   );
 }
 
@@ -388,29 +365,6 @@ export function computeCombinedBounds(
   return { lowerBounds, upperBounds, voxelCenterAtIntegerCoordinates };
 }
 
-export function extendTransformedBoundingBox(
-  boundingBox: TransformedBoundingBox,
-  newOutputRank: number,
-  newOutputDims: readonly number[],
-): TransformedBoundingBox {
-  const { transform: oldTransform, box } = boundingBox;
-  const oldOutputRank = newOutputDims.length;
-  const inputRank = box.lowerBounds.length;
-  const newTransform = new Float64Array((inputRank + 1) * newOutputRank);
-  for (let oldOutputDim = 0; oldOutputDim < oldOutputRank; ++oldOutputDim) {
-    const newOutputDim = newOutputDims[oldOutputDim];
-    if (newOutputDim === -1) continue;
-    for (let inputDim = 0; inputDim <= inputRank; ++inputDim) {
-      newTransform[inputDim * newOutputRank + newOutputDim] =
-        oldTransform[inputDim * oldOutputRank + oldOutputDim];
-    }
-  }
-  return {
-    transform: newTransform,
-    box,
-  };
-}
-
 export interface CoordinateSpaceTransform {
   /**
    * Equal to `outputSpace.rank`.
@@ -536,8 +490,6 @@ interface BoundCoordinateSpace {
 export class CoordinateSpaceCombiner {
   private bindings = new Set<BoundCoordinateSpace>();
 
-  private retainCount = 0;
-
   private prevCombined: CoordinateSpace | undefined = this.combined.value;
 
   dimensionRefCounts = new Map<string, number>();
@@ -560,155 +512,32 @@ export class CoordinateSpaceCombiner {
   }
 
   private update() {
-    const { combined, bindings } = this;
-    const retainExisting = this.retainCount > 0 ? 1 : 0;
-    if (bindings.size === 0 && !retainExisting) {
-      combined.value = emptyInvalidCoordinateSpace;
-      return;
-    }
-    const include = this.includeDimensionPredicate_;
-    const existing = combined.value;
-    let mergedNames = Array.from(existing.names);
-    let mergedUnits = Array.from(existing.units);
-    let mergedScales = Array.from(existing.scales);
-    let mergedIds = Array.from(existing.ids);
-    let mergedTimestamps = Array.from(existing.timestamps);
-    let dimensionRefs: number[] = existing.names.map(() =>
-      retainExisting ? 1 : 0,
-    );
-    const bindingCombinedIndices: (number | undefined)[][] = [];
-    let valid = false;
-    for (const binding of bindings) {
-      const {
-        space: { value: space },
-        prevValue,
-        mappedDimensionIds,
-      } = binding;
-      valid = valid || space.valid;
-      const { names, units, scales, ids, timestamps } = space;
-      const newMappedDimensionIds: (DimensionId | undefined)[] = [];
-      const combinedIndices: (number | undefined)[] = [];
-      bindingCombinedIndices.push(combinedIndices);
-      binding.mappedDimensionIds = newMappedDimensionIds;
-      binding.prevValue = space;
-      const rank = names.length;
-      for (let i = 0; i < rank; ++i) {
-        const name = names[i];
-        if (!include(name)) continue;
-        let combinedIndex = mergedNames.indexOf(name);
-        combinedIndex = mergedNames.length;
-        combinedIndices[i] = combinedIndex;
-        dimensionRefs[combinedIndex] = 1 + retainExisting;
-        mergedNames[combinedIndex] = name;
-        mergedUnits[combinedIndex] = units[i];
-        mergedScales[combinedIndex] = scales[i];
-        mergedTimestamps[combinedIndex] = timestamps[i];
-        const combinedId = newDimensionId();
-        mergedIds[combinedIndex] = combinedId;
-        newMappedDimensionIds[i] = combinedId;
-      }
-    }
-    // Propagate names, units, and scales back
-    const { dimensionRefCounts } = this;
-    dimensionRefCounts.clear();
-    let bindingIndex = 0;
-    let newRank = mergedNames.length;
-    for (const binding of bindings) {
-      const {
-        space: { value: space },
-      } = binding;
-      const combinedIndices = bindingCombinedIndices[bindingIndex++];
-      const { rank } = space;
-      const names = Array.from(space.names);
-      const timestamps = Array.from(space.timestamps);
-      const scales = Float64Array.from(space.scales);
-      const units = Array.from(space.units);
-      for (let i = 0; i < rank; ++i) {
-        const combinedIndex = combinedIndices[i];
-        if (combinedIndex === undefined) continue;
-        units[i] = mergedUnits[combinedIndex];
-        scales[i] = mergedScales[combinedIndex];
-        timestamps[i] = mergedTimestamps[combinedIndex];
-        names[i] = mergedNames[combinedIndex];
-      }
-      for (const name of names) {
-        let count = dimensionRefCounts.get(name);
-        if (count === undefined) {
-          count = 1;
-        } else {
-          ++count;
-        }
-        dimensionRefCounts.set(name, count);
-      }
+    const bounds = {
+      lowerBounds: new Float64Array([-0.5, -0.5, -0.5]),
+      upperBounds: new Float64Array([767.5, 767.5, 767.5]),
+      voxelCenterAtIntegerCoordinates: [true, true, true],
     }
 
-    {
-      for (let i = 0; i < newRank; ++i) {
-        if (!include(mergedNames[i])) {
-          dimensionRefs[i] = 0;
+    const newCombined = {
+      boundingBoxes: [
+        {
+          box: bounds,
+          transform: new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]),
         }
-      }
-      const hasRefs = (_: any, i: number) => dimensionRefs[i] !== 0;
-      mergedNames = mergedNames.filter(hasRefs);
-      mergedUnits = mergedUnits.filter(hasRefs);
-      mergedScales = mergedScales.filter(hasRefs);
-      mergedIds = mergedIds.filter(hasRefs);
-      mergedTimestamps = mergedTimestamps.filter(hasRefs);
-      dimensionRefs = dimensionRefs.filter(hasRefs);
-      newRank = mergedNames.length;
+      ],
+      bounds,
+      coordinateArrays: new Array(3),
+      ids: [1, 2, 3],
+      names: ['z', 'y', 'x'],
+      rank: 3,
+      scales: new Float64Array([1, 1, 1]),
+      timestamps: [-Infinity, -Infinity, -Infinity],
+      units: ['', '', ''],
+      valid: true,
     }
 
-    const mergedBoundingBoxes: TransformedBoundingBox[] = [];
-    const allCoordinateArrays = new Array<CoordinateArray[] | undefined>(
-      newRank,
-    );
-    // Include any explicit coordinate arrays from `existing`.
-    for (let i = 0, existingRank = existing.rank; i < existingRank; ++i) {
-      const coordinateArray = existing.coordinateArrays[i];
-      if (!coordinateArray?.explicit) continue;
-      const newDim = mergedIds.indexOf(existing.ids[i]);
-      if (newDim === -1) continue;
-      allCoordinateArrays[newDim] = [coordinateArray];
-    }
-    for (const binding of bindings) {
-      const {
-        space: { value: space },
-      } = binding;
-      const { rank, boundingBoxes, coordinateArrays } = space;
-      const newDims = space.names.map((x) => mergedNames.indexOf(x));
-      for (const oldBoundingBox of boundingBoxes) {
-        mergedBoundingBoxes.push(
-          extendTransformedBoundingBox(oldBoundingBox, newRank, newDims),
-        );
-      }
-      for (let i = 0; i < rank; ++i) {
-        const coordinateArray = coordinateArrays[i];
-        if (coordinateArray === undefined) continue;
-        const newDim = newDims[i];
-        const mergedList = allCoordinateArrays[newDim];
-        if (mergedList === undefined) {
-          allCoordinateArrays[newDim] = [coordinateArray];
-        } else {
-          mergedList.push(coordinateArray);
-        }
-      }
-    }
-    const mergedCoordinateArrays = new Array<CoordinateArray | undefined>(
-      newRank,
-    );
-    const newCombined = makeCoordinateSpace({
-      valid,
-      ids: mergedIds,
-      names: mergedNames,
-      units: mergedUnits,
-      scales: new Float64Array(mergedScales),
-      boundingBoxes: mergedBoundingBoxes,
-      coordinateArrays: mergedCoordinateArrays,
-    });
-    if (!coordinateSpacesEqual(existing, newCombined)) {
-      this.prevCombined = newCombined;
-      combined.value = newCombined;
-    }
+    this.prevCombined = newCombined;
+    this.combined.value = newCombined;
   }
 
   private handleCombinedChanged = () => {

@@ -35,7 +35,6 @@ import type {
 import {
   getChunkDisplayTransformParameters,
   getChunkTransformParameters,
-  getLayerDisplayDimensionMapping,
 } from "#src/render_coordinate_transform.js";
 import {
   DerivedProjectionParameters,
@@ -705,12 +704,11 @@ export function getVolumetricTransformedSources(
   }
   const layerRank = transform.rank;
   const chunkRank = transform.unpaddedRank;
-  const { displayDimensionIndices, displayRank } =
-    displayDimensionRenderInfo;
-  const layerDisplayDimensionMapping = getLayerDisplayDimensionMapping(
-    transform,
-    displayDimensionIndices,
-  );
+  const { displayRank } = displayDimensionRenderInfo;
+  const layerDisplayDimensionMapping = {
+    displayToLayerDimensionIndices: [0, 1, 2],
+    layerDisplayDimensionIndices: [0, 1, 2]
+  }
 
   const { displayToLayerDimensionIndices } = layerDisplayDimensionMapping;
   const multiscaleToViewTransform = new Float32Array(displayRank * chunkRank);
