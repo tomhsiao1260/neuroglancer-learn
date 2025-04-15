@@ -54,7 +54,6 @@ import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
 import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import { Uint64 } from "#src/util/uint64.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
-import { TrackableBoolean } from '#src/trackable_boolean.js';
 import type { Disposable } from '#src/util/disposable.js';
 
 export interface UserLayerSelectionState {
@@ -208,11 +207,6 @@ export class UserLayer extends RefCounted {
   get manager() {
     return this.managedLayer.manager;
   }
-
-  pick = new TrackableBoolean(false);
-  panels = new TrackableBoolean(false);
-  tool = new TrackableBoolean(false);
-  toolBinder = new TrackableBoolean(false);
 
   constructor(public managedLayer: Borrowed<ManagedUserLayer>) {
     super();

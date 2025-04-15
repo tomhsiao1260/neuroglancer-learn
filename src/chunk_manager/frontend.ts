@@ -27,7 +27,6 @@ import {
   REQUEST_CHUNK_STATISTICS_RPC_ID,
 } from "#src/chunk_manager/base.js";
 import { SharedWatchableValue } from "#src/shared_watchable_value.js";
-import { TrackableBoolean } from "#src/trackable_boolean.js";
 import { TrackableValue } from "#src/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { CANCELED } from "#src/util/cancellation.js";
@@ -112,7 +111,7 @@ export class ChunkQueueManager extends SharedObject {
 
   chunkUpdateDelay = 30;
 
-  enablePrefetch = new TrackableBoolean(true, true);
+  enablePrefetch = { value: true, changed: new NullarySignal() };
 
   constructor(
     rpc: RPC,
