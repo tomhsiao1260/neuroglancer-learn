@@ -19,7 +19,6 @@ import { LayerChunkProgressInfo } from "#src/chunk_manager/base.js";
 import { RenderViewport, renderViewportsEqual } from "#src/display_context.js";
 import type {
   MouseSelectionState,
-  PickState,
   UserLayer,
 } from "#src/layer/index.js";
 import type {
@@ -59,21 +58,11 @@ export class RenderLayer extends RefCounted {
   }
 
   /**
-   * Transform the stored pickedValue and offset associated with the retrieved pick ID into the
-   * actual value.
-   */
-  transformPickedValue(pickState: PickState): any {
-    return pickState.pickedValue;
-  }
-
-  /**
    * Optionally updates the mouse state based on the retrived pick information.  This might snap the
    * 3-d position to the center of the picked point.
    */
   updateMouseState(
     _mouseState: MouseSelectionState,
-    _pickedValue: Uint64,
-    _pickedOffset: number,
     _data: any,
   ) {}
 }

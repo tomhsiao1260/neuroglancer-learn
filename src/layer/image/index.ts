@@ -22,16 +22,12 @@ import {
 } from "#src/coordinate_transform.js";
 import type {
   ManagedUserLayer,
-  UserLayerSelectionState,
 } from "#src/layer/index.js";
 import {
-  registerLayerType,
-  registerLayerTypeDetector,
-  registerVolumeLayerType,
   UserLayer,
 } from "#src/layer/index.js";
 import type { LoadedDataSubsource } from "#src/layer/layer_data_source.js";
-import { DataType, VolumeType } from "#src/sliceview/volume/base.js";
+import { DataType } from "#src/sliceview/volume/base.js";
 import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import {
   getTrackableFragmentMain,
@@ -47,10 +43,6 @@ import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 
 const CHANNEL_DIMENSIONS_JSON_KEY = "channelDimensions";
-
-export interface ImageLayerSelectionState extends UserLayerSelectionState {
-  value: any;
-}
 
 export class ImageUserLayer extends UserLayer {
   fragmentMain = getTrackableFragmentMain();
@@ -104,8 +96,6 @@ export class ImageUserLayer extends UserLayer {
       channelBinding();
     };
   }
-
-  selectionState: ImageLayerSelectionState;
 
   constructor(managedLayer: Borrowed<ManagedUserLayer>) {
     super(managedLayer);
@@ -166,24 +156,8 @@ export class ImageUserLayer extends UserLayer {
       specification[CHANNEL_DIMENSIONS_JSON_KEY],
     );
   }
-  toJSON() {
-    const x = super.toJSON();
-    x.shader = this.fragmentMain.toJSON();
-    x.sliceViewRenderScaleTarget = this.sliceViewRenderScaleTarget.value;
-    x[CHANNEL_DIMENSIONS_JSON_KEY] = this.channelCoordinateSpace.toJSON();
-    return x;
-  }
 
   static type = "image";
   static typeAbbreviation = "img";
 }
 
-registerLayerType(ImageUserLayer);
-registerVolumeLayerType(VolumeType.IMAGE, ImageUserLayer);
-// Use ImageUserLayer as a fallback layer type if there is a `volume` subsource.
-registerLayerTypeDetector((subsource) => {
-  const { volume } = subsource;
-  if (volume === undefined) return undefined;
-  if (volume.volumeType !== VolumeType.UNKNOWN) return undefined;
-  return { layerConstructor: ImageUserLayer, priority: -100 };
-});

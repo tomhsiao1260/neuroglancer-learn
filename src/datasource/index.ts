@@ -13,26 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import type { MultiscaleAnnotationSource } from "#src/annotation/frontend_source.js";
-import type { AnnotationSource } from "#src/annotation/index.js";
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import type {
   CoordinateSpace,
   CoordinateSpaceTransform,
-  CoordinateTransformSpecification,
 } from "#src/coordinate_transform.js";
 import {
   emptyValidCoordinateSpace,
   makeCoordinateSpace,
   makeIdentityTransform,
 } from "#src/coordinate_transform.js";
-import type { MeshSource, MultiscaleMeshSource } from "#src/mesh/frontend.js";
-import type { SegmentPropertyMap } from "#src/segmentation_display_state/property_map.js";
-import type { SegmentationGraphSource } from "#src/segmentation_graph/source.js";
-import type { SingleMeshSource } from "#src/single_mesh/frontend.js";
-import type { SkeletonSource } from "#src/skeleton/frontend.js";
-import type { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
@@ -41,7 +31,6 @@ import type {
   CompletionWithDescription,
 } from "#src/util/completion.js";
 import {
-  applyCompletionOffset,
   getPrefixMatchesWithDescriptions,
 } from "#src/util/completion.js";
 import type { Owned } from "#src/util/disposable.js";
@@ -98,7 +87,6 @@ export interface GetDataSourceOptionsBase {
   chunkManager: ChunkManager;
   cancellationToken?: CancellationToken;
   url: string;
-  transform: CoordinateTransformSpecification | undefined;
   globalCoordinateSpace: WatchableValueInterface<CoordinateSpace>;
   state?: any;
 }
@@ -136,17 +124,6 @@ export enum LocalDataSource {
   equivalences = 1,
 }
 
-export interface DataSubsource {
-  volume?: MultiscaleVolumeChunkSource;
-  mesh?: MeshSource | MultiscaleMeshSource | SkeletonSource;
-  annotation?: MultiscaleAnnotationSource;
-  staticAnnotations?: AnnotationSource;
-  local?: LocalDataSource;
-  singleMesh?: SingleMeshSource;
-  segmentPropertyMap?: SegmentPropertyMap;
-  segmentationGraph?: SegmentationGraphSource;
-}
-
 export interface CompleteUrlOptionsBase {
   url: string;
   cancellationToken?: CancellationToken;
@@ -166,8 +143,6 @@ export interface DataSubsourceEntry {
    * for the first/primary subsource.
    */
   id: string;
-
-  subsource: DataSubsource;
 
   /**
    * Homoegeneous transformation from the subsource to the model subspace corresponding to
@@ -217,19 +192,9 @@ export interface DataSubsourceSpecification {
 
 export interface DataSourceSpecification {
   url: string;
-  transform: CoordinateTransformSpecification | undefined;
   enableDefaultSubsources: boolean;
   subsources: Map<string, DataSubsourceSpecification>;
   state?: any;
-}
-
-export function makeEmptyDataSourceSpecification(): DataSourceSpecification {
-  return {
-    url: "",
-    transform: undefined,
-    enableDefaultSubsources: true,
-    subsources: new Map(),
-  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -429,7 +394,7 @@ export class DataSourceProviderRegistry extends RefCounted {
     options: CompleteUrlOptionsBase,
   ): Promise<CompletionResult> {
     // Check if url matches a protocol.  Note that protocolPattern always matches.
-    const { url, cancellationToken = uncancelableToken } = options;
+    const { url } = options;
     const protocolMatch = url.match(protocolPattern)!;
     const protocol = protocolMatch[1];
     if (protocol === undefined) {
@@ -442,10 +407,6 @@ export class DataSourceProviderRegistry extends RefCounted {
           ([, factory]) => factory.description,
         ),
       });
-    }
-    const factory = this.dataSources.get(protocol);
-    if (factory !== undefined) {
-      return applyCompletionOffset(protocol.length + 3, undefined);
     }
     throw null;
   }

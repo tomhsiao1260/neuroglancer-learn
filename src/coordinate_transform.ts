@@ -16,21 +16,11 @@
 
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { WatchableValue } from "#src/trackable_value.js";
-import {
-  arraysEqual,
-} from "#src/util/array.js";
 import * as matrix from "#src/util/matrix.js";
 import { NullarySignal } from "#src/util/signal.js";
-import type { Trackable } from "#src/util/trackable.js";
 import * as vector from "#src/util/vector.js";
 
 export type DimensionId = number;
-
-let nextDimensionId = 0;
-
-export function newDimensionId(): DimensionId {
-  return ++nextDimensionId;
-}
 
 export interface CoordinateArray {
   // Indicates whether this coordinate array was specified explicitly, in which case it will be
@@ -81,35 +71,6 @@ export interface CoordinateSpace {
   readonly coordinateArrays: (CoordinateArray | undefined)[];
 }
 
-export function boundingBoxesEqual(a: BoundingBox, b: BoundingBox) {
-  return (
-    arraysEqual(a.lowerBounds, b.lowerBounds) &&
-    arraysEqual(a.upperBounds, b.upperBounds)
-  );
-}
-
-export function coordinateArraysEqual(
-  a: CoordinateArray | undefined,
-  b: CoordinateArray | undefined,
-) {
-  if (a === undefined) return b === undefined;
-  if (b === undefined) return false;
-  return (
-    a.explicit === b.explicit &&
-    arraysEqual(a.coordinates, b.coordinates) &&
-    arraysEqual(a.labels, b.labels)
-  );
-}
-
-export function transformedBoundingBoxesEqual(
-  a: TransformedBoundingBox,
-  b: TransformedBoundingBox,
-) {
-  return (
-    arraysEqual(a.transform, b.transform) && boundingBoxesEqual(a.box, b.box)
-  );
-}
-
 export function makeCoordinateSpace(space: {
   readonly valid?: boolean;
   readonly names: readonly string[];
@@ -132,7 +93,11 @@ export function makeCoordinateSpace(space: {
   } = space;
   const { coordinateArrays = new Array<CoordinateArray | undefined>(rank) } =
     space;
-  const { bounds = computeCombinedBounds(boundingBoxes, rank) } = space;
+
+  const lowerBounds = new Float64Array(rank);
+  const upperBounds = new Float64Array(rank);
+  const bounds = { lowerBounds, upperBounds, voxelCenterAtIntegerCoordinates: new Array(rank).fill(true) };
+
   return {
     valid,
     rank,
@@ -277,94 +242,6 @@ export function makeIdentityTransformedBoundingBox(box: BoundingBox) {
   };
 }
 
-export function computeCombinedLowerUpperBound(
-  boundingBox: TransformedBoundingBox,
-  outputDimension: number,
-  outputRank: number,
-): { lower: number; upper: number } | undefined {
-  const {
-    box: { lowerBounds: baseLowerBounds, upperBounds: baseUpperBounds },
-    transform,
-  } = boundingBox;
-  const inputRank = baseLowerBounds.length;
-  const stride = outputRank;
-  const offset = transform[stride * inputRank + outputDimension];
-  let targetLower = offset;
-  let targetUpper = offset;
-  let hasCoefficient = false;
-  for (let inputDim = 0; inputDim < inputRank; ++inputDim) {
-    const c = transform[stride * inputDim + outputDimension];
-    if (c === 0) continue;
-    const lower = c * baseLowerBounds[inputDim];
-    const upper = c * baseUpperBounds[inputDim];
-    targetLower += Math.min(lower, upper);
-    targetUpper += Math.max(lower, upper);
-    hasCoefficient = true;
-  }
-  if (!hasCoefficient) return undefined;
-  return { lower: targetLower, upper: targetUpper };
-}
-
-export function computeCombinedBounds(
-  boundingBoxes: readonly TransformedBoundingBox[],
-  outputRank: number,
-): CoordinateSpaceBounds {
-  const lowerBounds = new Float64Array(outputRank);
-  const upperBounds = new Float64Array(outputRank);
-  lowerBounds.fill(Number.NEGATIVE_INFINITY);
-  upperBounds.fill(Number.POSITIVE_INFINITY);
-
-  // Number of bounding boxes for which both lower and upper bound has a fractional part of `0.5`.
-  const halfIntegerBounds = new Array<number>(outputRank);
-  halfIntegerBounds.fill(0);
-
-  // Number of bounding boxes for which both lower and upper bound has a fractional part of `0.0`.
-  const integerBounds = new Array<number>(outputRank);
-  integerBounds.fill(0);
-
-  for (const boundingBox of boundingBoxes) {
-    for (let outputDim = 0; outputDim < outputRank; ++outputDim) {
-      const result = computeCombinedLowerUpperBound(
-        boundingBox,
-        outputDim,
-        outputRank,
-      );
-      if (result === undefined) continue;
-      const { lower: targetLower, upper: targetUpper } = result;
-      if (Number.isFinite(targetLower) && Number.isFinite(targetUpper)) {
-        const lowerFloor = Math.floor(targetLower);
-        const upperFloor = Math.floor(targetUpper);
-        if (lowerFloor === targetLower && upperFloor === targetUpper) {
-          ++integerBounds[outputDim];
-        } else if (
-          targetLower - lowerFloor === 0.5 &&
-          targetUpper - upperFloor === 0.5
-        ) {
-          ++halfIntegerBounds[outputDim];
-        }
-      }
-      lowerBounds[outputDim] =
-        lowerBounds[outputDim] === Number.NEGATIVE_INFINITY
-          ? targetLower
-          : Math.min(lowerBounds[outputDim], targetLower);
-      upperBounds[outputDim] =
-        upperBounds[outputDim] === Number.POSITIVE_INFINITY
-          ? targetUpper
-          : Math.max(upperBounds[outputDim], targetUpper);
-    }
-  }
-
-  const voxelCenterAtIntegerCoordinates = integerBounds.map(
-    (integerCount, i) => {
-      const halfIntegerCount = halfIntegerBounds[i];
-      // If all bounding boxes have half-integer bounds, assume voxel center is at integer
-      // coordinates.  Otherwise, assume voxel center is at half-integer coordinates.
-      return halfIntegerCount > 0 && integerCount === 0;
-    },
-  );
-  return { lowerBounds, upperBounds, voxelCenterAtIntegerCoordinates };
-}
-
 export interface CoordinateSpaceTransform {
   /**
    * Equal to `outputSpace.rank`.
@@ -417,22 +294,8 @@ export function isChannelDimension(name: string) {
   return name.endsWith("^");
 }
 
-export function convertTransformOutputScales(
-  existingTransform: Float64Array,
-  existingOutputScales: Float64Array,
-  newOutputScales: Float64Array,
-) {
-  const newTransform = new Float64Array(existingTransform);
-  const rank = existingOutputScales.length;
-  const baseIndex = (rank + 1) * rank;
-  for (let i = 0; i < rank; ++i) {
-    newTransform[baseIndex + i] *= existingOutputScales[i] / newOutputScales[i];
-  }
-  return newTransform;
-}
-
 export class WatchableCoordinateSpaceTransform
-  implements Trackable, WatchableValueInterface<CoordinateSpaceTransform>
+  implements WatchableValueInterface<CoordinateSpaceTransform>
 {
   private value_: CoordinateSpaceTransform | undefined = undefined;
   readonly outputSpace: WatchableValueInterface<CoordinateSpace>;
@@ -569,13 +432,6 @@ export class CoordinateSpaceCombiner {
     this.update();
     return disposer;
   }
-}
-
-export interface CoordinateTransformSpecification {
-  sourceRank: number;
-  transform: Float64Array | undefined;
-  inputSpace: CoordinateSpace | undefined;
-  outputSpace: CoordinateSpace;
 }
 
 

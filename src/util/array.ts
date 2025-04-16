@@ -269,23 +269,6 @@ export function getInsertPermutation(
   return newToOld;
 }
 
-export function gatherUpdate<
-  T,
-  Dest extends { [index: number]: T },
-  Source extends { readonly [index: number]: T },
->(dest: Dest, source: Source, indices: ArrayLike<number>): Dest {
-  for (
-    let destIndex = 0, length = indices.length;
-    destIndex < length;
-    ++destIndex
-  ) {
-    const sourceIndex = indices[destIndex];
-    if (sourceIndex === -1) continue;
-    dest[destIndex] = source[sourceIndex];
-  }
-  return dest;
-}
-
 export function transposeNestedArrays<T>(x: T[][]) {
   const result: T[][] = [];
   for (

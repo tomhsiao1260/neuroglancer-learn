@@ -34,14 +34,6 @@ export const emptyCompletionResult = {
   completions: [],
 };
 
-export function applyCompletionOffset<T extends { offset: number }>(
-  offset: number,
-  completionResult: T,
-) {
-  completionResult.offset += offset;
-  return completionResult;
-}
-
 export function getPrefixMatches(prefix: string, options: Iterable<string>) {
   const result: Completion[] = [];
   for (const option of options) {
@@ -68,38 +60,6 @@ export function getPrefixMatchesWithDescriptions<T>(
   }
   result.sort((a, b) => defaultStringCompare(a.value, b.value));
   return result;
-}
-
-export async function completeQueryStringParameters<T extends Completion>(
-  queryString: string,
-  keyCompleter: (value: string) => Promise<BasicCompletionResult<T>>,
-  valueCompleter: (
-    key: string,
-    value: string,
-  ) => Promise<BasicCompletionResult<T>>,
-): Promise<BasicCompletionResult<T>> {
-  if (queryString.startsWith("{")) return emptyCompletionResult;
-  const m = queryString.match(/^(?:(.*)[&;])?([^&;]*)$/);
-  const part = m![2];
-  const offset = queryString.length - part.length;
-  const equalsIndex = part.indexOf("=");
-  if (equalsIndex === -1) {
-    const completions = await keyCompleter(part);
-    return {
-      offset: completions.offset + offset,
-      completions: completions.completions.map((x) => ({
-        ...x,
-        value: `${x.value}=`,
-      })),
-    };
-  }
-  return applyCompletionOffset(
-    offset + equalsIndex + 1,
-    await valueCompleter(
-      part.substring(0, equalsIndex),
-      part.substring(equalsIndex + 1),
-    ),
-  );
 }
 
 export interface QueryStringCompletionTableEntry<

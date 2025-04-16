@@ -16,12 +16,8 @@
 
 import type {
   CoordinateSpace,
-  CoordinateTransformSpecification,
 } from "#src/coordinate_transform.js";
 import {
-  coordinateTransformSpecificationToJson,
-  makeCoordinateSpace,
-  makeIdentityTransform,
   WatchableCoordinateSpaceTransform,
 } from "#src/coordinate_transform.js";
 import type {
@@ -30,7 +26,6 @@ import type {
   DataSubsourceEntry,
   DataSubsourceSpecification,
 } from "#src/datasource/index.js";
-import { makeEmptyDataSourceSpecification } from "#src/datasource/index.js";
 import type { UserLayer } from "#src/layer/index.js";
 import { getWatchableRenderLayerTransform } from "#src/render_coordinate_transform.js";
 import type { RenderLayer } from "#src/renderlayer.js";
@@ -156,24 +151,9 @@ export class LoadedLayerDataSource extends RefCounted {
     spec: DataSourceSpecification,
   ) {
     super();
-    if (dataSource.canChangeModelSpaceRank) {
-      this.transform = new WatchableCoordinateSpaceTransform(
-        makeIdentityTransform(
-          makeCoordinateSpace({
-            rank: 0,
-            scales: new Float64Array(0),
-            units: [],
-            names: [],
-          }),
-        ),
-        true,
-      );
-      this.transform.value = dataSource.modelTransform;
-    } else {
-      this.transform = new WatchableCoordinateSpaceTransform(
-        dataSource.modelTransform,
-      );
-    }
+    this.transform = new WatchableCoordinateSpaceTransform(
+      dataSource.modelTransform,
+    );
     if (spec.transform !== undefined) {
       this.transform.spec = spec.transform;
     }
@@ -202,17 +182,9 @@ export class LoadedLayerDataSource extends RefCounted {
   }
 }
 
-export type LayerDataSourceLoadState =
-  | {
-      error: Error;
-    }
-  | LoadedLayerDataSource
-  | undefined;
-
 export class LayerDataSource extends RefCounted {
   changed = new NullarySignal();
   messages = new MessageList();
-  private loadState_: LayerDataSourceLoadState = undefined;
   private spec_: DataSourceSpecification;
   private specGeneration = -1;
   private refCounted_: RefCounted | undefined = undefined;
@@ -224,12 +196,8 @@ export class LayerDataSource extends RefCounted {
     super();
     this.registerDisposer(this.changed.add(layer.dataSourcesChanged.dispatch));
     this.registerDisposer(layer.messages.addChild(this.messages));
-    if (spec === undefined) {
-      this.spec_ = makeEmptyDataSourceSpecification();
-    } else {
-      // spec.url = "zarr2://http://localhost:9000/scroll.zarr/";
-      this.spec = spec;
-    }
+    // spec.url = "zarr2://http://localhost:9000/scroll.zarr/";
+    this.spec = spec;
   }
 
   get spec() {
