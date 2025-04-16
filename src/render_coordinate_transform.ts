@@ -33,7 +33,6 @@ import { arraysEqual } from "#src/util/array.js";
 import type { ValueOrError } from "#src/util/error.js";
 import { mat4 } from "#src/util/geom.js";
 import * as matrix from "#src/util/matrix.js";
-import * as vector from "#src/util/vector.js";
 
 /**
  * Specifies coordinate transform information for a RenderLayer.

@@ -55,3 +55,16 @@ body {
   color: white;
   z-index: 1;
 }
+
+.neuroglancer-panel {
+  flex: 1;
+}
+
+.neuroglancer-rendered-data-panel {
+  cursor: crosshair;
+  position: relative;
+  outline: 0;
+  touch-action: none;
+  color: #fff;
+  text-align: left;
+}

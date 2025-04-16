@@ -302,10 +302,7 @@ export class MouseSelectionState {
   pageX: number;
   pageY: number;
 
-  private forcerFunction: (() => void) | undefined = undefined;
-
   setForcer(forcer: (() => void) | undefined) {
-    this.forcerFunction = forcer;
     if (forcer === undefined) {
       this.setActive(false);
     }
