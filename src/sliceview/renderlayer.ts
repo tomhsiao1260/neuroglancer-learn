@@ -21,10 +21,6 @@ import type {
   ChunkTransformParameters,
   RenderLayerTransformOrError,
 } from "#src/render_coordinate_transform.js";
-import type {
-  ThreeDimensionalReadyRenderContext,
-  ThreeDimensionalRenderContext,
-} from "#src/renderlayer.js";
 import { RenderLayer } from "#src/renderlayer.js";
 import { SharedWatchableValue } from "#src/shared_watchable_value.js";
 import type {
@@ -46,7 +42,6 @@ import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { constantWatchableValue } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
-import type { ShaderModule } from "#src/webgl/shader.js";
 import type { RpcId } from "#src/worker_rpc.js";
 
 export interface SliceViewRenderLayerOptions {
@@ -61,7 +56,6 @@ export interface SliceViewRenderLayerOptions {
    * Specifies the position within the "local" coordinate space.
    */
   localPosition: WatchableValueInterface<Float32Array>;
-  dataHistogramSpecifications?: HistogramSpecifications;
 
   rpcTransfer?: { [index: string]: number | string | null };
 }
@@ -90,7 +84,6 @@ export abstract class SliceViewRenderLayer<
   transform: WatchableValueInterface<RenderLayerTransformOrError>;
 
   renderScaleTarget: WatchableValueInterface<number>;
-  dataHistogramSpecifications: HistogramSpecifications;
 
   /**
    * Currently visible sources for this render layer.
@@ -234,24 +227,3 @@ export abstract class SliceViewRenderLayer<
 }
 
 SliceViewRenderLayer.prototype.RPC_TYPE_ID = SLICEVIEW_RENDERLAYER_RPC_ID;
-
-export interface SliceViewPanelReadyRenderContext
-  extends ThreeDimensionalReadyRenderContext {
-  sliceView: SliceView;
-}
-
-export interface SliceViewPanelRenderContext
-  extends SliceViewPanelReadyRenderContext,
-    ThreeDimensionalRenderContext {
-  emitter: ShaderModule;
-
-  /**
-   * Specifies whether the emitted color value will be used.
-   */
-  emitColor: boolean;
-
-  /**
-   * Specifies whether the emitted pick ID will be used.
-   */
-  emitPickID: boolean;
-}

@@ -20,7 +20,6 @@ import { emptyInvalidCoordinateSpace } from "#src/coordinate_transform.js";
 import type { ProjectionParameters } from "#src/projection_parameters.js";
 import { getNormalizedChunkLayout } from "#src/sliceview/base.js";
 import {
-  computeVertexPositionDebug,
   defineBoundingBoxCrossSectionShader,
   setBoundingBoxCrossSectionShaderViewportPlane,
 } from "#src/sliceview/bounding_box_shader_helper.js";
@@ -59,10 +58,6 @@ import {
   parameterizedContextDependentShaderGetter,
 } from "#src/webgl/dynamic_shader.js";
 import type { HistogramChannelSpecification } from "#src/webgl/empirical_cdf.js";
-import {
-  defineInvlerpShaderFunction,
-  enableLerpShaderFunction,
-} from "#src/webgl/lerp.js";
 import {
   defineLineShader,
   initializeLineShader,
@@ -135,55 +130,6 @@ gl_Position.z = 0.0;
 vChunkPosition = (position - uTranslation) +
     ${CHUNK_POSITION_EPSILON} * abs(uPlaneNormal);
 `);
-}
-
-function computeVerticesDebug(
-  uChunkDataSize: vec3,
-  uLowerClipBound: vec3,
-  uUpperClipBound: vec3,
-  uPlaneDistance: number,
-  uPlaneNormal: vec3,
-  uTranslation: vec3,
-  uProjectionMatrix: mat4,
-) {
-  const gl_Position = vec3.create();
-  const vChunkPosition = vec3.create();
-  const planeNormalAbs = vec3.fromValues(
-    Math.abs(uPlaneNormal[0]),
-    Math.abs(uPlaneNormal[1]),
-    Math.abs(uPlaneNormal[2]),
-  );
-  const prevVertex = vec3.create();
-  for (let vertexIndex = 0; vertexIndex < 6; ++vertexIndex) {
-    const position = computeVertexPositionDebug(
-      uChunkDataSize,
-      uLowerClipBound,
-      uUpperClipBound,
-      uPlaneDistance,
-      uPlaneNormal,
-      uTranslation,
-      vertexIndex,
-    );
-    if (position === undefined) {
-      console.log("no intersection found");
-      return;
-    }
-    vec3.transformMat4(gl_Position, position, uProjectionMatrix);
-    const skipped = vertexIndex !== 0 && vec3.equals(gl_Position, prevVertex);
-    vec3.copy(prevVertex, gl_Position);
-    vec3.sub(vChunkPosition, position, uTranslation);
-    vec3.scaleAndAdd(
-      vChunkPosition,
-      vChunkPosition,
-      planeNormalAbs,
-      CHUNK_POSITION_EPSILON,
-    );
-    console.log(
-      `${skipped ? "SKIPPED" : "OUTPUT"} vertex ${vertexIndex}, ` +
-        `at ${gl_Position}, vChunkPosition = ${vChunkPosition}, ` +
-        `uTranslation=${uTranslation.join()}, position=${position.join()}`,
-    );
-  }
 }
 
 function initializeShader(
@@ -268,36 +214,11 @@ function drawChunk(
 
   if (DEBUG_VERTICES) {
     const sliceView: SliceView = (<any>window).debug_sliceView;
-    const projectionParameters = sliceView.projectionParameters.value;
     const chunkDataSize: vec3 = (<any>window).debug_sliceView_chunkDataSize;
-    const lowerClipBound: vec3 = (<any>window).debug_sliceView_uLowerClipBound;
-    const upperClipBound: vec3 = (<any>window).debug_sliceView_uUpperClipBound;
     const dataToDeviceMatrix: mat4 = (<any>window).debug_sliceView_dataToDevice;
-    const chunkLayout: ChunkLayout = (<any>window).debug_sliceView_chunkLayout;
     console.log(
       `Drawing chunk: ${chunkPosition.join()} of data size ` +
         `${chunkDataSize.join()}, projection`,
-      dataToDeviceMatrix,
-    );
-    const localPlaneNormal = chunkLayout.globalToLocalNormal(
-      vec3.create(),
-      projectionParameters.viewportNormalInGlobalCoordinates,
-    );
-    const planeDistanceToOrigin = vec3.dot(
-      vec3.transformMat4(
-        vec3.create(),
-        projectionParameters.centerDataPosition,
-        chunkLayout.invTransform,
-      ),
-      localPlaneNormal,
-    );
-    computeVerticesDebug(
-      chunkDataSize,
-      lowerClipBound,
-      upperClipBound,
-      planeDistanceToOrigin,
-      localPlaneNormal,
-      chunkPosition,
       dataToDeviceMatrix,
     );
   }
@@ -329,11 +250,10 @@ export abstract class SliceViewVolumeRenderLayer<
 > extends SliceViewRenderLayer<VolumeChunkSource, VolumeSourceOptions> {
   multiscaleSource: MultiscaleVolumeChunkSource;
   protected shaderGetter: ParameterizedContextDependentShaderGetter<
-    { chunkFormat: ChunkFormat | null; dataHistogramsEnabled: boolean },
+    { chunkFormat: ChunkFormat },
     ShaderParameters,
     ShaderContext
   >;
-  private tempChunkPosition: Float32Array;
   shaderParameters: WatchableValueInterface<ShaderParameters>;
   private vertexIdHelper: VertexIdHelper;
 
@@ -384,13 +304,12 @@ export abstract class SliceViewVolumeRenderLayer<
         builder: ShaderBuilder,
         context: {
           chunkFormat: ChunkFormat | null;
-          dataHistogramsEnabled: boolean;
         },
         parameters: ShaderParameters,
         extraParameters: ShaderContext,
       ) => {
-        const { chunkFormat, dataHistogramsEnabled } = context;
-        const { dataHistogramChannelSpecifications, numChannelDimensions } =
+        const { chunkFormat } = context;
+        const { numChannelDimensions } =
           extraParameters;
         defineVolumeShader(builder, chunkFormat === null);
         builder.addOutputBuffer("vec4", "v4f_fragData0", 0);
@@ -408,50 +327,10 @@ void emit(vec4 color) {
           numChannelDimensions,
           "vChunkPosition",
         );
-        const numHistograms = dataHistogramChannelSpecifications.length;
-        if (dataHistogramsEnabled && numHistograms > 0) {
-          let histogramCollectionCode = "";
-          const { dataType } = chunkFormat;
-          for (let i = 0; i < numHistograms; ++i) {
-            const { channel } = dataHistogramChannelSpecifications[i];
-            const outputName = `out_histogram${i}`;
-            builder.addOutputBuffer("vec4", outputName, 1 + i);
-            const getDataValueExpr = `getDataValue(${channel.join(",")})`;
-            const invlerpName = `invlerpForHistogram${i}`;
-            builder.addFragmentCode(
-              defineInvlerpShaderFunction(
-                builder,
-                invlerpName,
-                dataType,
-                /*clamp=*/ false,
-              ),
-            );
-            builder.addFragmentCode(`
-float getHistogramValue${i}() {
-  return invlerpForHistogram${i}(${getDataValueExpr});
-}
-`);
-            histogramCollectionCode += `{
-float x = getHistogramValue${i}();
-if (x < 0.0) x = 0.0;
-else if (x > 1.0) x = 1.0;
-else x = (1.0 + x * 253.0) / 255.0;
-${outputName} = vec4(x, x, x, 1.0);
-}`;
-          }
-          builder.addFragmentCode(`void userMain();
-void main() {
-  ${histogramCollectionCode}
-  userMain();
-}
-#define main userMain\n`);
-        }
         this.defineShader(builder, parameters);
       },
-      getContextKey: (context) =>
-        `${context.chunkFormat?.shaderKey}/${context.dataHistogramsEnabled}`,
+      getContextKey: (context) => `${context.chunkFormat?.shaderKey}`,
     });
-    this.tempChunkPosition = new Float32Array(multiscaleSource.rank);
     this.initializeCounterpart();
   }
 
@@ -465,31 +344,12 @@ void main() {
     projectionParameters: ProjectionParameters,
   ): ParameterizedShaderGetterResult<ShaderParameters, ShaderContext> {
     const { gl } = this;
-    const dataHistogramsEnabled =
-      this.dataHistogramSpecifications.visibility.visible;
-    const shaderResult = this.shaderGetter({
-      chunkFormat,
-      dataHistogramsEnabled,
-    });
+    const shaderResult = this.shaderGetter({ chunkFormat });
     const { shader, parameters, fallback } = shaderResult;
     if (shader !== null) {
       shader.bind();
       initializeShader(shader, projectionParameters, chunkFormat === null);
       if (chunkFormat !== null) {
-        if (dataHistogramsEnabled) {
-          const { dataHistogramChannelSpecifications } =
-            shaderResult.extraParameters;
-          const numHistograms = dataHistogramChannelSpecifications.length;
-          const bounds = this.dataHistogramSpecifications.bounds.value;
-          for (let i = 0; i < numHistograms; ++i) {
-            enableLerpShaderFunction(
-              shader,
-              `invlerpForHistogram${i}`,
-              chunkFormat.dataType,
-              bounds[i],
-            );
-          }
-        }
         this.initializeShader(sliceView, shader, parameters, fallback);
         // FIXME: may need to fix wire frame rendering
         chunkFormat.beginDrawing(gl, shader);

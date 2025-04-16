@@ -373,31 +373,6 @@ export function computeVertexPositionDebug(
   return undefined;
 }
 
-export function computeVertexPositionsDebug(
-  chunkSize: vec3,
-  uLowerClipBound: vec3,
-  uUpperClipBound: vec3,
-  uPlaneDistance: number,
-  uPlaneNormal: vec3,
-  uTranslation: vec3,
-) {
-  const vertices: vec3[] = [];
-  for (let vertexIndex = 0; vertexIndex < 6; ++vertexIndex) {
-    const v = computeVertexPositionDebug(
-      chunkSize,
-      uLowerClipBound,
-      uUpperClipBound,
-      uPlaneDistance,
-      uPlaneNormal,
-      uTranslation,
-      vertexIndex,
-      false,
-    );
-    if (v !== undefined) vertices.push(v);
-  }
-  return vertices;
-}
-
 export function setBoundingBoxCrossSectionShaderPlane(
   shader: ShaderProgram,
   planeNormal: vec3,

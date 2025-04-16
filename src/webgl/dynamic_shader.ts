@@ -138,7 +138,7 @@ export function parameterizedContextDependentShaderGetter<
   ) {
     const key = JSON.stringify({
       id: stringMemoizeKey,
-      context: encodeContext(context),
+      // context: encodeContext(context),
       parameters: encodeParameters(parameters),
       extraParameters: encodeExtraParameters(extraParameters),
     });

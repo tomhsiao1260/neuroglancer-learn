@@ -26,10 +26,6 @@ import type {
 } from "#src/sliceview/volume/frontend.js";
 import { registerChunkFormatHandler } from "#src/sliceview/volume/frontend.js";
 import type { TypedArray, TypedArrayConstructor } from "#src/util/array.js";
-import {
-  DATA_TYPE_ARRAY_CONSTRUCTOR,
-  DATA_TYPE_JAVASCRIPT_ELEMENTS_PER_ARRAY_ELEMENT,
-} from "#src/util/data_type.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { Uint64 } from "#src/util/uint64.js";
 import type { GL } from "#src/webgl/context.js";
@@ -39,7 +35,6 @@ import type {
   ShaderSamplerPrefix,
   ShaderSamplerType,
 } from "#src/webgl/shader.js";
-import { textureTargetForSamplerType } from "#src/webgl/shader.js";
 import { getShaderType } from "#src/webgl/shader_lib.js";
 import type { TextureFormat } from "#src/webgl/texture_access.js";
 import {
@@ -268,32 +263,17 @@ ${shaderType} getDataValueAt(highp ivec3 p`;
   }
 }
 
-interface Source extends VolumeChunkSource {
-  chunkFormatHandler: UncompressedChunkFormatHandler;
-}
-
 export class UncompressedVolumeChunk extends SingleTextureVolumeChunk<
   Uint8Array,
   TextureLayout
 > {
   CHUNK_FORMAT_TYPE: ChunkFormat;
-  source: Source;
 
   setTextureData(gl: GL) {
-    const { source } = this;
-    const { chunkFormatHandler } = source;
-    const { chunkFormat } = chunkFormatHandler;
+    const { chunkFormatHandler } = this.source;
 
     let textureLayout: TextureLayout;
-    if (this.chunkDataSize === source.spec.chunkDataSize) {
-      this.textureLayout = textureLayout =
-        chunkFormatHandler.textureLayout.addRef();
-    } else {
-      this.textureLayout = textureLayout = chunkFormat.getTextureLayout(
-        gl,
-        this.chunkDataSize,
-      );
-    }
+    this.textureLayout = textureLayout = chunkFormatHandler.textureLayout.addRef();
     this.chunkFormat.setTextureData(gl, textureLayout, this.data!);
   }
 
@@ -329,59 +309,12 @@ export class UncompressedVolumeChunk extends SingleTextureVolumeChunk<
   }
 }
 
-class FillValueChunk extends RefCounted {
-  textureLayout: TextureLayout;
-  texture: WebGLTexture | null;
-}
-
-export function getFillValueArray(
-  dataType: DataType,
-  fillValue: number | Uint64,
-) {
-  const array = new DATA_TYPE_ARRAY_CONSTRUCTOR[dataType](
-    DATA_TYPE_JAVASCRIPT_ELEMENTS_PER_ARRAY_ELEMENT[dataType],
-  );
-  if (dataType === DataType.UINT64) {
-    array[0] = (fillValue as Uint64).low;
-    array[1] = (fillValue as Uint64).high;
-  } else {
-    array[0] = fillValue as number;
-  }
-  return array;
-}
-
-function getFillValueChunk(
-  gl: GL,
-  chunkFormat: ChunkFormat,
-  fillValue: number | Uint64,
-  rank: number,
-  textureDims: number,
-): FillValueChunk {
-  const { dataType } = chunkFormat;
-  const array = getFillValueArray(dataType, fillValue);
-  const chunkSizeInVoxels = new Uint32Array(rank);
-  chunkSizeInVoxels.fill(1);
-  const textureLayout = new TextureLayout(gl, chunkSizeInVoxels, textureDims);
-  textureLayout.strides.fill(0);
-  const texture = gl.createTexture();
-  const textureTarget =
-    textureTargetForSamplerType[chunkFormat.shaderSamplerType];
-  gl.bindTexture(textureTarget, texture);
-  chunkFormat.setTextureData(gl, textureLayout, array);
-  gl.bindTexture(textureTarget, null);
-  const chunk = new FillValueChunk();
-  chunk.textureLayout = textureLayout;
-  chunk.texture = texture;
-  return chunk;
-}
-
 export class UncompressedChunkFormatHandler
   extends RefCounted
   implements ChunkFormatHandler
 {
   chunkFormat: ChunkFormat;
   textureLayout: TextureLayout;
-  fillValueChunk: FillValueChunk;
 
   constructor(gl: GL, spec: VolumeChunkSpecification) {
     super();
@@ -396,28 +329,10 @@ export class UncompressedChunkFormatHandler
     this.textureLayout = this.registerDisposer(
       this.chunkFormat.getTextureLayout(gl, spec.chunkDataSize),
     );
-    this.fillValueChunk = this.registerDisposer(
-      gl.memoize.get(
-        `sliceview.UncompressedChunkFormat.fillValue:${spec.chunkDataSize.length}:` +
-          `${spec.dataType}:${spec.fillValue}:${textureDims}`,
-        () =>
-          getFillValueChunk(
-            gl,
-            this.chunkFormat,
-            spec.fillValue,
-            spec.chunkDataSize.length,
-            textureDims,
-          ),
-      ),
-    );
   }
 
   getChunk(source: VolumeChunkSource, x: any) {
     const chunk = new UncompressedVolumeChunk(source, x);
-    if (chunk.data === null) {
-      chunk.texture = this.fillValueChunk.texture;
-      chunk.textureLayout = this.fillValueChunk.textureLayout;
-    }
     return chunk;
   }
 }
