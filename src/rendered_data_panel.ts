@@ -64,10 +64,6 @@ export abstract class RenderedDataPanel extends RenderedPanel {
     super(context, element, viewer.visibility);
     this.inputEventMap = viewer.inputEventMap;
 
-    element.classList.add("neuroglancer-rendered-data-panel");
-    element.classList.add("neuroglancer-panel");
-    element.classList.add("neuroglancer-noselect");
-
     this.registerDisposer(
       new MouseEventBinder(element, this.inputEventMap, (event) => {
         this.onMousemove(event);

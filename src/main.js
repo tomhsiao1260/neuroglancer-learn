@@ -1,5 +1,5 @@
+import { EventActionMap } from "#src/util/event_action_map.js";
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
-import { setDefaultInputEventBindings } from "#src/default_input_event_bindings.js";
 import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
 import { READY_ID } from "#src/worker_rpc.js";
@@ -43,6 +43,20 @@ async function makeMinimalViewer() {
   setDefaultInputEventBindings(viewer.inputEventBindings);
   // handle loading text
   loading(viewer.dataContext.worker);
+}
+
+function setDefaultInputEventBindings(inputEventBindings) {
+  inputEventBindings.sliceView.addParent(
+    EventActionMap.fromObject({
+      "at:mousedown0": {
+        action: "translate-via-mouse-drag",
+        stopPropagation: true,
+      },
+      "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
+      "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
+    }),
+    Number.NEGATIVE_INFINITY,
+  );
 }
 
 function loading(worker) {

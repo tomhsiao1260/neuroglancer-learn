@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { FourPanelLayout } from "#src/data_panel_layout.js";
+// import { FourPanelLayout } from "#src/data_panel_layout.js";
 import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
   CapacitySpecification,
@@ -32,6 +32,12 @@ import {
   MouseSelectionState,
 } from "#src/layer/index.js";
 import { ImageUserLayer } from "#src/layer/image/index.js";
+import type { Borrowed } from "#src/util/disposable.js";
+import { RefCounted } from "#src/util/disposable.js";
+import { EventActionMap } from "#src/util/keyboard_bindings.js";
+import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
+import type { GL } from "#src/webgl/context.js";
+import { RPC, READY_ID } from "#src/worker_rpc.js";
 import {
   DisplayPose,
   NavigationState,
@@ -40,22 +46,59 @@ import {
   TrackableZoom,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
-import type { Borrowed } from "#src/util/disposable.js";
-import { RefCounted } from "#src/util/disposable.js";
-import { EventActionMap } from "#src/util/keyboard_bindings.js";
-import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
-import type { GL } from "#src/webgl/context.js";
-import { RPC, READY_ID } from "#src/worker_rpc.js";
+import { SliceView } from "#src/sliceview/frontend.js";
+import { SliceViewPanel } from "#src/sliceview/panel.js";
+import { quat } from "#src/util/geom.js";
 
-function addNewLayer(manager: any) {
-  const managedLayer = new ManagedUserLayer("new layer", manager);
-  managedLayer.layer = new ImageUserLayer(managedLayer);
-  managedLayer.archived = false;
-  managedLayer.visible = true;
+export interface SliceViewViewerState {
+  chunkManager: ChunkManager;
+  navigationState: NavigationState;
+  layerManager: LayerManager;
+}
 
-  const source = "zarr2://http://localhost:9000/scroll.zarr/";
-  managedLayer.layer.restoreState({ type: "new", source });
-  manager.layerManager.addManagedLayer(managedLayer);
+export class InputEventBindings {
+  sliceView = new EventActionMap();
+}
+
+export interface ViewerUIState extends SliceViewViewerState {
+  display: DisplayContext;
+  mouseState: MouseSelectionState;
+  visibility: boolean;
+  inputEventBindings: InputEventBindings;
+  coordinateSpace: any;
+}
+
+export function makeState(
+  navigationState_: any,
+  baseToSelf?: quat,
+) {
+  let navigationState;
+  if (baseToSelf === undefined) {
+    navigationState = navigationState_.addRef();
+  } else {
+    navigationState = new NavigationState(
+      new DisplayPose(
+        navigationState_.pose.position.addRef(),
+        navigationState_.pose.displayDimensionRenderInfo.addRef(),
+        OrientationState.makeRelative(
+          navigationState_.pose.orientation,
+          baseToSelf,
+        ),
+      ),
+      navigationState_.zoomFactor.addRef(),
+    );
+  }
+  return navigationState;
+}
+
+export function getCommonViewerState(viewer: ViewerUIState, navigationState: any) {
+  return {
+    mouseState: viewer.mouseState,
+    layerManager: viewer.layerManager,
+    visibility: viewer.visibility,
+    navigationState: navigationState,
+    inputEventMap: viewer.inputEventBindings.sliceView,
+  };
 }
 
 export class DataManagementContext extends RefCounted {
@@ -117,24 +160,6 @@ export class DataManagementContext extends RefCounted {
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
 
-  position = this.registerDisposer(new Position(this.coordinateSpace));
-  displayDimensionRenderInfo = this.registerDisposer(
-    new WatchableDisplayDimensionRenderInfo(),
-  );
-  crossSectionOrientation = this.registerDisposer(new OrientationState());
-  crossSectionScale = this.registerDisposer(new TrackableZoom());
-
-  navigationState = this.registerDisposer(
-    new NavigationState(
-      new DisplayPose(
-        this.position.addRef(),
-        this.displayDimensionRenderInfo.addRef(),
-        this.crossSectionOrientation.addRef(),
-      ),
-      this.crossSectionScale.addRef(),
-    ),
-  );
-
   mouseState = new MouseSelectionState();
   layerManager = this.registerDisposer(new LayerManager());
 
@@ -154,21 +179,23 @@ export class Viewer extends RefCounted {
     this.dataSourceProvider = getDefaultDataSourceProvider();
     this.visibility = new WatchableVisibilityPriority(Infinity);
 
-    this.makeUI();
-  }
-
-  private async makeUI() {
     // create an image layer
-    addNewLayer({
+    const managedLayer = new ManagedUserLayer("new layer", {
       chunkManager: this.chunkManager,
       layerManager: this.layerManager,
       dataSourceProviderRegistry: this.dataSourceProvider,
-      coordinateSpace: this.navigationState.coordinateSpace,
+      coordinateSpace: this.coordinateSpace,
     });
+  
+    managedLayer.visible = true;
+    managedLayer.layer = new ImageUserLayer(managedLayer);
+    managedLayer.layer.restoreState({ type: "new", source: "zarr2://http://localhost:9000/scroll.zarr/" });
+    this.layerManager.addManagedLayer(managedLayer);
 
     // panel generation
     const panel = this.registerDisposer(
       new FourPanelLayout({
+        coordinateSpace: this.coordinateSpace,
         chunkManager: this.chunkManager,
         layerManager: this.layerManager,
         navigationState: this.navigationState,
@@ -188,9 +215,74 @@ export class Viewer extends RefCounted {
     container.style.display = "flex";
     container.style.flexDirection = "column";
     container.style.position = "absolute";
-    container.classList.add("neuroglancer-viewer");
     container.appendChild(panel.element);
 
     this.display.container.appendChild(container);
+  }
+}
+
+export class FourPanelLayout extends RefCounted {
+  element = document.createElement("div");
+
+  constructor(public viewer: ViewerUIState) {
+    super();
+
+    const position = this.registerDisposer(new Position(this.viewer.coordinateSpace));
+    const displayDimensionRenderInfo = this.registerDisposer(
+      new WatchableDisplayDimensionRenderInfo(),
+    );
+    const crossSectionOrientation = this.registerDisposer(new OrientationState());
+    const crossSectionScale = this.registerDisposer(new TrackableZoom());
+
+    const navigationState = this.registerDisposer(
+      new NavigationState(
+        new DisplayPose(
+          position.addRef(),
+          displayDimensionRenderInfo.addRef(),
+          crossSectionOrientation.addRef(),
+        ),
+        crossSectionScale.addRef(),
+      ),
+    );
+
+    const { display, chunkManager, layerManager } = viewer;
+    this.element.style.flex = "1";
+    this.element.style.display = "flex";
+    this.element.style.flexDirection = "row";
+    const state = getCommonViewerState(viewer, navigationState);
+
+    const elementXY = document.createElement("div");
+    elementXY.classList.add("neuroglancer-panel");
+    const quatXY = undefined;
+    const sliceViewXY = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(navigationState, quatXY),
+    );
+    new SliceViewPanel(display, elementXY, sliceViewXY, state);
+
+    const elementYZ = document.createElement("div");
+    elementYZ.classList.add("neuroglancer-panel");
+    const quatYZ = quat.rotateY(quat.create(), quat.create(), Math.PI / 2);
+    const sliceViewYZ = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(navigationState, quatYZ),
+    );
+    new SliceViewPanel(display, elementYZ, sliceViewYZ, state);
+
+    const elementXZ = document.createElement("div");
+    elementXZ.classList.add("neuroglancer-panel");
+    const quatXZ = quat.rotateX(quat.create(), quat.create(), Math.PI / 2);
+    const sliceViewXZ = new SliceView(
+      chunkManager,
+      layerManager,
+      makeState(navigationState, quatXZ),
+    );
+    new SliceViewPanel(display, elementXZ, sliceViewXZ, state);
+
+    this.element.appendChild(elementXY);
+    this.element.appendChild(elementYZ);
+    this.element.appendChild(elementXZ);
   }
 }

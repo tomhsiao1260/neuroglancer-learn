@@ -33,6 +33,17 @@ body {
   flex: 1;
 }
 
+.neuroglancer-panel {
+  flex: 1;
+  cursor: crosshair;
+  position: relative;
+  outline: 0;
+  touch-action: none;
+  color: #fff;
+  text-align: left;
+}
+
+
 #upload {
   position: absolute;
   top: 50%;
@@ -54,17 +65,4 @@ body {
   font-size: 50px;
   color: white;
   z-index: 1;
-}
-
-.neuroglancer-panel {
-  flex: 1;
-}
-
-.neuroglancer-rendered-data-panel {
-  cursor: crosshair;
-  position: relative;
-  outline: 0;
-  touch-action: none;
-  color: #fff;
-  text-align: left;
 }
