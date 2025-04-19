@@ -73,9 +73,6 @@ export abstract class RenderedPanel extends RefCounted {
   // Offset of visible portion of panel in canvas pixels from top of canvas.
   canvasRelativeClippedTop = 0;
 
-  canvasRelativeLogicalLeft = 0;
-  canvasRelativeLogicalTop = 0;
-
   renderViewport = new RenderViewport();
 
   constructor(
@@ -88,81 +85,8 @@ export abstract class RenderedPanel extends RefCounted {
     context.addPanel(this);
   }
 
-  scheduleRedraw() {
-    if (this.visible) {
-      this.context.scheduleRedraw();
-    }
-  }
-
-  abstract isReady(): boolean;
-
-  ensureBoundsUpdated() {
-    this.context.ensureBoundsUpdated();
-    if (this.context.boundsGeneration === this.boundsGeneration) return;
-    this.boundsGeneration = this.context.boundsGeneration;
-
-    const clientRect = this.element.getBoundingClientRect();
-    const { x, y, width, height } = clientRect;
-
-    this.canvasRelativeClippedTop = y;
-    this.canvasRelativeClippedLeft = x;
-    this.canvasRelativeLogicalTop = y;
-    this.canvasRelativeLogicalLeft = x;
-
-    const viewport = this.renderViewport;
-    viewport.width = width - 1;
-    viewport.height = height;
-    viewport.logicalWidth = width - 1;
-    viewport.logicalHeight = height;
-    viewport.visibleLeftFraction = 0;
-    viewport.visibleTopFraction = 0;
-    viewport.visibleWidthFraction = 1;
-    viewport.visibleHeightFraction = 1;
-  }
-
-  // Sets the viewport to the clipped viewport.  Any drawing must take
-  // `visible{Left,Top,Width,Height}Fraction` into account.  setGLClippedViewport() {
-  setGLClippedViewport() {
-    const {
-      gl,
-      canvasRelativeClippedTop,
-      canvasRelativeClippedLeft,
-      renderViewport: { width, height },
-    } = this;
-    const bottom = canvasRelativeClippedTop + height;
-    gl.enable(WebGL2RenderingContext.SCISSOR_TEST);
-    const glBottom = this.context.canvas.height - bottom;
-    gl.viewport(canvasRelativeClippedLeft, glBottom, width, height);
-    gl.scissor(canvasRelativeClippedLeft, glBottom, width, height);
-  }
-
-  abstract draw(): void;
-
   get visible() {
     return true;
-  }
-
-  get shouldDraw() {
-    if (!this.visible) return false;
-    const { element } = this;
-    if (
-      element.clientWidth === 0 ||
-      element.clientHeight === 0 ||
-      element.offsetWidth === 0 ||
-      element.offsetHeight === 0
-    ) {
-      // Skip drawing if the panel has zero client area.
-      return false;
-    }
-    return true;
-  }
-
-  // Returns a number that determine the order in which panels are drawn. This is used by CdfPanel
-  // to ensure it is drawn after other panels that update the histogram.
-  //
-  // A higher number -> later draw.
-  get drawOrder() {
-    return 0;
   }
 }
 
@@ -200,31 +124,12 @@ export class DisplayContext extends RefCounted implements FrameNumberCounter {
     this.gl = initializeWebGL(canvas);
   }
 
-  isReady() {
-    for (const panel of this.panels) {
-      if (!panel.visible) {
-        continue;
-      }
-      if (!panel.isReady()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   disposed() {
     this.orderedPanels.length = 0;
   }
 
   addPanel(panel: Borrowed<RenderedPanel>) {
     this.panels.add(panel);
-    this.orderedPanels.length = 0;
-    ++this.resizeGeneration;
-    this.scheduleRedraw();
-  }
-
-  removePanel(panel: Borrowed<RenderedPanel>) {
-    this.panels.delete(panel);
     this.orderedPanels.length = 0;
     ++this.resizeGeneration;
     this.scheduleRedraw();
@@ -255,10 +160,8 @@ export class DisplayContext extends RefCounted implements FrameNumberCounter {
     const { orderedPanels, panels } = this;
     if (orderedPanels.length !== panels.size) {
       orderedPanels.push(...panels);
-      orderedPanels.sort((a, b) => a.drawOrder - b.drawOrder);
     }
     for (const panel of orderedPanels) {
-      if (!panel.shouldDraw) continue;
       panel.ensureBoundsUpdated();
       const { renderViewport } = panel;
       if (renderViewport.width === 0 || renderViewport.height === 0) continue;

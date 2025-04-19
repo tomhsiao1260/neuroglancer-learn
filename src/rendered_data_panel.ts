@@ -21,6 +21,7 @@ import type {
   ActionEvent,
   EventActionMap,
 } from "#src/util/event_action_map.js";
+import type { GL } from "#src/webgl/context.js";
 import { registerActionListener } from "#src/util/event_action_map.js";
 import { vec3 } from "#src/util/geom.js";
 import { MouseEventBinder } from "#src/util/mouse_bindings.js";
@@ -30,16 +31,14 @@ import type { ViewerState } from "#src/viewer_state.js";
 
 const tempVec3 = vec3.create();
 
-export interface RenderedDataViewerState extends ViewerState {
-  inputEventMap: EventActionMap;
-}
-
 export abstract class RenderedDataPanel extends RenderedPanel {
   /**
    * Current mouse position within the viewport, or -1 if the mouse is not in the viewport.
    */
   mouseX = -1;
   mouseY = -1;
+
+  gl: GL;
 
   inputEventMap: EventActionMap;
 
@@ -59,9 +58,13 @@ export abstract class RenderedDataPanel extends RenderedPanel {
   constructor(
     context: Borrowed<DisplayContext>,
     element: HTMLElement,
-    public viewer: RenderedDataViewerState,
+    public viewer: ViewerState,
   ) {
     super(context, element, viewer.visibility);
+
+    this.gl = context.gl;
+    context.addPanel(this);
+
     this.inputEventMap = viewer.inputEventMap;
 
     this.registerDisposer(

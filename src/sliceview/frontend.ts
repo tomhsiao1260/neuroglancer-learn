@@ -149,13 +149,9 @@ function disposeTransformedSources(
 export class SliceView extends Base {
   gl = this.chunkManager.gl;
   viewChanged = new NullarySignal();
-
   renderingStale = true;
-
   visibleChunksStale = true;
-
   visibleLayerList = new Array<SliceViewRenderLayer>();
-
   visibleLayers: Map<SliceViewRenderLayer, FrontendVisibleLayerSources>;
 
   offscreenFramebuffer = this.registerDisposer(
@@ -164,8 +160,6 @@ export class SliceView extends Base {
       depthBuffer: new DepthTextureBuffer(this.gl),
     }),
   );
-  histogramInputTextures: TextureBuffer[] = [];
-  offscreenFramebuffersWithHistograms = [this.offscreenFramebuffer];
 
   projectionParameters: Owned<
     DerivedProjectionParameters<SliceViewProjectionParameters>

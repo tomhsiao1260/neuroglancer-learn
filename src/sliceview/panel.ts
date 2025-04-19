@@ -20,6 +20,7 @@ import { RenderedDataPanel } from "#src/rendered_data_panel.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
+import { RenderViewport } from "#src/display_context.js";
 import {
   FramebufferConfiguration,
   OffscreenCopyHelper,
@@ -47,6 +48,17 @@ void emit(vec4 color, highp uint pickId) {
 const tempVec4 = vec4.create();
 
 export class SliceViewPanel extends RenderedDataPanel {
+  // Generation used to check whether the following bounds-related fields are up to date.
+  boundsGeneration = -1;
+
+  // Offset of visible portion of panel in canvas pixels from left side of canvas.
+  canvasRelativeClippedLeft = 0;
+
+  // Offset of visible portion of panel in canvas pixels from top of canvas.
+  canvasRelativeClippedTop = 0;
+
+  renderViewport = new RenderViewport();
+
   viewer: SliceViewerState;
 
   private sliceViewRenderHelper = this.registerDisposer(
@@ -154,8 +166,45 @@ export class SliceViewPanel extends RenderedDataPanel {
     return true;
   }
 
+  // Sets the viewport to the clipped viewport.  Any drawing must take
+  // `visible{Left,Top,Width,Height}Fraction` into account.  setGLClippedViewport() {
+  setGLClippedViewport() {
+    const {
+      gl,
+      canvasRelativeClippedTop,
+      canvasRelativeClippedLeft,
+      renderViewport: { width, height },
+    } = this;
+    const bottom = canvasRelativeClippedTop + height;
+    gl.enable(WebGL2RenderingContext.SCISSOR_TEST);
+    const glBottom = this.context.canvas.height - bottom;
+    gl.viewport(canvasRelativeClippedLeft, glBottom, width, height);
+    gl.scissor(canvasRelativeClippedLeft, glBottom, width, height);
+  }
+
   ensureBoundsUpdated() {
-    super.ensureBoundsUpdated();
+    this.context.ensureBoundsUpdated();
+    if (this.context.boundsGeneration === this.boundsGeneration) return;
+    this.boundsGeneration = this.context.boundsGeneration;
+
+    const clientRect = this.element.getBoundingClientRect();
+    const { x, y, width, height } = clientRect;
+
+    this.canvasRelativeClippedTop = y;
+    this.canvasRelativeClippedLeft = x;
+    this.canvasRelativeLogicalTop = y;
+    this.canvasRelativeLogicalLeft = x;
+
+    const viewport = this.renderViewport;
+    viewport.width = width - 1;
+    viewport.height = height;
+    viewport.logicalWidth = width - 1;
+    viewport.logicalHeight = height;
+    viewport.visibleLeftFraction = 0;
+    viewport.visibleTopFraction = 0;
+    viewport.visibleWidthFraction = 1;
+    viewport.visibleHeightFraction = 1;
+
     this.sliceView.projectionParameters.setViewport(this.renderViewport);
   }
 
