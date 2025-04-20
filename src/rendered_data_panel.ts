@@ -28,21 +28,26 @@ import { MouseEventBinder } from "#src/util/mouse_bindings.js";
 import { startRelativeMouseDrag } from "#src/util/mouse_drag.js";
 import { getWheelZoomAmount } from "#src/util/wheel_zoom.js";
 import type { ViewerState } from "#src/viewer_state.js";
+import { RefCounted } from "#src/util/disposable.js";
 
 const tempVec3 = vec3.create();
 
-export abstract class RenderedDataPanel extends RenderedPanel {
+export class RenderedDataPanel extends RefCounted {
+  gl: GL;
+
   /**
    * Current mouse position within the viewport, or -1 if the mouse is not in the viewport.
    */
   mouseX = -1;
   mouseY = -1;
 
-  gl: GL;
-
   inputEventMap: EventActionMap;
+  navigationState: NavigationState;
+  visibility: any;
 
-  abstract navigationState: NavigationState;
+  get visible() {
+    return true;
+  }
 
   /**
    * Called each time the mouse position relative to the top level of the rendered viewport changes.
@@ -56,15 +61,16 @@ export abstract class RenderedDataPanel extends RenderedPanel {
   }
 
   constructor(
-    context: Borrowed<DisplayContext>,
-    element: HTMLElement,
+    public context: Borrowed<DisplayContext>,
+    public element: HTMLElement,
     public viewer: ViewerState,
   ) {
-    super(context, element, viewer.visibility);
+    super();
 
     this.gl = context.gl;
     context.addPanel(this);
 
+    this.visibility = viewer.visibility;
     this.inputEventMap = viewer.inputEventMap;
 
     this.registerDisposer(
@@ -132,6 +138,4 @@ export abstract class RenderedDataPanel extends RenderedPanel {
     }
     this.handleMouseMove(event.clientX, event.clientY);
   }
-
-  abstract zoomByMouse(factor: number): void;
 }

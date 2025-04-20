@@ -395,13 +395,6 @@ void emit(vec4 color) {
     this.vertexIdHelper.enable();
 
     const chunkPosition = vec3.create();
-    const { renderScaleHistogram } = this;
-
-    if (renderScaleHistogram !== undefined) {
-      renderScaleHistogram.begin(
-        this.chunkManager.chunkQueueManager.frameNumberCounter.frameNumber,
-      );
-    }
 
     let shaderResult: ParameterizedShaderGetterResult<
       ShaderParameters,
@@ -512,26 +505,6 @@ void emit(vec4 color) {
           ++notPresentCount;
         }
       });
-
-      if (
-        (presentCount !== 0 || notPresentCount !== 0) &&
-        renderScaleHistogram !== undefined
-      ) {
-        const { effectiveVoxelSize } = transformedSource;
-        // TODO(jbms): replace median hack with more accurate estimate, e.g. based on ellipsoid
-        // cross section.
-        const medianVoxelSize = medianOf3(
-          effectiveVoxelSize[0],
-          effectiveVoxelSize[1],
-          effectiveVoxelSize[2],
-        );
-        renderScaleHistogram.add(
-          medianVoxelSize,
-          medianVoxelSize / projectionParameters.pixelSize,
-          presentCount,
-          notPresentCount,
-        );
-      }
     }
     endShader();
   }

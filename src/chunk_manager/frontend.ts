@@ -92,11 +92,6 @@ export class CapacitySpecification {
   }
 }
 
-export interface FrameNumberCounter {
-  frameNumber: number;
-  changed: NullarySignal;
-}
-
 @registerSharedObjectOwner(CHUNK_QUEUE_MANAGER_RPC_ID)
 export class ChunkQueueManager extends SharedObject {
   visibleChunksChanged = new NullarySignal();
@@ -116,7 +111,6 @@ export class ChunkQueueManager extends SharedObject {
   constructor(
     rpc: RPC,
     public gl: GL,
-    public frameNumberCounter: FrameNumberCounter,
     public capacities: {
       gpuMemory: CapacitySpecification;
       systemMemory: CapacitySpecification;

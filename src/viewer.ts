@@ -15,7 +15,6 @@
  */
 
 // import { FourPanelLayout } from "#src/data_panel_layout.js";
-import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import {
   CapacitySpecification,
   ChunkManager,
@@ -112,7 +111,6 @@ export class DataManagementContext extends RefCounted {
 
   constructor(
     public gl: GL,
-    public frameNumberCounter: FrameNumberCounter,
   ) {
     super();
     this.worker = new Worker(
@@ -129,7 +127,6 @@ export class DataManagementContext extends RefCounted {
       new ChunkQueueManager(
         new RPC(this.worker, /*waitUntilReady=*/ true),
         this.gl,
-        this.frameNumberCounter,
         {
           gpuMemory: new CapacitySpecification({
             defaultItemLimit: 1e6,
@@ -172,7 +169,7 @@ export class Viewer extends RefCounted {
   constructor(public display: DisplayContext) {
     super();
 
-    this.dataContext = new DataManagementContext(display.gl, display);
+    this.dataContext = new DataManagementContext(display.gl);
     this.chunkManager = this.dataContext.chunkManager;
 
     this.inputEventBindings = { sliceView: new EventActionMap() };

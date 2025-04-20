@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-import type { FrameNumberCounter } from "#src/chunk_manager/frontend.js";
 import { animationFrameDebounce } from "#src/util/animation_frame_debounce.js";
-import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { GL } from "#src/webgl/context.js";
@@ -61,49 +59,20 @@ export function renderViewportsEqual(a: RenderViewport, b: RenderViewport) {
   );
 }
 
-export abstract class RenderedPanel extends RefCounted {
-  gl: GL;
-
-  // Generation used to check whether the following bounds-related fields are up to date.
-  boundsGeneration = -1;
-
-  // Offset of visible portion of panel in canvas pixels from left side of canvas.
-  canvasRelativeClippedLeft = 0;
-
-  // Offset of visible portion of panel in canvas pixels from top of canvas.
-  canvasRelativeClippedTop = 0;
-
-  renderViewport = new RenderViewport();
-
-  constructor(
-    public context: Borrowed<DisplayContext>,
-    public element: HTMLElement,
-    public visibility: any,
-  ) {
-    super();
-    this.gl = context.gl;
-    context.addPanel(this);
-  }
-
-  get visible() {
-    return true;
-  }
-}
-
-export class DisplayContext extends RefCounted implements FrameNumberCounter {
+export class DisplayContext extends RefCounted {
   canvas = document.createElement("canvas");
   gl: GL;
   updateStarted = new NullarySignal();
   updateFinished = new NullarySignal();
   changed = this.updateFinished;
-  panels = new Set<RenderedPanel>();
+  panels = new Set();
   canvasRect: DOMRect | undefined;
   rootRect: DOMRect | undefined;
   resizeGeneration = 0;
   boundsGeneration = -1;
 
   // Panels ordered by `drawOrder`.  If length is 0, needs to be recomputed.
-  private orderedPanels: RenderedPanel[] = [];
+  private orderedPanels: [] = [];
 
   /**
    * Unique number of the next frame.  Incremented once each time a frame is drawn.
@@ -128,7 +97,7 @@ export class DisplayContext extends RefCounted implements FrameNumberCounter {
     this.orderedPanels.length = 0;
   }
 
-  addPanel(panel: Borrowed<RenderedPanel>) {
+  addPanel(panel: any) {
     this.panels.add(panel);
     this.orderedPanels.length = 0;
     ++this.resizeGeneration;
