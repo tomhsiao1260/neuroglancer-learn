@@ -24,7 +24,7 @@ import {
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { mat4, quat, vec3 } from "#src/util/geom.js";
+import { mat4, vec3 } from "#src/util/geom.js";
 import {
   parseArray,
   verifyFiniteFloat,
@@ -135,24 +135,71 @@ export class WatchableDisplayDimensionRenderInfo extends RefCounted {
   }
 }
 
-export class DisplayPose extends RefCounted {
+export class TrackableZoom extends RefCounted
+{
+  readonly changed = new NullarySignal();
+  private value_: number = Number.NaN;
+
+  get value() {
+    return this.value_;
+  }
+
+  set value(value: number) {
+    if (Object.is(value, this.value_)) {
+      return;
+    }
+    this.value_ = value;
+    this.changed.dispatch();
+  }
+
+  constructor() {
+    super();
+    this.value_ = 1;
+  }
+}
+
+export class NavigationState extends RefCounted {
   changed = new NullarySignal();
 
   constructor(
     public position: Owned<Position>,
     public displayDimensionRenderInfo: WatchableDisplayDimensionRenderInfo,
-    public orientation: Owned<OrientationState>,
+    public orientation: any,
+    public zoomFactor: any,
   ) {
     super();
     this.registerDisposer(position);
     this.registerDisposer(orientation);
     this.registerDisposer(displayDimensionRenderInfo);
+    this.registerDisposer(zoomFactor);
     this.registerDisposer(position.changed.add(this.changed.dispatch));
-    // this.registerDisposer(orientation.changed.add(this.changed.dispatch));
+    this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
   }
 
+  get coordinateSpace() {
+    return this.position.coordinateSpace;
+  }
   get valid() {
-    return this.position.valid;
+    return this.position.valid && !Number.isNaN(this.zoomFactor.value);
+  }
+
+  zoomBy(factor: number) {
+    this.zoomFactor.value *= factor;
+  }
+
+  toMat4(mat: mat4) {
+    mat4.fromQuat(mat, this.orientation.orientation);
+    const { value: voxelCoordinates } = this.position;
+    const { displayDimensionIndices } =
+      this.displayDimensionRenderInfo.value;
+    for (let i = 0; i < 3; ++i) {
+      const dim = displayDimensionIndices[i];
+      const scale =  this.zoomFactor.value;
+      mat[i] *= scale;
+      mat[4 + i] *= scale;
+      mat[8 + i] *= scale;
+      mat[12 + i] = voxelCoordinates[dim] || 0;
+    }
   }
 
   updateDisplayPosition(
@@ -182,22 +229,6 @@ export class DisplayPose extends RefCounted {
     return false;
   }
 
-  // Transform from view coordinates to global spatial coordinates.
-  toMat4(mat: mat4, zoom: number) {
-    mat4.fromQuat(mat, this.orientation.orientation);
-    const { value: voxelCoordinates } = this.position;
-    const { displayDimensionIndices } =
-      this.displayDimensionRenderInfo.value;
-    for (let i = 0; i < 3; ++i) {
-      const dim = displayDimensionIndices[i];
-      const scale = zoom;
-      mat[i] *= scale;
-      mat[4 + i] *= scale;
-      mat[8 + i] *= scale;
-      mat[12 + i] = voxelCoordinates[dim] || 0;
-    }
-  }
-
   translateVoxelsRelative(translation: vec3) {
     if (!this.valid) {
       return;
@@ -223,180 +254,5 @@ export class DisplayPose extends RefCounted {
       );
     }
     this.position.changed.dispatch();
-  }
-}
-
-export class TrackableZoom extends RefCounted
-{
-  readonly changed = new NullarySignal();
-  private value_: number = Number.NaN;
-
-  get value() {
-    return this.value_;
-  }
-
-  set value(value: number) {
-    if (Object.is(value, this.value_)) {
-      return;
-    }
-    this.value_ = value;
-    this.changed.dispatch();
-  }
-
-  constructor() {
-    super();
-    this.value_ = 1;
-  }
-}
-
-// export class NavigationState extends RefCounted {
-//   changed = new NullarySignal();
-
-//   constructor(
-//     public position: Owned<Position>,
-//     public displayDimensionRenderInfo: WatchableDisplayDimensionRenderInfo,
-//     public orientation: Owned<OrientationState>,
-//     public zoomFactor: any,
-//   ) {
-//     super();
-//     this.registerDisposer(position);
-//     this.registerDisposer(orientation);
-//     this.registerDisposer(displayDimensionRenderInfo);
-//     this.registerDisposer(position.changed.add(this.changed.dispatch));
-//     // this.registerDisposer(pose);
-//     this.registerDisposer(zoomFactor);
-//     // this.registerDisposer(this.pose.changed.add(this.changed.dispatch));
-//     this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
-//   }
-
-//   // get coordinateSpace() {
-//   //   return this.pose.position.coordinateSpace;
-//   // }
-
-//   // get position() {
-//   //   return this.pose.position;
-//   // }
-//   // get displayDimensionRenderInfo() {
-//   //   return this.pose.displayDimensionRenderInfo;
-//   // }
-//   // toMat4(mat: mat4) {
-//   //   this.pose.toMat4(mat, this.zoomFactor.value);
-//   // }
-//   // get valid() {
-//   //   return this.pose.valid && !Number.isNaN(this.zoomFactor.value);
-//   // }
-
-//   zoomBy(factor: number) {
-//     this.zoomFactor.value *= factor;
-//   }
-
-//   get valid() {
-//     return this.position.valid;
-//   }
-
-//   updateDisplayPosition(
-//     fun: (pos: vec3) => boolean | void,
-//     temp: vec3 = tempVec3,
-//   ): boolean {
-//     const {
-//       coordinateSpace: { value: coordinateSpace },
-//       value: voxelCoordinates,
-//     } = this.position;
-//     const displayRank = 3;
-//     const displayDimensionIndices = new Int32Array([0, 1, 2]);
-//     if (coordinateSpace === undefined) return false;
-//     temp.fill(0);
-//     for (let i = 0; i < displayRank; ++i) {
-//       const dim = displayDimensionIndices[i];
-//       temp[i] = voxelCoordinates[dim];
-//     }
-//     if (fun(temp) !== false) {
-//       for (let i = 0; i < displayRank; ++i) {
-//         const dim = displayDimensionIndices[i];
-//         voxelCoordinates[dim] = temp[i];
-//       }
-//       this.position.changed.dispatch();
-//       return true;
-//     }
-//     return false;
-//   }
-
-//   // Transform from view coordinates to global spatial coordinates.
-//   toMat4(mat: mat4, zoom: number) {
-//     mat4.fromQuat(mat, this.orientation.orientation);
-//     const { value: voxelCoordinates } = this.position;
-//     const { displayDimensionIndices } =
-//       this.displayDimensionRenderInfo.value;
-//     for (let i = 0; i < 3; ++i) {
-//       const dim = displayDimensionIndices[i];
-//       const scale = zoom;
-//       mat[i] *= scale;
-//       mat[4 + i] *= scale;
-//       mat[8 + i] *= scale;
-//       mat[12 + i] = voxelCoordinates[dim] || 0;
-//     }
-//   }
-
-//   translateVoxelsRelative(translation: vec3) {
-//     if (!this.valid) {
-//       return;
-//     }
-//     const temp = vec3.transformQuat(
-//       tempVec3,
-//       translation,
-//       this.orientation.orientation,
-//     );
-//     const { position } = this;
-//     const { value: voxelCoordinates } = position;
-//     const displayRank = 3;
-//     const displayDimensionIndices = new Int32Array([0, 1, 2]);
-//     const { bounds } = position.coordinateSpace.value;
-//     for (let i = 0; i < displayRank; ++i) {
-//       const dim = displayDimensionIndices[i];
-//       const adjustment = temp[i];
-//       if (adjustment === 0) continue;
-//       voxelCoordinates[dim] = clampAndRoundCoordinateToVoxelCenter(
-//         bounds,
-//         dim,
-//         voxelCoordinates[dim] + adjustment,
-//       );
-//     }
-//     this.position.changed.dispatch();
-//   }
-// }
-
-export class NavigationState extends RefCounted {
-  changed = new NullarySignal();
-
-  constructor(
-    public pose: Owned<DisplayPose>,
-    public zoomFactor: any,
-  ) {
-    super();
-    this.registerDisposer(pose);
-    this.registerDisposer(zoomFactor);
-    this.registerDisposer(this.pose.changed.add(this.changed.dispatch));
-    this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
-  }
-
-  get coordinateSpace() {
-    return this.pose.position.coordinateSpace;
-  }
-
-  get position() {
-    return this.pose.position;
-  }
-  get displayDimensionRenderInfo() {
-    return this.pose.displayDimensionRenderInfo;
-  }
-  toMat4(mat: mat4) {
-    this.pose.toMat4(mat, this.zoomFactor.value);
-  }
-  get valid() {
-    return this.pose.valid && !Number.isNaN(this.zoomFactor.value);
-  }
-
-  zoomBy(factor: number) {
-    this.zoomFactor.value *= factor;
   }
 }

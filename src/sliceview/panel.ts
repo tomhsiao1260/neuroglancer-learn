@@ -121,8 +121,7 @@ export class SliceViewPanel extends RenderedDataPanel {
   }
 
   translateByViewportPixels(deltaX: number, deltaY: number): void {
-    const { pose } = this.navigationState;
-    pose.updateDisplayPosition((pos) => {
+    this.navigationState.updateDisplayPosition((pos) => {
       vec3.set(pos, -deltaX, -deltaY, 0);
       vec3.transformMat4(
         pos,

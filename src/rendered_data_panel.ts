@@ -112,8 +112,7 @@ export class RenderedDataPanel extends RefCounted {
           offset[0] = 0;
           offset[1] = 0;
           offset[2] = (delta > 0 ? -1 : 1) * amount;
-          // navigationState.translateVoxelsRelative(offset);
-          navigationState.pose.translateVoxelsRelative(offset); //hii
+          navigationState.translateVoxelsRelative(offset);
         },
       );
     }

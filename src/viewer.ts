@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// import { FourPanelLayout } from "#src/data_panel_layout.js";
 import {
   CapacitySpecification,
   ChunkManager,
@@ -38,7 +36,6 @@ import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.j
 import type { GL } from "#src/webgl/context.js";
 import { RPC, READY_ID } from "#src/worker_rpc.js";
 import {
-  DisplayPose,
   NavigationState,
   Position,
   TrackableZoom,
@@ -211,11 +208,9 @@ export class FourPanelLayout extends RefCounted {
     const elementXY = document.createElement("div");
     elementXY.classList.add("neuroglancer-panel");
     const navigationStateXY = new NavigationState(
-      new DisplayPose(
-        position.addRef(),
-        displayDimensionRenderInfo.addRef(),
-        { orientation: quat.create() }, 
-      ),
+      position.addRef(),
+      displayDimensionRenderInfo.addRef(),
+      { orientation: quat.create() }, 
       crossSectionScale.addRef(),
     )
     new SliceViewPanel(elementXY, navigationStateXY, state);
@@ -223,11 +218,9 @@ export class FourPanelLayout extends RefCounted {
     const elementYZ = document.createElement("div");
     elementYZ.classList.add("neuroglancer-panel");
     const navigationStateYZ = new NavigationState(
-      new DisplayPose(
-        position.addRef(),
-        displayDimensionRenderInfo.addRef(),
-        { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
-      ),
+      position.addRef(),
+      displayDimensionRenderInfo.addRef(),
+      { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
       crossSectionScale.addRef(),
     )
     new SliceViewPanel(elementYZ, navigationStateYZ, state);
@@ -235,11 +228,9 @@ export class FourPanelLayout extends RefCounted {
     const elementXZ = document.createElement("div");
     elementXZ.classList.add("neuroglancer-panel");
     const navigationStateXZ = new NavigationState(
-      new DisplayPose(
-        position.addRef(),
-        displayDimensionRenderInfo.addRef(),
-        { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
-      ),
+      position.addRef(),
+      displayDimensionRenderInfo.addRef(),
+      { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
       crossSectionScale.addRef(),
     )
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
