@@ -21,6 +21,7 @@ import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import { RenderViewport } from "#src/display_context.js";
+import { SliceView } from "#src/sliceview/frontend.js";
 import {
   FramebufferConfiguration,
   OffscreenCopyHelper,
@@ -89,29 +90,38 @@ export class SliceViewPanel extends RenderedDataPanel {
     OffscreenCopyHelper.get(this.gl),
   );
 
-  get navigationState() {
-    return this.sliceView.navigationState;
-  }
+  // get navigationState() {
+  //   return this.sliceView.navigationState;
+  // }
+
+  sliceView: any;
 
   constructor(
-    context: Borrowed<DisplayContext>,
     element: HTMLElement,
-    public sliceView: any,
+    public navigationState: any,
     viewer: SliceViewerState,
   ) {
+    const { display: context, chunkManager, layerManager } = viewer;
+  
     super(context, element, viewer);
 
-    this.registerDisposer(sliceView.visibility.add(this.visibility));
+    this.sliceView = new SliceView(
+      chunkManager,
+      layerManager,
+      navigationState,
+    );
+
+    this.registerDisposer(this.sliceView.visibility.add(this.visibility));
 
     this.registerDisposer(
-      sliceView.viewChanged.add(() => {
+      this.sliceView.viewChanged.add(() => {
         if (this.visible) context.scheduleRedraw();
       }),
     );
   }
 
   translateByViewportPixels(deltaX: number, deltaY: number): void {
-    const { pose } = this.viewer.navigationState;
+    const { pose } = this.navigationState;
     pose.updateDisplayPosition((pos) => {
       vec3.set(pos, -deltaX, -deltaY, 0);
       vec3.transformMat4(

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import type { DisplayContext } from "#src/display_context.js";
-import { RenderedPanel } from "#src/display_context.js";
 import type { NavigationState } from "#src/navigation_state.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import type {
@@ -113,7 +112,8 @@ export class RenderedDataPanel extends RefCounted {
           offset[0] = 0;
           offset[1] = 0;
           offset[2] = (delta > 0 ? -1 : 1) * amount;
-          navigationState.pose.translateVoxelsRelative(offset);
+          // navigationState.translateVoxelsRelative(offset);
+          navigationState.pose.translateVoxelsRelative(offset); //hii
         },
       );
     }

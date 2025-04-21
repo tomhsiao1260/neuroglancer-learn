@@ -40,12 +40,10 @@ import { RPC, READY_ID } from "#src/worker_rpc.js";
 import {
   DisplayPose,
   NavigationState,
-  OrientationState,
   Position,
   TrackableZoom,
   WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
-import { SliceView } from "#src/sliceview/frontend.js";
 import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
 
@@ -65,39 +63,6 @@ export interface ViewerUIState extends SliceViewViewerState {
   visibility: boolean;
   inputEventBindings: InputEventBindings;
   coordinateSpace: any;
-}
-
-export function makeState(
-  navigationState_: any,
-  baseToSelf?: quat,
-) {
-  let navigationState;
-  if (baseToSelf === undefined) {
-    navigationState = navigationState_.addRef();
-  } else {
-    navigationState = new NavigationState(
-      new DisplayPose(
-        navigationState_.pose.position.addRef(),
-        navigationState_.pose.displayDimensionRenderInfo.addRef(),
-        OrientationState.makeRelative(
-          navigationState_.pose.orientation,
-          baseToSelf,
-        ),
-      ),
-      navigationState_.zoomFactor.addRef(),
-    );
-  }
-  return navigationState;
-}
-
-export function getCommonViewerState(viewer: ViewerUIState, navigationState: any) {
-  return {
-    mouseState: viewer.mouseState,
-    layerManager: viewer.layerManager,
-    visibility: viewer.visibility,
-    navigationState: navigationState,
-    inputEventMap: viewer.inputEventBindings.sliceView,
-  };
 }
 
 export class DataManagementContext extends RefCounted {
@@ -228,55 +193,56 @@ export class FourPanelLayout extends RefCounted {
     const displayDimensionRenderInfo = this.registerDisposer(
       new WatchableDisplayDimensionRenderInfo(),
     );
-    const crossSectionOrientation = this.registerDisposer(new OrientationState());
     const crossSectionScale = this.registerDisposer(new TrackableZoom());
 
-    const navigationState = this.registerDisposer(
-      new NavigationState(
-        new DisplayPose(
-          position.addRef(),
-          displayDimensionRenderInfo.addRef(),
-          crossSectionOrientation.addRef(),
-        ),
-        crossSectionScale.addRef(),
-      ),
-    );
-
-    const { display, chunkManager, layerManager } = viewer;
     this.element.style.flex = "1";
     this.element.style.display = "flex";
     this.element.style.flexDirection = "row";
-    const state = getCommonViewerState(viewer, navigationState);
+
+    const state =  {
+      display: viewer.display,
+      chunkManager: viewer.chunkManager,
+      mouseState: viewer.mouseState,
+      layerManager: viewer.layerManager,
+      visibility: viewer.visibility,
+      inputEventMap: viewer.inputEventBindings.sliceView,
+    }
 
     const elementXY = document.createElement("div");
     elementXY.classList.add("neuroglancer-panel");
-    const quatXY = undefined;
-    const sliceViewXY = new SliceView(
-      chunkManager,
-      layerManager,
-      makeState(navigationState, quatXY),
-    );
-    new SliceViewPanel(display, elementXY, sliceViewXY, state);
+    const navigationStateXY = new NavigationState(
+      new DisplayPose(
+        position.addRef(),
+        displayDimensionRenderInfo.addRef(),
+        { orientation: quat.create() }, 
+      ),
+      crossSectionScale.addRef(),
+    )
+    new SliceViewPanel(elementXY, navigationStateXY, state);
 
     const elementYZ = document.createElement("div");
     elementYZ.classList.add("neuroglancer-panel");
-    const quatYZ = quat.rotateY(quat.create(), quat.create(), Math.PI / 2);
-    const sliceViewYZ = new SliceView(
-      chunkManager,
-      layerManager,
-      makeState(navigationState, quatYZ),
-    );
-    new SliceViewPanel(display, elementYZ, sliceViewYZ, state);
+    const navigationStateYZ = new NavigationState(
+      new DisplayPose(
+        position.addRef(),
+        displayDimensionRenderInfo.addRef(),
+        { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
+      ),
+      crossSectionScale.addRef(),
+    )
+    new SliceViewPanel(elementYZ, navigationStateYZ, state);
 
     const elementXZ = document.createElement("div");
     elementXZ.classList.add("neuroglancer-panel");
-    const quatXZ = quat.rotateX(quat.create(), quat.create(), Math.PI / 2);
-    const sliceViewXZ = new SliceView(
-      chunkManager,
-      layerManager,
-      makeState(navigationState, quatXZ),
-    );
-    new SliceViewPanel(display, elementXZ, sliceViewXZ, state);
+    const navigationStateXZ = new NavigationState(
+      new DisplayPose(
+        position.addRef(),
+        displayDimensionRenderInfo.addRef(),
+        { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
+      ),
+      crossSectionScale.addRef(),
+    )
+    new SliceViewPanel(elementXZ, navigationStateXZ, state);
 
     this.element.appendChild(elementXY);
     this.element.appendChild(elementYZ);
