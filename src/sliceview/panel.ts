@@ -90,10 +90,6 @@ export class SliceViewPanel extends RenderedDataPanel {
     OffscreenCopyHelper.get(this.gl),
   );
 
-  // get navigationState() {
-  //   return this.sliceView.navigationState;
-  // }
-
   sliceView: any;
 
   constructor(

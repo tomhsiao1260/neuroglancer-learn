@@ -39,27 +39,19 @@ import {
   NavigationState,
   Position,
   TrackableZoom,
-  WatchableDisplayDimensionRenderInfo,
 } from "#src/navigation_state.js";
 import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
 
-export interface SliceViewViewerState {
-  chunkManager: ChunkManager;
-  navigationState: NavigationState;
-  layerManager: LayerManager;
-}
-
-export class InputEventBindings {
-  sliceView = new EventActionMap();
-}
-
-export interface ViewerUIState extends SliceViewViewerState {
+export interface ViewerUIState {
   display: DisplayContext;
   mouseState: MouseSelectionState;
   visibility: boolean;
-  inputEventBindings: InputEventBindings;
+  inputEventBindings: any;
   coordinateSpace: any;
+  chunkManager: ChunkManager;
+  navigationState: NavigationState;
+  layerManager: LayerManager;
 }
 
 export class DataManagementContext extends RefCounted {
@@ -139,7 +131,7 @@ export class Viewer extends RefCounted {
     this.visibility = new WatchableVisibilityPriority(Infinity);
 
     // create an image layer
-    const managedLayer = new ManagedUserLayer("new layer", {
+    const managedLayer = new ManagedUserLayer({
       chunkManager: this.chunkManager,
       layerManager: this.layerManager,
       dataSourceProviderRegistry: this.dataSourceProvider,
@@ -148,12 +140,12 @@ export class Viewer extends RefCounted {
   
     managedLayer.visible = true;
     managedLayer.layer = new ImageUserLayer(managedLayer);
-    managedLayer.layer.restoreState({ type: "new", source: "zarr2://http://localhost:9000/scroll.zarr/" });
+    managedLayer.layer.restoreState({ type: "new", source: "" });
     this.layerManager.addManagedLayer(managedLayer);
 
     // panel generation
     const panel = this.registerDisposer(
-      new FourPanelLayout({
+      new PanelLayout({
         coordinateSpace: this.coordinateSpace,
         chunkManager: this.chunkManager,
         layerManager: this.layerManager,
@@ -180,16 +172,13 @@ export class Viewer extends RefCounted {
   }
 }
 
-export class FourPanelLayout extends RefCounted {
+class PanelLayout extends RefCounted {
   element = document.createElement("div");
 
   constructor(public viewer: ViewerUIState) {
     super();
 
     const position = this.registerDisposer(new Position(this.viewer.coordinateSpace));
-    const displayDimensionRenderInfo = this.registerDisposer(
-      new WatchableDisplayDimensionRenderInfo(),
-    );
     const crossSectionScale = this.registerDisposer(new TrackableZoom());
 
     this.element.style.flex = "1";
@@ -209,9 +198,8 @@ export class FourPanelLayout extends RefCounted {
     elementXY.classList.add("neuroglancer-panel");
     const navigationStateXY = new NavigationState(
       position.addRef(),
-      displayDimensionRenderInfo.addRef(),
-      { orientation: quat.create() }, 
       crossSectionScale.addRef(),
+      { orientation: quat.create() }, 
     )
     new SliceViewPanel(elementXY, navigationStateXY, state);
 
@@ -219,9 +207,8 @@ export class FourPanelLayout extends RefCounted {
     elementYZ.classList.add("neuroglancer-panel");
     const navigationStateYZ = new NavigationState(
       position.addRef(),
-      displayDimensionRenderInfo.addRef(),
-      { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
       crossSectionScale.addRef(),
+      { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
     )
     new SliceViewPanel(elementYZ, navigationStateYZ, state);
 
@@ -229,9 +216,8 @@ export class FourPanelLayout extends RefCounted {
     elementXZ.classList.add("neuroglancer-panel");
     const navigationStateXZ = new NavigationState(
       position.addRef(),
-      displayDimensionRenderInfo.addRef(),
-      { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
       crossSectionScale.addRef(),
+      { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
     )
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
 

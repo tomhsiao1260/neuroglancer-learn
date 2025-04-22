@@ -94,8 +94,7 @@ export class DerivedProjectionParameters<
     this.value_ = new parametersConstructor();
     const performUpdate = () => {
       const { oldValue_, value_ } = this;
-      oldValue_.displayDimensionRenderInfo =
-        navigationState.displayDimensionRenderInfo.value;
+      oldValue_.displayDimensionRenderInfo = navigationState.displayDimensionRenderInfo;
       Object.assign(oldValue_, this.renderViewport);
       let { globalPosition } = oldValue_;
       const newGlobalPosition = navigationState.position.value;

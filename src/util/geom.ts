@@ -17,7 +17,6 @@
 import type { mat3 } from "gl-matrix";
 import { mat4, quat, vec3, vec4 } from "gl-matrix";
 import type { TypedArray } from "#src/util/array.js";
-import { findMatchingIndices } from "#src/util/array.js";
 
 export { mat2, mat3, mat4, quat, vec2, vec3, vec4 } from "gl-matrix";
 

@@ -39,23 +39,30 @@ import type { Borrowed, Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { MessageList } from "#src/util/message_list.js";
 import { NullarySignal } from "#src/util/signal.js";
-import type { SignalBindingUpdater } from "#src/util/signal_binding_updater.js";
-import { addSignalBinding } from "#src/util/signal_binding_updater.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
 import type { Disposable } from '#src/util/disposable.js';
 
 export class UserLayer extends RefCounted {
-  get localPosition() {
-    return this.managedLayer.localPosition;
-  }
+  localCoordinateSpace = new TrackableCoordinateSpace();
+  localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
+    this.localCoordinateSpace,
+    () => true,
+  );
+  localPosition = this.registerDisposer(
+    new Position(this.localCoordinateSpace),
+  );
 
-  get localCoordinateSpaceCombiner() {
-    return this.managedLayer.localCoordinateSpaceCombiner;
-  }
+  // get localPosition() {
+  //   return this.managedLayer.localPosition;
+  // }
 
-  get localCoordinateSpace() {
-    return this.managedLayer.localCoordinateSpace;
-  }
+  // get localCoordinateSpaceCombiner() {
+  //   return this.managedLayer.localCoordinateSpaceCombiner;
+  // }
+
+  // get localCoordinateSpace() {
+  //   return this.managedLayer.localCoordinateSpace;
+  // }
 
   static type: string;
   static typeAbbreviation: string;
@@ -175,121 +182,53 @@ export class UserLayer extends RefCounted {
 }
 
 export class ManagedUserLayer extends RefCounted {
-  localCoordinateSpace = new TrackableCoordinateSpace();
-  localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
-    this.localCoordinateSpace,
-    () => true,
-  );
-  localPosition = this.registerDisposer(
-    new Position(this.localCoordinateSpace),
-  );
-  readyStateChanged = new NullarySignal();
+  // localCoordinateSpace = new TrackableCoordinateSpace();
+  // localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
+  //   this.localCoordinateSpace,
+  //   () => true,
+  // );
+  // localPosition = this.registerDisposer(
+  //   new Position(this.localCoordinateSpace),
+  // );
   layerChanged = new NullarySignal();
-  containers = new Set<Borrowed<LayerManager>>();
 
   private layer_: UserLayer | null = null;
   get layer() {
     return this.layer_;
   }
 
-  /**
-   * If layer is not null, tranfers ownership of a reference.
-   */
   set layer(layer: UserLayer | null) {
     this.layer_ = layer;
     if (layer != null) {
       layer.layersChanged.add(this.layerChanged.dispatch),
-      layer.readyStateChanged.add(this.readyStateChanged.dispatch),
-      this.readyStateChanged.dispatch();
       this.layerChanged.dispatch();
     }
   }
 
-  isReady() {
-    const { layer } = this;
-    return layer?.isReady;
-  }
-
-  private name_: string;
-
-  get name() {
-    return this.name_;
-  }
-
-  /**
-   * If layer is not null, tranfers ownership of a reference.
-   */
   constructor(
-    name: string,
     public manager: Borrowed<LayerListSpecification>,
   ) {
     super();
-    this.name_ = name;
   }
 }
 
 export class LayerManager extends RefCounted {
-  managedLayers = new Array<Owned<ManagedUserLayer>>();
-  layerSet = new Set<Borrowed<ManagedUserLayer>>();
+  managedLayer: any;
   layersChanged = new NullarySignal();
-  readyStateChanged = new NullarySignal();
 
   constructor() {
     super();
   }
 
-  private updateSignalBindings(
-    layer: ManagedUserLayer,
-    callback: SignalBindingUpdater<() => void>,
-  ) {
-    callback(layer.layerChanged, this.layersChanged.dispatch);
-    callback(layer.readyStateChanged, this.readyStateChanged.dispatch);
-  }
+  addManagedLayer(managedLayer: ManagedUserLayer) {
+    managedLayer.layerChanged.add(this.layersChanged.dispatch)
 
-  /**
-   * Assumes ownership of an existing reference to managedLayer.
-   */
-  addManagedLayer(managedLayer: ManagedUserLayer, index?: number | undefined) {
-    this.updateSignalBindings(managedLayer, addSignalBinding);
-    this.layerSet.add(managedLayer);
-    managedLayer.containers.add(this);
-    if (index === undefined) {
-      index = this.managedLayers.length;
-    }
-    this.managedLayers.splice(index, 0, managedLayer);
+    this.managedLayer = managedLayer;
     this.layersChanged.dispatch();
-    this.readyStateChanged.dispatch();
-    return managedLayer;
   }
 
   *readyRenderLayers() {
-    for (const managedUserLayer of this.managedLayers) {
-      if (!managedUserLayer.visible || !managedUserLayer.layer) {
-        continue;
-      }
-      yield* managedUserLayer.layer.renderLayers;
-    }
-  }
-
-  disposed() {
-    super.disposed();
-  }
-
-  getLayerByName(name: string) {
-    return this.managedLayers.find((x) => x.name === name);
-  }
-
-  getUniqueLayerName(name: string) {
-    let suggestedName = name;
-    let suffix = 0;
-    while (this.getLayerByName(suggestedName) !== undefined) {
-      suggestedName = name + ++suffix;
-    }
-    return suggestedName;
-  }
-
-  has(layer: Borrowed<ManagedUserLayer>) {
-    return this.layerSet.has(layer);
+    yield* this.managedLayer.layer.renderLayers;
   }
 }
 

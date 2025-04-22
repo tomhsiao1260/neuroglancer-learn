@@ -110,29 +110,11 @@ export interface DisplayDimensionRenderInfo {
   displayDimensionIndices: Int32Array;
 }
 
-function getDisplayDimensionRenderInfo(
-): DisplayDimensionRenderInfo {
-  const globalRank = 3;
-  const displayRank = 3;
-  const globalDimensionNames = ['z', 'y', 'x']
-  const displayDimensionIndices = new Int32Array([0, 1, 2])
-
-  return {
-    globalRank,
-    globalDimensionNames,
-    displayRank,
-    displayDimensionIndices,
-  };
-}
-
-export class WatchableDisplayDimensionRenderInfo extends RefCounted {
-  private value_: DisplayDimensionRenderInfo = getDisplayDimensionRenderInfo();
-  get value() {
-    return this.value_;
-  }
-  constructor() {
-    super();
-  }
+const displayInfo: DisplayDimensionRenderInfo = {
+  globalRank: 3,
+  displayRank: 3,
+  globalDimensionNames: ['z', 'y', 'x'],
+  displayDimensionIndices: new Int32Array([0, 1, 2]),
 }
 
 export class TrackableZoom extends RefCounted
@@ -161,16 +143,16 @@ export class TrackableZoom extends RefCounted
 export class NavigationState extends RefCounted {
   changed = new NullarySignal();
 
+  displayDimensionRenderInfo = displayInfo;
+
   constructor(
     public position: Owned<Position>,
-    public displayDimensionRenderInfo: WatchableDisplayDimensionRenderInfo,
-    public orientation: any,
     public zoomFactor: any,
+    public orientation: any,
   ) {
     super();
     this.registerDisposer(position);
     this.registerDisposer(orientation);
-    this.registerDisposer(displayDimensionRenderInfo);
     this.registerDisposer(zoomFactor);
     this.registerDisposer(position.changed.add(this.changed.dispatch));
     this.registerDisposer(this.zoomFactor.changed.add(this.changed.dispatch));
@@ -190,8 +172,7 @@ export class NavigationState extends RefCounted {
   toMat4(mat: mat4) {
     mat4.fromQuat(mat, this.orientation.orientation);
     const { value: voxelCoordinates } = this.position;
-    const { displayDimensionIndices } =
-      this.displayDimensionRenderInfo.value;
+    const { displayDimensionIndices } = this.displayDimensionRenderInfo;
     for (let i = 0; i < 3; ++i) {
       const dim = displayDimensionIndices[i];
       const scale =  this.zoomFactor.value;

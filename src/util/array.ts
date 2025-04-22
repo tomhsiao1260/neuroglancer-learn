@@ -209,31 +209,6 @@ export function binarySearchLowerBound(
   return begin;
 }
 
-/**
- * Returns an array of indices into `input` that equal (under `===`) `value`.
- */
-export function findMatchingIndices<T>(input: T[], value: T) {
-  const out: number[] = [];
-  for (let i = 0, length = input.length; i < length; ++i) {
-    if (input[i] === value) {
-      out.push(i);
-    }
-  }
-  return out;
-}
-
-/**
- * Returns an array of the indices in `[0, ..., max)` not in `indices`.
- */
-export function getIndicesComplement(indices: number[], max: number) {
-  const mask: boolean[] = [];
-  mask.length = max;
-  for (const i of indices) {
-    mask[i] = true;
-  }
-  return findMatchingIndices(mask, undefined);
-}
-
 export function arraysEqual<T>(a: ArrayLike<T>, b: ArrayLike<T>) {
   const length = a.length;
   if (b.length !== length) return false;

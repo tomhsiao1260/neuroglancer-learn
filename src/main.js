@@ -48,10 +48,7 @@ async function makeMinimalViewer() {
 function setDefaultInputEventBindings(inputEventBindings) {
   inputEventBindings.sliceView.addParent(
     EventActionMap.fromObject({
-      "at:mousedown0": {
-        action: "translate-via-mouse-drag",
-        stopPropagation: true,
-      },
+      "at:mousedown0": { action: "translate-via-mouse-drag", stopPropagation: true },
       "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
       "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
     }),
