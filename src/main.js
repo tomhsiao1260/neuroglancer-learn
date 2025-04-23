@@ -1,7 +1,7 @@
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
 import { DisplayContext } from "#src/display_context.js";
 import { Viewer } from "#src/viewer.js";
-import { READY_ID } from "#src/worker_rpc.js";
+import { READY_ID } from "#src/worker/worker_rpc.js";
 import "#src/viewer.css";
 
 // Zarr upload button

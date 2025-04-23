@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { SharedWatchableValue } from "#src/shared_watchable_value.js";
+import { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
 import { WatchableValue } from "#src/trackable_value.js";
-import type { RPC, SharedObject } from "#src/worker_rpc.js";
+import type { RPC, SharedObject } from "#src/worker/worker_rpc.js";
 
 /**
  * Numeric value specifying a visibility or prefetch priority.

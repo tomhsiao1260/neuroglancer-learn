@@ -26,7 +26,7 @@ import {
   ChunkState,
   REQUEST_CHUNK_STATISTICS_RPC_ID,
 } from "#src/chunk_manager/base.js";
-import { SharedWatchableValue } from "#src/shared_watchable_value.js";
+import { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
 import { TrackableValue } from "#src/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { CANCELED } from "#src/util/cancellation.js";
@@ -36,13 +36,13 @@ import { StringMemoize } from "#src/util/memoize.js";
 import { getObjectId } from "#src/util/object_id.js";
 import { NullarySignal } from "#src/util/signal.js";
 import type { GL } from "#src/webgl/context.js";
-import type { RPC, RPCPromise } from "#src/worker_rpc.js";
+import type { RPC, RPCPromise } from "#src/worker/worker_rpc.js";
 import {
   registerPromiseRPC,
   registerRPC,
   registerSharedObjectOwner,
   SharedObject,
-} from "#src/worker_rpc.js";
+} from "#src/worker/worker_rpc.js";
 
 const DEBUG_CHUNK_UPDATES = false;
 

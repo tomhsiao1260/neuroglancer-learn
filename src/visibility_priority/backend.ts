@@ -19,8 +19,8 @@ import {
   ChunkPriorityTier,
   PREFETCH_PRIORITY_MULTIPLIER,
 } from "#src/chunk_manager/base.js";
-import type { SharedWatchableValue } from "#src/shared_watchable_value.js";
-import type { RPC } from "#src/worker_rpc.js";
+import type { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
 
 /**
  * Mixin for adding a visibility shared property to a ChunkRequester.  Calls

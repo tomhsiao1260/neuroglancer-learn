@@ -29,7 +29,7 @@ import type {
 } from "#src/sliceview/volume/base.js";
 import type { vec3 } from "#src/util/geom.js";
 import * as vector from "#src/util/vector.js";
-import type { RPC } from "#src/worker_rpc.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
 
 export class VolumeChunk extends SliceViewChunk {
   source: VolumeChunkSource | null = null;

@@ -33,7 +33,7 @@ import {
 } from "#src/util/geom.js";
 import * as matrix from "#src/util/matrix.js";
 import * as vector from "#src/util/vector.js";
-import { SharedObject } from "#src/worker_rpc.js";
+import { SharedObject } from "#src/worker/worker_rpc.js";
 
 export { DATA_TYPE_BYTES, DataType };
 

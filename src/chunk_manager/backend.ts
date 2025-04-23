@@ -34,7 +34,7 @@ import {
   numChunkStatistics,
   REQUEST_CHUNK_STATISTICS_RPC_ID,
 } from "#src/chunk_manager/base.js";
-import type { SharedWatchableValue } from "#src/shared_watchable_value.js";
+import type { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
 import type { TypedArray } from "#src/util/array.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { CancellationTokenSource } from "#src/util/cancellation.js";
@@ -51,7 +51,7 @@ import type {
   PairingHeapOperations,
 } from "#src/util/pairing_heap.js";
 import { NullarySignal } from "#src/util/signal.js";
-import type { RPC } from "#src/worker_rpc.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
 import {
   initializeSharedObjectCounterpart,
   registerPromiseRPC,
@@ -60,7 +60,7 @@ import {
   registerSharedObjectOwner,
   SharedObject,
   SharedObjectCounterpart,
-} from "#src/worker_rpc.js";
+} from "#src/worker/worker_rpc.js";
 
 const DEBUG_CHUNK_UPDATES = false;
 

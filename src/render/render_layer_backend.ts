@@ -26,12 +26,12 @@ import type {
 } from "#src/trackable_value.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { Signal } from "#src/util/signal.js";
-import type { RPC } from "#src/worker_rpc.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
 import {
   registerRPC,
   registerSharedObject,
   SharedObjectCounterpart,
-} from "#src/worker_rpc.js";
+} from "#src/worker/worker_rpc.js";
 
 export interface RenderedViewBackend {
   visibility: WatchableValueInterface<number>;

@@ -77,8 +77,8 @@ import {
 import type { ShaderModule, ShaderProgram } from "#src/webgl/shader.js";
 import { ShaderBuilder } from "#src/webgl/shader.js";
 import { getSquareCornersBuffer } from "#src/webgl/square_corners_buffer.js";
-import type { RPC } from "#src/worker_rpc.js";
-import { registerSharedObjectOwner } from "#src/worker_rpc.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
+import { registerSharedObjectOwner } from "#src/worker/worker_rpc.js";
 
 export type GenericChunkKey = string;
 

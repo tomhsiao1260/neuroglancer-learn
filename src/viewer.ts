@@ -31,7 +31,7 @@ import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import { RPC, READY_ID } from "#src/worker_rpc.js";
+import { RPC, READY_ID } from "#src/worker/worker_rpc.js";
 import {
   NavigationState,
   Position,
@@ -66,7 +66,7 @@ class DataManagementContext extends RefCounted {
   ) {
     super();
     this.worker = new Worker(
-      new URL("./chunk_worker.bundle.js", import.meta.url),
+      new URL("./worker/chunk_worker.bundle.js", import.meta.url),
       { type: "module" },
     );
 

@@ -26,7 +26,7 @@ import { postProcessRawData } from "#src/sliceview/backend_chunk_decoders/postpr
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import { VolumeChunkSource } from "#src/sliceview/volume/backend.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
-import { registerSharedObject } from "#src/worker_rpc.js";
+import { registerSharedObject } from "#src/worker/worker_rpc.js";
 
 @registerSharedObject()
 export class ZarrVolumeChunkSource extends WithParameters(

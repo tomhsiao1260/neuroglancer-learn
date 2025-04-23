@@ -22,7 +22,7 @@ import type {
   RenderLayerTransformOrError,
 } from "#src/render/render_coordinate_transform.js";
 import { RenderLayer } from "#src/render/renderlayer.js";
-import { SharedWatchableValue } from "#src/shared_watchable_value.js";
+import { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
 import type {
   SliceViewProjectionParameters,
   SliceViewSourceOptions,
@@ -42,7 +42,7 @@ import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { constantWatchableValue } from "#src/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
-import type { RpcId } from "#src/worker_rpc.js";
+import type { RpcId } from "#src/worker/worker_rpc.js";
 
 export interface SliceViewRenderLayerOptions {
   /**

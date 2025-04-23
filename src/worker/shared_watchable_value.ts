@@ -20,12 +20,12 @@
 
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { WatchableValue } from "#src/trackable_value.js";
-import type { RPC } from "#src/worker_rpc.js";
+import type { RPC } from "#src/worker/worker_rpc.js";
 import {
   registerRPC,
   registerSharedObject,
   SharedObjectCounterpart,
-} from "#src/worker_rpc.js";
+} from "#src/worker/worker_rpc.js";
 
 const CHANGED_RPC_METHOD_ID = "SharedWatchableValue.changed";
 
