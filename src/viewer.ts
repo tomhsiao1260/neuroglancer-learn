@@ -24,11 +24,9 @@ import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.j
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import type { DisplayContext } from "#src/display_context.js";
 import {
-  ManagedUserLayer,
-  LayerManager,
+  ImageUserLayer,
   MouseSelectionState,
 } from "#src/layer/index.js";
-import { ImageUserLayer } from "#src/layer/image/index.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
@@ -112,7 +110,6 @@ export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
 
   mouseState = new MouseSelectionState();
-  layerManager = this.registerDisposer(new LayerManager());
 
   visibility: WatchableVisibilityPriority;
   inputEventBindings: any;
@@ -130,25 +127,18 @@ export class Viewer extends RefCounted {
     this.dataSourceProvider = getDefaultDataSourceProvider();
     this.visibility = new WatchableVisibilityPriority(Infinity);
 
-    // create an image layer
-    const managedLayer = new ManagedUserLayer({
+    const layerManager = new ImageUserLayer({
       chunkManager: this.chunkManager,
-      layerManager: this.layerManager,
       dataSourceProviderRegistry: this.dataSourceProvider,
       coordinateSpace: this.coordinateSpace,
     });
-  
-    managedLayer.visible = true;
-    managedLayer.layer = new ImageUserLayer(managedLayer);
-    managedLayer.layer.restoreState({ type: "new", source: "" });
-    this.layerManager.addManagedLayer(managedLayer);
 
     // panel generation
     const panel = this.registerDisposer(
       new PanelLayout({
         coordinateSpace: this.coordinateSpace,
         chunkManager: this.chunkManager,
-        layerManager: this.layerManager,
+        layerManager,
         navigationState: this.navigationState,
         inputEventBindings: this.inputEventBindings,
         mouseState: this.mouseState,

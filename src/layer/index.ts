@@ -21,6 +21,8 @@ import {
   CoordinateSpaceCombiner,
   emptyInvalidCoordinateSpace,
   isLocalOrChannelDimension,
+  isChannelDimension,
+  isLocalDimension,
   TrackableCoordinateSpace,
 } from "#src/coordinate_transform.js";
 import type {
@@ -35,12 +37,23 @@ import {
 } from '#src/navigation_state.js';
 import type { RenderLayer } from "#src/renderlayer.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
-import type { Borrowed, Owned } from "#src/util/disposable.js";
+import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { MessageList } from "#src/util/message_list.js";
 import { NullarySignal } from "#src/util/signal.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";
-import type { Disposable } from '#src/util/disposable.js';
+import { DataType } from "#src/sliceview/volume/base.js";
+import { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
+import {
+  getTrackableFragmentMain,
+  ImageRenderLayer,
+} from "#src/sliceview/volume/image_renderlayer.js";
+import {
+  makeCachedDerivedWatchableValue,
+  WatchableValue,
+} from "#src/trackable_value.js";
+import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
+import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 
 export class UserLayer extends RefCounted {
   localCoordinateSpace = new TrackableCoordinateSpace();
@@ -51,18 +64,6 @@ export class UserLayer extends RefCounted {
   localPosition = this.registerDisposer(
     new Position(this.localCoordinateSpace),
   );
-
-  // get localPosition() {
-  //   return this.managedLayer.localPosition;
-  // }
-
-  // get localCoordinateSpaceCombiner() {
-  //   return this.managedLayer.localCoordinateSpaceCombiner;
-  // }
-
-  // get localCoordinateSpace() {
-  //   return this.managedLayer.localCoordinateSpace;
-  // }
 
   static type: string;
   static typeAbbreviation: string;
@@ -83,11 +84,7 @@ export class UserLayer extends RefCounted {
   dataSourcesChanged = new NullarySignal();
   dataSources: LayerDataSource[] = [];
 
-  get manager() {
-    return this.managedLayer.manager;
-  }
-
-  constructor(public managedLayer: Borrowed<ManagedUserLayer>) {
+  constructor(public manager: any) {
     super();
     this.localCoordinateSpaceCombiner.includeDimensionPredicate =
       isLocalOrChannelDimension;
@@ -181,55 +178,131 @@ export class UserLayer extends RefCounted {
   }
 }
 
-export class ManagedUserLayer extends RefCounted {
-  // localCoordinateSpace = new TrackableCoordinateSpace();
-  // localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
-  //   this.localCoordinateSpace,
-  //   () => true,
-  // );
-  // localPosition = this.registerDisposer(
-  //   new Position(this.localCoordinateSpace),
-  // );
+export class ImageUserLayer extends UserLayer {
   layerChanged = new NullarySignal();
 
-  private layer_: UserLayer | null = null;
-  get layer() {
-    return this.layer_;
-  }
-
-  set layer(layer: UserLayer | null) {
-    this.layer_ = layer;
-    if (layer != null) {
-      layer.layersChanged.add(this.layerChanged.dispatch),
-      this.layerChanged.dispatch();
-    }
-  }
-
-  constructor(
-    public manager: Borrowed<LayerListSpecification>,
-  ) {
-    super();
-  }
-}
-
-export class LayerManager extends RefCounted {
-  managedLayer: any;
-  layersChanged = new NullarySignal();
-
-  constructor() {
-    super();
-  }
-
-  addManagedLayer(managedLayer: ManagedUserLayer) {
-    managedLayer.layerChanged.add(this.layersChanged.dispatch)
-
-    this.managedLayer = managedLayer;
-    this.layersChanged.dispatch();
-  }
-
   *readyRenderLayers() {
-    yield* this.managedLayer.layer.renderLayers;
+    yield* this.renderLayers;
   }
+
+  fragmentMain = getTrackableFragmentMain();
+  shaderError = makeWatchableShaderError();
+  dataType = new WatchableValue<DataType | undefined>(undefined);
+  sliceViewRenderScaleTarget = new WatchableValue(1);
+  channelCoordinateSpace = new TrackableCoordinateSpace();
+  channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
+    this.channelCoordinateSpace,
+    isChannelDimension,
+  );
+
+  shaderControlState = this.registerDisposer(
+    new ShaderControlState(
+      this.fragmentMain,
+      this.registerDisposer(
+        makeCachedDerivedWatchableValue(
+          (
+            dataType: DataType | undefined,
+            channelCoordinateSpace: CoordinateSpace,
+          ) => {
+            if (dataType === undefined) return null;
+            return {
+              imageData: { dataType, channelRank: channelCoordinateSpace.rank },
+            };
+          },
+          [this.dataType, this.channelCoordinateSpace],
+          (a, b) => JSON.stringify(a) === JSON.stringify(b),
+        ),
+      ),
+      this.channelCoordinateSpaceCombiner,
+    ),
+  );
+
+  markLoading() {
+    const baseDisposer = super.markLoading?.();
+    const channelDisposer = this.channelCoordinateSpaceCombiner.retain();
+    return () => {
+      baseDisposer?.();
+      channelDisposer();
+    };
+  }
+
+  addCoordinateSpace(
+    coordinateSpace: WatchableValueInterface<CoordinateSpace>,
+  ) {
+    const baseBinding = super.addCoordinateSpace(coordinateSpace);
+    const channelBinding =
+      this.channelCoordinateSpaceCombiner.bind(coordinateSpace);
+    return () => {
+      baseBinding();
+      channelBinding();
+    };
+  }
+
+  constructor(manager: any) {
+    super(manager);
+    this.localCoordinateSpaceCombiner.includeDimensionPredicate =
+      isLocalDimension;
+    this.fragmentMain.changed.add(this.specificationChanged.dispatch);
+    this.sliceViewRenderScaleTarget.changed.add(
+      this.specificationChanged.dispatch,
+    );
+    this.layersChanged.add(this.layerChanged.dispatch),
+    this.layerChanged.dispatch();
+    this.restoreState({ type: "new", source: "" });
+  }
+
+  activateDataSubsources(subsources: Iterable<LoadedDataSubsource>) {
+    let dataType: DataType | undefined;
+    for (const loadedSubsource of subsources) {
+      const { subsourceEntry } = loadedSubsource;
+      const { subsource } = subsourceEntry;
+      const { volume } = subsource;
+      if (!(volume instanceof MultiscaleVolumeChunkSource)) {
+        loadedSubsource.deactivate("Not compatible with image layer");
+        continue;
+      }
+      if (dataType && volume.dataType !== dataType) {
+        loadedSubsource.deactivate(
+          `Data type must be ${DataType[volume.dataType].toLowerCase()}`,
+        );
+        continue;
+      }
+      dataType = volume.dataType;
+      loadedSubsource.activate((context) => {
+        loadedSubsource.addRenderLayer(
+          new ImageRenderLayer(volume, {
+            shaderControlState: this.shaderControlState,
+            shaderError: this.shaderError,
+            transform: loadedSubsource.getRenderLayerTransform(
+              this.channelCoordinateSpace,
+            ),
+            renderScaleTarget: this.sliceViewRenderScaleTarget,
+            localPosition: this.localPosition,
+            channelCoordinateSpace: this.channelCoordinateSpace,
+          }),
+        );
+        this.shaderError.changed.dispatch();
+      });
+    }
+    this.dataType.value = dataType;
+  }
+
+  restoreState(specification: any) {
+    super.restoreState(specification);
+    if (specification.shader !== undefined) {
+      this.fragmentMain.restoreState(specification.shader);
+    }
+    if (specification.sliceViewRenderScaleTarget !== undefined) {
+      this.sliceViewRenderScaleTarget.value = specification.sliceViewRenderScaleTarget;
+    }
+    this.sliceViewRenderScaleTarget.changed.dispatch();
+    this.channelCoordinateSpace.restoreState(
+      specification[CHANNEL_DIMENSIONS_JSON_KEY],
+    );
+  }
+
+  static type = "image";
+  static typeAbbreviation = "img";
 }
 
 export class MouseSelectionState {
@@ -255,14 +328,6 @@ export class MouseSelectionState {
   }
 }
 
-export interface LayerListSpecification extends Disposable {
-  coordinateSpace: WatchableValueInterface<CoordinateSpace>;
-  coordinateSpaceCombiner: CoordinateSpaceCombiner;
-  root: {
-    globalPosition: Position;
-  };
-  dispose(): void;
-}
-
 const LOCAL_POSITION_JSON_KEY = "localPosition";
 const LOCAL_COORDINATE_SPACE_JSON_KEY = "localDimensions";
+const CHANNEL_DIMENSIONS_JSON_KEY = "channelDimensions";
