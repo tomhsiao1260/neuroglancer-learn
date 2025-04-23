@@ -126,7 +126,6 @@ export class RenderedDataPanel extends RefCounted {
     const { mouseState } = this.viewer;
     mouseState.pageX = clientX + window.scrollX;
     mouseState.pageY = clientY + window.scrollY;
-    mouseState.setForcer(this.mouseStateForcer);
     this.updateMousePosition(mouseX, mouseY);
   }
 

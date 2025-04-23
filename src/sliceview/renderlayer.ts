@@ -20,8 +20,8 @@ import type { CoordinateSpace } from "#src/coordinate_transform.js";
 import type {
   ChunkTransformParameters,
   RenderLayerTransformOrError,
-} from "#src/render_coordinate_transform.js";
-import { RenderLayer } from "#src/renderlayer.js";
+} from "#src/render/render_coordinate_transform.js";
+import { RenderLayer } from "#src/render/renderlayer.js";
 import { SharedWatchableValue } from "#src/shared_watchable_value.js";
 import type {
   SliceViewProjectionParameters,

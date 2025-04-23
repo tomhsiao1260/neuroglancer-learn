@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import "#src/render_layer_backend.js";
+import "#src/render/render_layer_backend.js";
 
 import type {
   ChunkConstructor,

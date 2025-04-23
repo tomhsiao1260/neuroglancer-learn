@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-import type { DisplayContext } from "#src/display_context.js";
-import type { RenderedDataViewerState } from "#src/rendered_data_panel.js";
-import { RenderedDataPanel } from "#src/rendered_data_panel.js";
+import type { RenderedDataViewerState } from "#src/render/rendered_data_panel.js";
+import { RenderedDataPanel } from "#src/render/rendered_data_panel.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
-import type { Borrowed } from "#src/util/disposable.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
 import { RenderViewport } from "#src/display_context.js";
 import { SliceView } from "#src/sliceview/frontend.js";

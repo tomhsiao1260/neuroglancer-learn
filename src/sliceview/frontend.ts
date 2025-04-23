@@ -31,15 +31,15 @@ import type {
   ChunkDisplayTransformParameters,
   ChunkTransformParameters,
   RenderLayerTransformOrError,
-} from "#src/render_coordinate_transform.js";
+} from "#src/render/render_coordinate_transform.js";
 import {
   getChunkDisplayTransformParameters,
   getChunkTransformParameters,
-} from "#src/render_coordinate_transform.js";
+} from "#src/render/render_coordinate_transform.js";
 import {
   DerivedProjectionParameters,
   SharedProjectionParameters,
-} from "#src/renderlayer.js";
+} from "#src/render/renderlayer.js";
 import type {
   SliceViewChunkSource as SliceViewChunkSourceInterface,
   SliceViewChunkSpecification,

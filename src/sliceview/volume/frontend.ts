@@ -15,7 +15,7 @@
  */
 
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
-import type { ChunkChannelAccessParameters } from "#src/render_coordinate_transform.js";
+import type { ChunkChannelAccessParameters } from "#src/render/render_coordinate_transform.js";
 import type {
   DataType,
   SliceViewChunkSpecification,

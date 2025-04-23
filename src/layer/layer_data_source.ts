@@ -27,8 +27,8 @@ import type {
   DataSubsourceSpecification,
 } from "#src/datasource/index.js";
 import type { UserLayer } from "#src/layer/index.js";
-import { getWatchableRenderLayerTransform } from "#src/render_coordinate_transform.js";
-import type { RenderLayer } from "#src/renderlayer.js";
+import { getWatchableRenderLayerTransform } from "#src/render/render_coordinate_transform.js";
+import type { RenderLayer } from "#src/render/renderlayer.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
 import { CancellationTokenSource } from "#src/util/cancellation.js";

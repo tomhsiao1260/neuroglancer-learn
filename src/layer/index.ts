@@ -35,7 +35,7 @@ import {
 import {
   Position,
 } from '#src/navigation_state.js';
-import type { RenderLayer } from "#src/renderlayer.js";
+import type { RenderLayer } from "#src/render/renderlayer.js";
 import type { WatchableValueInterface } from "#src/trackable_value.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
@@ -313,12 +313,6 @@ export class MouseSelectionState {
   active = false;
   pageX: number;
   pageY: number;
-
-  setForcer(forcer: (() => void) | undefined) {
-    if (forcer === undefined) {
-      this.setActive(false);
-    }
-  }
 
   setActive(value: boolean) {
     if (this.active !== value || value === true) {

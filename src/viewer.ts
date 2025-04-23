@@ -27,7 +27,6 @@ import {
   ImageUserLayer,
   MouseSelectionState,
 } from "#src/layer/index.js";
-import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
@@ -40,6 +39,7 @@ import {
 } from "#src/navigation_state.js";
 import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
+import { EventActionMap } from "#src/util/event_action_map.js";
 
 export interface ViewerUIState {
   display: DisplayContext;
@@ -49,10 +49,10 @@ export interface ViewerUIState {
   coordinateSpace: any;
   chunkManager: ChunkManager;
   navigationState: NavigationState;
-  layerManager: LayerManager;
+  layerManager: any;
 }
 
-export class DataManagementContext extends RefCounted {
+class DataManagementContext extends RefCounted {
   worker: Worker;
   chunkQueueManager: ChunkQueueManager;
   chunkManager: ChunkManager;
@@ -108,12 +108,8 @@ export class DataManagementContext extends RefCounted {
 
 export class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
-
   mouseState = new MouseSelectionState();
-
   visibility: WatchableVisibilityPriority;
-  inputEventBindings: any;
-  dataSourceProvider: Borrowed<DataSourceProviderRegistry>;
   chunkManager: ChunkManager;
   dataContext: any;
 
@@ -121,26 +117,35 @@ export class Viewer extends RefCounted {
     super();
 
     this.dataContext = new DataManagementContext(display.gl);
-    this.chunkManager = this.dataContext.chunkManager;
-
-    this.inputEventBindings = { sliceView: new EventActionMap() };
-    this.dataSourceProvider = getDefaultDataSourceProvider();
     this.visibility = new WatchableVisibilityPriority(Infinity);
+    const dataSourceProvider: DataSourceProviderRegistry = getDefaultDataSourceProvider();
+    
+    // control events
+    const inputEventMap = new EventActionMap();
+
+    inputEventMap.addParent(
+      EventActionMap.fromObject({
+        "at:mousedown0": { action: "translate-via-mouse-drag", stopPropagation: true },
+        "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
+        "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
+      }),
+      Number.NEGATIVE_INFINITY,
+    );
 
     const layerManager = new ImageUserLayer({
-      chunkManager: this.chunkManager,
-      dataSourceProviderRegistry: this.dataSourceProvider,
+      chunkManager: this.dataContext.chunkManager,
       coordinateSpace: this.coordinateSpace,
+      dataSourceProviderRegistry: dataSourceProvider,
     });
 
     // panel generation
     const panel = this.registerDisposer(
       new PanelLayout({
-        coordinateSpace: this.coordinateSpace,
-        chunkManager: this.chunkManager,
         layerManager,
+        coordinateSpace: this.coordinateSpace,
+        chunkManager: this.dataContext.chunkManager,
         navigationState: this.navigationState,
-        inputEventBindings: this.inputEventBindings,
+        inputEventMap,
         mouseState: this.mouseState,
         visibility: this.visibility,
         display: this.display,
@@ -157,7 +162,6 @@ export class Viewer extends RefCounted {
     container.style.flexDirection = "column";
     container.style.position = "absolute";
     container.appendChild(panel.element);
-
     this.display.container.appendChild(container);
   }
 }
@@ -181,7 +185,7 @@ class PanelLayout extends RefCounted {
       mouseState: viewer.mouseState,
       layerManager: viewer.layerManager,
       visibility: viewer.visibility,
-      inputEventMap: viewer.inputEventBindings.sliceView,
+      inputEventMap: viewer.inputEventMap,
     }
 
     const elementXY = document.createElement("div");
