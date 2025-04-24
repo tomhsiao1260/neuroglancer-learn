@@ -17,13 +17,13 @@ import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import type {
   CoordinateSpace,
   CoordinateSpaceTransform,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import {
   emptyValidCoordinateSpace,
   makeCoordinateSpace,
   makeIdentityTransform,
-} from "#src/coordinate_transform.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+} from "#src/state/coordinate_transform.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
 import type {

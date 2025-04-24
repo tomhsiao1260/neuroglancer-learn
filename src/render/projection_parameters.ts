@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { RenderViewport, renderViewportsEqual } from "#src/display_context.js";
-import type { DisplayDimensionRenderInfo } from "#src/navigation_state.js";
+import { RenderViewport, renderViewportsEqual } from "#src/layer/display_context.js";
+import type { DisplayDimensionRenderInfo } from "#src/state/navigation_state.js";
 import { arraysEqual } from "#src/util/array.js";
 import { mat4 } from "#src/util/geom.js";
 import { kEmptyFloat32Vec } from "#src/util/vector.js";

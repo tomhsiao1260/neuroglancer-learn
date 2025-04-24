@@ -17,18 +17,18 @@
 import type {
   CoordinateSpace,
   CoordinateSpaceTransform,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import {
   emptyValidCoordinateSpace,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import type {
   CachedWatchableValue,
   WatchableValueInterface,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import {
   constantWatchableValue,
   makeCachedDerivedWatchableValue,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
 import type { ValueOrError } from "#src/util/error.js";
 import { mat4 } from "#src/util/geom.js";

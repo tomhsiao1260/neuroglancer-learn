@@ -18,7 +18,7 @@
  * @file Facilities for converting between strings and RGB/RGBA colors.
  */
 
-import { WatchableValue } from "#src/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import { float32ToString } from "#src/util/float32_to_string.js";
 import { vec3, vec4 } from "#src/util/geom.js";
 import { hexEncodeByte } from "#src/util/hex.js";

@@ -25,8 +25,8 @@ import type { LayerManager } from "#src/layer/index.js";
 import type {
   DisplayDimensionRenderInfo,
   NavigationState,
-} from "#src/navigation_state.js";
-import { updateProjectionParametersFromInverseViewAndProjection } from "#src/projection_parameters.js";
+} from "#src/state/navigation_state.js";
+import { updateProjectionParametersFromInverseViewAndProjection } from "#src/render/projection_parameters.js";
 import type {
   ChunkDisplayTransformParameters,
   ChunkTransformParameters,

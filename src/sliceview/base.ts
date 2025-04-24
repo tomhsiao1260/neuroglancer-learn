@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import type { DisplayDimensionRenderInfo } from "#src/navigation_state.js";
-import { ProjectionParameters } from "#src/projection_parameters.js";
+import type { DisplayDimensionRenderInfo } from "#src/state/navigation_state.js";
+import { ProjectionParameters } from "#src/render/projection_parameters.js";
 import { ChunkLayout } from "#src/sliceview/chunk_layout.js";
 import type {
   WatchableValueChangeInterface,
   WatchableValueInterface,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { DATA_TYPE_BYTES, DataType } from "#src/util/data_type.js";
 import type { Disposable } from "#src/util/disposable.js";
 import {

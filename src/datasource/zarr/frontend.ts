@@ -16,12 +16,12 @@
 
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { WithParameters } from "#src/chunk_manager/frontend.js";
-import type { CoordinateSpace } from "#src/coordinate_transform.js";
+import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
 import {
   makeCoordinateSpace,
   makeIdentityTransform,
   makeIdentityTransformedBoundingBox,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import type {
   DataSource,
   GetDataSourceOptions,

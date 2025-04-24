@@ -16,7 +16,7 @@
 
 import type {
   CoordinateSpace,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import {
   CoordinateSpaceCombiner,
   emptyInvalidCoordinateSpace,
@@ -24,7 +24,7 @@ import {
   isChannelDimension,
   isLocalDimension,
   TrackableCoordinateSpace,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import type {
   DataSourceSpecification,
 } from "#src/datasource/index.js";
@@ -34,9 +34,9 @@ import {
 } from "#src/layer/layer_data_source.js";
 import {
   Position,
-} from '#src/navigation_state.js';
+} from '#src/state/navigation_state.js';
 import type { RenderLayer } from "#src/render/renderlayer.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { MessageList } from "#src/util/message_list.js";
@@ -51,7 +51,7 @@ import {
 import {
   makeCachedDerivedWatchableValue,
   WatchableValue,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { makeWatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 

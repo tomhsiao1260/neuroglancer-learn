@@ -18,7 +18,7 @@ import type { RenderedDataViewerState } from "#src/render/rendered_data_panel.js
 import { RenderedDataPanel } from "#src/render/rendered_data_panel.js";
 import { SliceViewRenderHelper } from "#src/sliceview/frontend.js";
 import { identityMat4, vec3, vec4 } from "#src/util/geom.js";
-import { RenderViewport } from "#src/display_context.js";
+import { RenderViewport } from "#src/layer/display_context.js";
 import { SliceView } from "#src/sliceview/frontend.js";
 import {
   FramebufferConfiguration,

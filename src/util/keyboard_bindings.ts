@@ -20,7 +20,7 @@
 
 // This is based on goog/ui/keyboardshortcuthandler.js in the Google Closure library.
 
-import { WatchableValue } from "#src/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import { RefCounted } from "#src/util/disposable.js";
 import type {
   ActionEvent,

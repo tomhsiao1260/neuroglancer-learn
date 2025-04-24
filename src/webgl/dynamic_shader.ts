@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import {
   constantWatchableValue,
   WatchableValue,
   TrackableValue,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import type { RefCounted } from "#src/util/disposable.js";
 import { stableStringify, verifyString } from "#src/util/json.js";
 import { getObjectId } from "#src/util/object_id.js";

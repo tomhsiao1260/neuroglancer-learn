@@ -16,7 +16,7 @@
 
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { ChunkRenderLayerFrontend } from "#src/chunk_manager/frontend.js";
-import type { CoordinateSpace } from "#src/coordinate_transform.js";
+import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
 import type {
   ChunkTransformParameters,
   RenderLayerTransformOrError,
@@ -38,8 +38,8 @@ import type {
   SliceViewChunkSource,
   SliceViewSingleResolutionSource,
 } from "#src/sliceview/frontend.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { constantWatchableValue } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
+import { constantWatchableValue } from "#src/state/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { HistogramSpecifications } from "#src/webgl/empirical_cdf.js";
 import type { RpcId } from "#src/worker/worker_rpc.js";

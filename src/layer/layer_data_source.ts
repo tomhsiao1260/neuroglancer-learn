@@ -16,10 +16,10 @@
 
 import type {
   CoordinateSpace,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import {
   WatchableCoordinateSpaceTransform,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import type {
   DataSource,
   DataSourceSpecification,
@@ -29,7 +29,7 @@ import type {
 import type { UserLayer } from "#src/layer/index.js";
 import { getWatchableRenderLayerTransform } from "#src/render/render_coordinate_transform.js";
 import type { RenderLayer } from "#src/render/renderlayer.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
 import { CancellationTokenSource } from "#src/util/cancellation.js";
 import type { Borrowed, Owned } from "#src/util/disposable.js";

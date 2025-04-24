@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import type { CoordinateSpace } from "#src/coordinate_transform.js";
-import { makeCoordinateSpace } from "#src/coordinate_transform.js";
+import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
+import { makeCoordinateSpace } from "#src/state/coordinate_transform.js";
 import {
   parseArray,
   parseFixedLengthArray,

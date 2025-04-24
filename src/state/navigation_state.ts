@@ -16,12 +16,12 @@
 
 import type {
   CoordinateSpace,
-} from "#src/coordinate_transform.js";
+} from "#src/state/coordinate_transform.js";
 import {
   clampAndRoundCoordinateToVoxelCenter,
   getBoundingBoxCenter,
-} from "#src/coordinate_transform.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+} from "#src/state/coordinate_transform.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { mat4, vec3 } from "#src/util/geom.js";

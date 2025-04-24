@@ -15,7 +15,7 @@
  */
 
 import { ChunkRenderLayerBackend } from "#src/chunk_manager/backend.js";
-import type { ProjectionParameters } from "#src/projection_parameters.js";
+import type { ProjectionParameters } from "#src/render/projection_parameters.js";
 import {
   PROJECTION_PARAMETERS_CHANGED_RPC_METHOD_ID,
   PROJECTION_PARAMETERS_RPC_ID,
@@ -23,7 +23,7 @@ import {
 import type {
   WatchableValueChangeInterface,
   WatchableValueInterface,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { Signal } from "#src/util/signal.js";
 import type { RPC } from "#src/worker/worker_rpc.js";

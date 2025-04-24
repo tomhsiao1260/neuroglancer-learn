@@ -15,9 +15,9 @@
  */
 
 import { ChunkState } from "#src/chunk_manager/base.js";
-import type { CoordinateSpace } from "#src/coordinate_transform.js";
-import { emptyInvalidCoordinateSpace } from "#src/coordinate_transform.js";
-import type { ProjectionParameters } from "#src/projection_parameters.js";
+import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
+import { emptyInvalidCoordinateSpace } from "#src/state/coordinate_transform.js";
+import type { ProjectionParameters } from "#src/render/projection_parameters.js";
 import { getNormalizedChunkLayout } from "#src/sliceview/base.js";
 import {
   defineBoundingBoxCrossSectionShader,
@@ -40,11 +40,11 @@ import type {
   VolumeChunkSource,
 } from "#src/sliceview/volume/frontend.js";
 import { defineChunkDataShaderAccess } from "#src/sliceview/volume/frontend.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import {
   constantWatchableValue,
   makeCachedDerivedWatchableValue,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { mat4, vec3 } from "#src/util/geom.js";
 import { getObjectId } from "#src/util/object_id.js";
 import type { GL } from "#src/webgl/context.js";

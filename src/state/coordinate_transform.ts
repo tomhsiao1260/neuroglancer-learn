@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { WatchableValue } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import * as matrix from "#src/util/matrix.js";
 import { NullarySignal } from "#src/util/signal.js";
 import * as vector from "#src/util/vector.js";

@@ -27,7 +27,7 @@ import {
   REQUEST_CHUNK_STATISTICS_RPC_ID,
 } from "#src/chunk_manager/base.js";
 import { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
-import { TrackableValue } from "#src/trackable_value.js";
+import { TrackableValue } from "#src/state/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { CANCELED } from "#src/util/cancellation.js";
 import type { Borrowed } from "#src/util/disposable.js";

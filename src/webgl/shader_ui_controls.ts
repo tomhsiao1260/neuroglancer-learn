@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-import type { CoordinateSpaceCombiner } from "#src/coordinate_transform.js";
+import type { CoordinateSpaceCombiner } from "#src/state/coordinate_transform.js";
 import type {
   TrackableValueInterface,
   WatchableValueInterface,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import {
   constantWatchableValue,
   makeCachedDerivedWatchableValue,
   TrackableValue,
-} from "#src/trackable_value.js";
+} from "#src/state/trackable_value.js";
 import { arraysEqual } from "#src/util/array.js";
 import { parseRGBColorSpecification, TrackableRGB } from "#src/util/color.js";
 import type { DataType } from "#src/util/data_type.js";

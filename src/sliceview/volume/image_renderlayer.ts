@@ -18,7 +18,7 @@ import type { SliceView } from "#src/sliceview/frontend.js";
 import type { MultiscaleVolumeChunkSource } from "#src/sliceview/volume/frontend.js";
 import type { RenderLayerBaseOptions } from "#src/sliceview/volume/renderlayer.js";
 import { SliceViewVolumeRenderLayer } from "#src/sliceview/volume/renderlayer.js";
-import { WatchableValue } from "#src/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import { glsl_COLORMAPS } from "#src/webgl/colormaps.js";
 import type { WatchableShaderError } from "#src/webgl/dynamic_shader.js";
 import {

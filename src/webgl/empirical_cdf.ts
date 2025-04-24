@@ -24,7 +24,7 @@
  * rendering point primitives.
  */
 
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import { RefCounted } from "#src/util/disposable.js";
 import type { DataTypeInterval } from "#src/util/lerp.js";
 import { VisibilityPriorityAggregator } from "#src/visibility_priority/frontend.js";

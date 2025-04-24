@@ -47,7 +47,7 @@ import {
   SliceViewBase,
 } from "#src/sliceview/base.js";
 import { ChunkLayout } from "#src/sliceview/chunk_layout.js";
-import type { WatchableValueInterface } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { CANCELED } from "#src/util/cancellation.js";
 import { erf } from "#src/util/erf.js";

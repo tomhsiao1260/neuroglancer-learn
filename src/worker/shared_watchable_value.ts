@@ -18,8 +18,8 @@
  * @file Facility for sharing arbitrary values that support structural cloning between threads.
  */
 
-import type { WatchableValueInterface } from "#src/trackable_value.js";
-import { WatchableValue } from "#src/trackable_value.js";
+import type { WatchableValueInterface } from "#src/state/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import type { RPC } from "#src/worker/worker_rpc.js";
 import {
   registerRPC,

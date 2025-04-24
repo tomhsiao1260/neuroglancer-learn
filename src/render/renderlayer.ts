@@ -16,7 +16,7 @@
 
 import { debounce } from "lodash-es";
 import { LayerChunkProgressInfo } from "#src/chunk_manager/base.js";
-import { RenderViewport, renderViewportsEqual } from "#src/display_context.js";
+import { RenderViewport, renderViewportsEqual } from "#src/layer/display_context.js";
 import type {
   MouseSelectionState,
   UserLayer,
@@ -24,12 +24,12 @@ import type {
 import type {
   DisplayDimensionRenderInfo,
   NavigationState,
-} from "#src/navigation_state.js";
+} from "#src/state/navigation_state.js";
 import {
   ProjectionParameters,
   projectionParametersEqual,
-} from "#src/projection_parameters.js";
-import type { WatchableValueChangeInterface } from "#src/trackable_value.js";
+} from "#src/render/projection_parameters.js";
+import type { WatchableValueChangeInterface } from "#src/state/trackable_value.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
 import { MessageList } from "#src/util/message_list.js";

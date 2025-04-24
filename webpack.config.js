@@ -8,7 +8,7 @@ export default (env, args) => {
     mode,
     context: import.meta.dirname,
     entry: {
-      main: "./src/main.js",
+      main: "./src/main.ts",
     },
     performance: {
       // Avoid unhelpful warnings due to large bundles.

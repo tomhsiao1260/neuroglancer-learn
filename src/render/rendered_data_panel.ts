@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { DisplayContext } from "#src/display_context.js";
-import type { NavigationState } from "#src/navigation_state.js";
+import type { DisplayContext } from "#src/layer/display_context.js";
+import type { NavigationState } from "#src/state/navigation_state.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import type {
   ActionEvent,

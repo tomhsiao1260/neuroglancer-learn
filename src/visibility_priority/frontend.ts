@@ -15,7 +15,7 @@
  */
 
 import { SharedWatchableValue } from "#src/worker/shared_watchable_value.js";
-import { WatchableValue } from "#src/trackable_value.js";
+import { WatchableValue } from "#src/state/trackable_value.js";
 import type { RPC, SharedObject } from "#src/worker/worker_rpc.js";
 
 /**
