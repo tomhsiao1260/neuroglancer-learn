@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import "#src/style.css";
 import { RefCounted } from "#src/util/disposable.js";
 import {
@@ -41,11 +42,14 @@ import {
 import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
-import { registerSharedObjectOwner } from "#src/worker/worker_rpc.js";
 
+// root container element
 const root = document.querySelector<HTMLDivElement>('#app');
 
-// data upload button
+
+/**
+ * Creates and sets up the upload button for .zarr files
+ */
 makeUploadButton();
 
 function makeUploadButton() {
@@ -63,8 +67,11 @@ function makeUploadButton() {
   root?.appendChild(loading);
 }
 
+/**
+ * Creates a minimal viewer for 3D volume data visualization
+ */
 async function makeMinimalViewer() {
-  // load data via file system api
+  // Load data using file system API
   const fileTree = await handleFileBtnOnClick();
   self.fileTree = fileTree;
 
@@ -74,10 +81,14 @@ async function makeMinimalViewer() {
   const display = new DisplayContext(target);
   const viewer = new Viewer(display);
 
-  // handle loading text
+  // Handle loading state
   loading(viewer.dataContext.worker);
 }
 
+/**
+ * Manages the loading state UI
+ * @param worker - The worker handling data processing
+ */
 function loading(worker: Worker) {
   const loading = document.querySelector<HTMLDivElement>("#loading");
   const button = document.querySelector<HTMLButtonElement>("#upload");
@@ -85,7 +96,7 @@ function loading(worker: Worker) {
     loading.style.display = "inline";
     button.style.display = "none";
 
-    worker.addEventListener("message", (e: MessageEvent) => {
+    worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
       const isReady = e.data.functionName === READY_ID;
       if (isReady && loading) {
         loading.style.display = "none";
@@ -94,45 +105,52 @@ function loading(worker: Worker) {
   }
 }
 
+/**
+ * Interface defining the UI state of the viewer
+ */
 export interface ViewerUIState {
   display: DisplayContext;
   mouseState: MouseSelectionState;
-  visibility: boolean;
-  inputEventBindings: any;
-  coordinateSpace: any;
+  visibility: WatchableVisibilityPriority;
+  inputEventMap: EventActionMap;
+  coordinateSpace: TrackableCoordinateSpace;
   chunkManager: ChunkManager;
   navigationState: NavigationState;
-  layerManager: any;
+  layerManager: ImageUserLayer;
 }
 
+/**
+ * Manages data processing and worker communication
+ */
 class DataManagementContext extends RefCounted {
   worker: Worker;
   rpc: RPC;
   chunkQueueManager: ChunkQueueManager;
   chunkManager: ChunkManager;
 
-  // 添加 RPC_TYPE_ID
-  RPC_TYPE_ID: string;
-
   constructor(
     public gl: GL,
   ) {
     super();
     
+    // Initialize Web Worker for parallel processing
     this.worker = new Worker(
       new URL("./worker/chunk_worker.bundle.js", import.meta.url),
       { type: "module" },
     );
 
+    // Setup RPC communication with the worker
     this.rpc = new RPC(this.worker, true);
 
-    this.worker.addEventListener("message", (e: MessageEvent) => {
+    // Handle worker ready state and file tree initialization
+    this.worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
       const isReady = e.data.functionName === READY_ID;
       if (isReady) { 
         this.worker.postMessage({ fileTree: self.fileTree });
       }
     });
 
+    // Initialize chunk queue manager with resource limits
     this.chunkQueueManager = this.registerDisposer(
       new ChunkQueueManager(
         this.rpc,
@@ -158,26 +176,30 @@ class DataManagementContext extends RefCounted {
       ),
     );
 
+    // Ensure worker is terminated when disposed
     this.chunkQueueManager.registerDisposer(() => this.worker.terminate());
 
+    // Initialize chunk manager for data organization
     this.chunkManager = this.registerDisposer(
       new ChunkManager(this.chunkQueueManager),
     );
-
-    // 設置 RPC_TYPE_ID
-    this.RPC_TYPE_ID = "DataManagementContext";
   }
 }
 
-// 註冊 RPC
-registerSharedObjectOwner("DataManagementContext")(DataManagementContext);
-
+/**
+ * Main viewer class that handles the 3D visualization
+ */
 class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   mouseState = new MouseSelectionState();
   visibility: WatchableVisibilityPriority;
   chunkManager: ChunkManager;
-  dataContext: any;
+  dataContext: DataManagementContext;
+  navigationState = new NavigationState(
+    new Position(this.coordinateSpace),
+    new TrackableZoom(),
+    quat.create()
+  );
 
   constructor(public display: DisplayContext) {
     super();
@@ -186,7 +208,7 @@ class Viewer extends RefCounted {
     this.visibility = new WatchableVisibilityPriority(Infinity);
     const dataSourceProvider: DataSourceProviderRegistry = getDefaultDataSourceProvider();
     
-    // control events
+    // Setup control events
     const inputEventMap = new EventActionMap();
 
     inputEventMap.addParent(
@@ -204,7 +226,7 @@ class Viewer extends RefCounted {
       dataSourceProviderRegistry: dataSourceProvider,
     });
 
-    // panel generation
+    // Create panel layout
     const panel = this.registerDisposer(
       new PanelLayout({
         layerManager,
@@ -218,7 +240,7 @@ class Viewer extends RefCounted {
       }),
     );
 
-    // append viewer dom
+    // Setup viewer DOM
     const container = document.createElement("div");
     container.style.top = "0px";
     container.style.left = "0px";
@@ -232,19 +254,26 @@ class Viewer extends RefCounted {
   }
 }
 
+/**
+ * Handles the layout of the viewer panels
+ */
 class PanelLayout extends RefCounted {
+  /** Root element for the panel layout */
   element = document.createElement("div");
 
   constructor(public viewer: ViewerUIState) {
     super();
 
+    // Initialize position and scale trackers
     const position = this.registerDisposer(new Position(this.viewer.coordinateSpace));
     const crossSectionScale = this.registerDisposer(new TrackableZoom());
 
+    // Setup panel container layout
     this.element.style.flex = "1";
     this.element.style.display = "flex";
     this.element.style.flexDirection = "row";
 
+    // Common state for all panels
     const state =  {
       display: viewer.display,
       chunkManager: viewer.chunkManager,
@@ -254,6 +283,7 @@ class PanelLayout extends RefCounted {
       inputEventMap: viewer.inputEventMap,
     }
 
+    // Create XY plane panel (top view)
     const elementXY = document.createElement("div");
     elementXY.classList.add("neuroglancer-panel");
     const navigationStateXY = new NavigationState(
@@ -263,6 +293,7 @@ class PanelLayout extends RefCounted {
     )
     new SliceViewPanel(elementXY, navigationStateXY, state);
 
+    // Create YZ plane panel (side view)
     const elementYZ = document.createElement("div");
     elementYZ.classList.add("neuroglancer-panel");
     const navigationStateYZ = new NavigationState(
@@ -272,6 +303,7 @@ class PanelLayout extends RefCounted {
     )
     new SliceViewPanel(elementYZ, navigationStateYZ, state);
 
+    // Create XZ plane panel (front view)
     const elementXZ = document.createElement("div");
     elementXZ.classList.add("neuroglancer-panel");
     const navigationStateXZ = new NavigationState(
@@ -281,6 +313,7 @@ class PanelLayout extends RefCounted {
     )
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
 
+    // Add all panels to the layout
     this.element.appendChild(elementXY);
     this.element.appendChild(elementYZ);
     this.element.appendChild(elementXZ);
