@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { debounce } from "lodash-es";
+import { debounce } from 'es-toolkit';
 import { LayerChunkProgressInfo } from "#src/chunk_manager/base.js";
 import { RenderViewport, renderViewportsEqual } from "#src/layer/display_context.js";
 import type {

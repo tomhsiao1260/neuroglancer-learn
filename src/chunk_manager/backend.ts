@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { throttle } from "lodash-es";
+import { throttle } from 'es-toolkit';
 import type {
   ChunkSourceParametersConstructor,
   LayerChunkProgressInfo,

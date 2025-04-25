@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { debounce } from "lodash-es";
+import { debounce } from 'es-toolkit';
 import { ChunkState } from "#src/chunk_manager/base.js";
 import type {
   ChunkManager,
