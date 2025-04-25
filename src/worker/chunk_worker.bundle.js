@@ -7,3 +7,4 @@ import { RPC } from "#src/worker/worker_rpc.js";
 
 const rpc = new RPC(self, /*waitUntilReady=*/ false);
 rpc.sendReady();
+
