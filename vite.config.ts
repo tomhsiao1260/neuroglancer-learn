@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import type { PluginOption } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,6 +27,9 @@ export default defineConfig({
       '#src': resolve(__dirname, 'src'),
     },
   },
+  plugins: [
+    tailwindcss(),
+  ],
   worker: {
     format: 'es',
     plugins: () => [] as PluginOption[],

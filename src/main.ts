@@ -43,45 +43,49 @@ import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
 
-// root container element
-const root = document.querySelector<HTMLDivElement>('#app');
-
-
 /**
  * Creates and sets up the upload button for .zarr files
  */
 makeUploadButton();
 
 function makeUploadButton() {
-  const button = document.createElement("button");
-  button.id = "upload";
-  button.innerText = "choose .zarr folder";
-  button.onclick = makeMinimalViewer;
-
-  const loading = document.createElement("div");
-  loading.id = "loading";
-  loading.innerText = "Loading ...";
-  loading.style.display = "none";
-
-  root?.appendChild(button);
-  root?.appendChild(loading);
+  const button = document.querySelector<HTMLButtonElement>('#upload');
+  if (button) { button.onclick = makeMinimalViewer; }
 }
 
 /**
  * Creates a minimal viewer for 3D volume data visualization
  */
 async function makeMinimalViewer() {
-  // Load data using file system API
+  // Get the file tree (via file system api)
   const fileTree = await handleFileBtnOnClick();
   self.fileTree = fileTree;
 
-  const target = document.createElement("div");
-  target.id = "neuroglancer-container";
-  root?.appendChild(target);
+  // main container layout
+  const main = document.querySelector<HTMLElement>("main");
+  if (!main) return;
+  main.classList.remove("hidden");
+
+  const target = document.querySelector<HTMLDivElement>("#neuroglancer-container");
+  if (!target) return;
+
+  // Reset any existing styles and set new ones
+  target.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  `;
+
+  // create display context and viewer
   const display = new DisplayContext(target);
   const viewer = new Viewer(display);
 
-  // Handle loading state
+  // handle loading state
   loading(viewer.dataContext.worker);
 }
 
@@ -91,18 +95,18 @@ async function makeMinimalViewer() {
  */
 function loading(worker: Worker) {
   const loading = document.querySelector<HTMLDivElement>("#loading");
-  const button = document.querySelector<HTMLButtonElement>("#upload");
-  if (loading && button) {
-    loading.style.display = "inline";
-    button.style.display = "none";
+  const uploadContainer = document.querySelector<HTMLDivElement>("#upload-container");
 
-    worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
-      const isReady = e.data.functionName === READY_ID;
-      if (isReady && loading) {
-        loading.style.display = "none";
-      }
-    });
+  if (loading && uploadContainer) {
+    loading.classList.remove("hidden");
+    uploadContainer.classList.add("hidden");
   }
+  worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
+    const isReady = e.data.functionName === READY_ID;
+    if (isReady && loading) {
+      loading.classList.add("hidden");
+    }
+  });
 }
 
 /**
@@ -283,29 +287,32 @@ class PanelLayout extends RefCounted {
       inputEventMap: viewer.inputEventMap,
     }
 
-    // Create XY plane panel (top view)
-    const elementXY = document.createElement("div");
-    elementXY.classList.add("neuroglancer-panel");
-    const navigationStateXY = new NavigationState(
+    // Create YZ plane panel (side view)
+    const elementYZ = document.createElement("div");
+    elementYZ.classList.add("neuroglancer-panel");
+    elementYZ.setAttribute("data-view", "YZ View");
+    const navigationStateYZ = new NavigationState(
       position.addRef(),
       crossSectionScale.addRef(),
       { orientation: quat.create() }, 
     )
-    new SliceViewPanel(elementXY, navigationStateXY, state);
+    new SliceViewPanel(elementYZ, navigationStateYZ, state);
 
-    // Create YZ plane panel (side view)
-    const elementYZ = document.createElement("div");
-    elementYZ.classList.add("neuroglancer-panel");
-    const navigationStateYZ = new NavigationState(
+    // Create XY plane panel (front view)
+    const elementXY = document.createElement("div");
+    elementXY.classList.add("neuroglancer-panel");
+    elementXY.setAttribute("data-view", "XY View");
+    const navigationStateXY = new NavigationState(
       position.addRef(),
       crossSectionScale.addRef(),
       { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
     )
-    new SliceViewPanel(elementYZ, navigationStateYZ, state);
+    new SliceViewPanel(elementXY, navigationStateXY, state);
 
-    // Create XZ plane panel (front view)
+    // Create XZ plane panel (top view)
     const elementXZ = document.createElement("div");
     elementXZ.classList.add("neuroglancer-panel");
+    elementXZ.setAttribute("data-view", "XZ View");
     const navigationStateXZ = new NavigationState(
       position.addRef(),
       crossSectionScale.addRef(),
@@ -314,8 +321,8 @@ class PanelLayout extends RefCounted {
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
 
     // Add all panels to the layout
-    this.element.appendChild(elementXY);
     this.element.appendChild(elementYZ);
+    this.element.appendChild(elementXY);
     this.element.appendChild(elementXZ);
   }
 }

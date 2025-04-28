@@ -9,12 +9,16 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.4",
     "typescript": "~5.7.2",
     "vite": "^6.3.1"
   },
   "dependencies": {
-    "gl-matrix": "^3.4.3",
-    "es-toolkit": "^1.36.0"
+    "@tailwindcss/vite": "^4.1.4",
+    "es-toolkit": "^1.36.0",
+    "gl-matrix": "^3.4.3"
   },
   "imports": {
     "#src/*.js": "./src/*.ts",
