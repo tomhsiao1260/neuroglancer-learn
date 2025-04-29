@@ -71,6 +71,9 @@ export interface CoordinateSpace {
   readonly coordinateArrays: (CoordinateArray | undefined)[];
 }
 
+// temporary bounds fix
+const bounds_ = { lowerBounds: new Float64Array([0, 0, 0]), upperBounds: new Float64Array([10, 10, 10]) };
+
 export function makeCoordinateSpace(space: {
   readonly valid?: boolean;
   readonly names: readonly string[];
@@ -91,6 +94,13 @@ export function makeCoordinateSpace(space: {
     ids = names.map((_, i) => -i),
     boundingBoxes = [],
   } = space;
+
+  // temporary bounds fix
+  if (boundingBoxes.length > 0) {
+    bounds_.lowerBounds = boundingBoxes[0].box.lowerBounds;
+    bounds_.upperBounds = boundingBoxes[0].box.upperBounds;
+  }
+
   const { coordinateArrays = new Array<CoordinateArray | undefined>(rank) } =
     space;
 
@@ -186,7 +196,9 @@ export function clampCoordinateToBounds(
   dimIndex: number,
   coordinate: number,
 ) {
-  const upperBound = bounds.upperBounds[dimIndex];
+  // temporary bounds fix
+  const upperBound = bounds_.upperBounds[dimIndex];
+  // const upperBound = bounds.upperBounds[dimIndex];
   if (Number.isFinite(upperBound)) {
     coordinate = Math.min(coordinate, upperBound - 1);
   }
@@ -217,7 +229,9 @@ export function getBoundingBoxCenter(
   out: Float32Array,
   bounds: BoundingBox,
 ): Float32Array {
-  const { lowerBounds, upperBounds } = bounds;
+  // temporary bounds fix
+  const { lowerBounds, upperBounds } = bounds_;
+  // const { lowerBounds, upperBounds } = bounds;
   const rank = out.length;
   for (let i = 0; i < rank; ++i) {
     out[i] = getCenterBound(lowerBounds[i], upperBounds[i]);
@@ -375,9 +389,10 @@ export class CoordinateSpaceCombiner {
   }
 
   private update() {
+    // temporary bounds fix
     const bounds = {
-      lowerBounds: new Float64Array([-0.5, -0.5, -0.5]),
-      upperBounds: new Float64Array([767.5, 767.5, 767.5]),
+      lowerBounds: bounds_.lowerBounds,
+      uppperbounds: bounds_.upperBounds,
       voxelCenterAtIntegerCoordinates: [true, true, true],
     }
 
