@@ -1,6 +1,8 @@
 # Neuroglancer Mini
 
-Neuroglancer Mini is a streamlined version of the original Neuroglancer source code, designed to make its core logic more accessible and easier to understand. This lightweight demo project serves as an educational tool, allowing developers to explore and build upon the fundamental concepts for their own applications.
+Neuroglancer Mini is a trimmed-down version of the original Neuroglancer source code, designed to make its core logic more accessible and easier to understand. This is not a new implementation, but rather a carefully curated subset of the original codebase (~115,510 lines) that has been reduced to about 22,677 lines by retaining only the minimal core functionality needed for the program to run, reducing npm dependencies, and simplifying the build process. This lightweight version serves as a learning demo, allowing developers to grasp the core concepts and architecture of Neuroglancer without being overwhelmed by the complexity of the original implementation.
+
+<img width="974" alt="img2" src="https://github.com/user-attachments/assets/c69a9014-3250-4d05-8350-abb96975b64c" />
 
 ## Motivation
 
@@ -11,18 +13,19 @@ I was particularly interested in understanding:
 - The rendering mechanisms
 - Core visualization principles
 
-To address these challenges, I created Neuroglancer Mini by:
-1. Simplifying the original Neuroglancer codebase
+To address these challenges, I created Neuroglancer Mini by carefully selecting and preserving the essential parts of the original codebase:
+1. Retaining only the essential code needed for basic functionality
 2. Removing complex interface and data transfer logic
 3. Streamlining the build process
-4. Focusing on essential visualization features
+4. Focusing on core visualization features
 
-This project serves as a learning resource, providing a more approachable entry point for developers who want to understand the fundamental concepts behind Neuroglancer's powerful visualization capabilities. 
+This project serves as a learning resource, providing a more approachable entry point for developers who want to understand the fundamental concepts behind Neuroglancer's powerful visualization capabilities. This is a derivative work based on the original Neuroglancer codebase, and the core implementation is derived from the original authors' work.
 
 ## How to Run
 
-### Important Note
 This lightweight demo uses the File System Access API to load data directly from your local filesystem. This API is currently only supported in Chrome-based browsers. Please use Chrome to run this project.
+
+<img width="974" alt="img1" src="https://github.com/user-attachments/assets/42784acc-39cc-4585-948b-0b2d4a971ee1" />
 
 ### Option 1: Local Development
 1. Clone the repository
@@ -37,14 +40,14 @@ This lightweight demo uses the File System Access API to load data directly from
 4. Open `http://localhost:3000` in Chrome
 
 ### Option 2: Online Demo
-Visit the deployed version at [neuroglancer-learn.vercel.app](https://neuroglancer-learn.vercel.app)
+Visit the deployed version at [neuroglancer-mini.vercel.app](https://neuroglancer-mini.vercel.app)
 
 ### Supported File Formats
 The application supports Zarr format (both v2 and v3) and OME-NGFF (OME Zarr) multiscale datasets. Supported data types include uint8, int8, uint16, int16, uint32, int32, uint64, and float32. For Zarr v2, supported compressors are blosc, gzip, null (raw), zlib, and zstd.
 
 ## Project Structure
 
-The project is organized into several key directories, each handling specific aspects of the visualization system:
+The project is organized into several key directories, each handling specific aspects of the system:
 
 ### Application Core
 - `src/main.ts`: The entry point of the application, handling initialization and user interface setup
@@ -122,4 +125,3 @@ The project is organized into several key directories, each handling specific as
 - `tsconfig.json`: TypeScript configuration
 - `package.json`: Project dependencies and scripts
 
-This structure maintains a clear separation of concerns while keeping the codebase manageable and focused on the core visualization functionality.
