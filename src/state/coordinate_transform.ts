@@ -72,7 +72,7 @@ export interface CoordinateSpace {
 }
 
 // temporary bounds fix
-const bounds_ = { lowerBounds: new Float64Array([0, 0, 0]), upperBounds: new Float64Array([10, 10, 10]) };
+const bounds_ = { lowerBounds: new Float64Array([0, 0, 0]), upperBounds: new Float64Array([0, 0, 0]) };
 
 export function makeCoordinateSpace(space: {
   readonly valid?: boolean;
@@ -104,8 +104,12 @@ export function makeCoordinateSpace(space: {
   const { coordinateArrays = new Array<CoordinateArray | undefined>(rank) } =
     space;
 
-  const lowerBounds = new Float64Array(rank);
-  const upperBounds = new Float64Array(rank);
+  let lowerBounds = new Float64Array(rank);
+  let upperBounds = new Float64Array(rank);
+  if (boundingBoxes.length > 0) {
+    lowerBounds = boundingBoxes[0].box.lowerBounds;
+    upperBounds = boundingBoxes[0].box.upperBounds;
+  }
   const bounds = { lowerBounds, upperBounds, voxelCenterAtIntegerCoordinates: new Array(rank).fill(true) };
 
   return {
@@ -196,9 +200,10 @@ export function clampCoordinateToBounds(
   dimIndex: number,
   coordinate: number,
 ) {
-  // temporary bounds fix
-  const upperBound = bounds_.upperBounds[dimIndex];
-  // const upperBound = bounds.upperBounds[dimIndex];
+  if (!bounds.upperBounds) {
+    return coordinate;
+  }
+  const upperBound = bounds.upperBounds[dimIndex];
   if (Number.isFinite(upperBound)) {
     coordinate = Math.min(coordinate, upperBound - 1);
   }
@@ -389,10 +394,9 @@ export class CoordinateSpaceCombiner {
   }
 
   private update() {
-    // temporary bounds fix
     const bounds = {
-      lowerBounds: bounds_.lowerBounds,
-      uppperbounds: bounds_.upperBounds,
+      lowerBounds: this.combined.value.bounds.lowerBounds,
+      uppperBounds: this.combined.value.bounds.upperBounds,
       voxelCenterAtIntegerCoordinates: [true, true, true],
     }
 
@@ -448,5 +452,3 @@ export class CoordinateSpaceCombiner {
     return disposer;
   }
 }
-
-

@@ -65,6 +65,14 @@ export class Position extends RefCounted {
     this.changed.dispatch();
   }
 
+  set value(coordinates: Float32Array) {
+    if (coordinates.length !== 3) {
+      return;
+    }
+    this.coordinates_.set(coordinates);
+    this.changed.dispatch();
+  }
+
   private handleCoordinateSpaceChanged() {
     const coordinateSpace = this.coordinateSpace.value;
     if (!coordinateSpace.valid) return;
@@ -72,7 +80,6 @@ export class Position extends RefCounted {
     getBoundingBoxCenter(this.coordinates_, bounds);
     for (let i = 0; i < 3; ++i) {
         this.coordinates_[i] = Math.floor(this.coordinates_[i]) + 0.5;
-      // }
     }
     this.changed.dispatch();
   }

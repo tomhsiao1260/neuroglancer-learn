@@ -211,7 +211,7 @@ class Viewer extends RefCounted {
     this.dataContext = new DataManagementContext(display.gl);
     this.visibility = new WatchableVisibilityPriority(Infinity);
     const dataSourceProvider: DataSourceProviderRegistry = getDefaultDataSourceProvider();
-    
+
     // Setup control events
     const inputEventMap = new EventActionMap();
 
