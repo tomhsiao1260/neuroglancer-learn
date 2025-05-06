@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import { WatchableValue } from "#src/state/trackable_value.js";
-import * as matrix from "#src/util/matrix.js";
-import { NullarySignal } from "#src/util/signal.js";
 import * as vector from "#src/util/vector.js";
 
 export type DimensionId = number;
@@ -66,7 +62,6 @@ export interface CoordinateSpace {
   readonly scales: Float64Array;
 
   readonly bounds: CoordinateSpaceBounds;
-  readonly boundingBoxes: readonly TransformedBoundingBox[];
 
   readonly coordinateArrays: (CoordinateArray | undefined)[];
 }
@@ -82,7 +77,6 @@ export function makeCoordinateSpace(space: {
   readonly rank?: number;
   readonly timestamps?: readonly number[];
   readonly ids?: readonly DimensionId[];
-  readonly boundingBoxes?: readonly TransformedBoundingBox[];
   readonly bounds?: CoordinateSpaceBounds;
   readonly coordinateArrays?: (CoordinateArray | undefined)[];
 }): CoordinateSpace {
@@ -179,27 +173,11 @@ export interface CoordinateSpaceBounds extends BoundingBox {
   voxelCenterAtIntegerCoordinates: boolean[];
 }
 
-export function roundCoordinateToVoxelCenter(
+export function clampAndRoundCoordinateToVoxelCenter(
   bounds: CoordinateSpaceBounds,
   dimIndex: number,
   coordinate: number,
-) {
-  if (bounds.voxelCenterAtIntegerCoordinates[dimIndex]) {
-    coordinate = Math.round(coordinate);
-  } else {
-    coordinate = Math.floor(coordinate) + 0.5;
-  }
-  return coordinate;
-}
-
-// Clamps `coordinate` to `[lower, upper - 1]`.  This is intended to be used with
-// `roundCoordinateToVoxelCenter`.  If not rounding, it may be desirable to instead
-// clamp to `[lower upper]`.
-export function clampCoordinateToBounds(
-  bounds: CoordinateSpaceBounds,
-  dimIndex: number,
-  coordinate: number,
-) {
+): number {
   if (!bounds.upperBounds) {
     return coordinate;
   }
@@ -212,16 +190,13 @@ export function clampCoordinateToBounds(
   if (Number.isFinite(lowerBound)) {
     coordinate = Math.max(coordinate, lowerBound);
   }
-  return coordinate;
-}
 
-export function clampAndRoundCoordinateToVoxelCenter(
-  bounds: CoordinateSpaceBounds,
-  dimIndex: number,
-  coordinate: number,
-): number {
-  coordinate = clampCoordinateToBounds(bounds, dimIndex, coordinate);
-  return roundCoordinateToVoxelCenter(bounds, dimIndex, coordinate);
+  if (bounds.voxelCenterAtIntegerCoordinates[dimIndex]) {
+    coordinate = Math.round(coordinate);
+  } else {
+    coordinate = Math.floor(coordinate) + 0.5;
+  }
+  return coordinate;
 }
 
 export function getCenterBound(lower: number, upper: number) {
@@ -244,23 +219,6 @@ export function getBoundingBoxCenter(
   return out;
 }
 
-export interface TransformedBoundingBox {
-  box: BoundingBox;
-
-  /**
-   * Transform from "box" coordinate space to target coordinate space.
-   */
-  transform: Float64Array;
-}
-
-export function makeIdentityTransformedBoundingBox(box: BoundingBox) {
-  const rank = box.lowerBounds.length;
-  return {
-    box,
-    transform: matrix.createIdentity(Float64Array, rank, rank + 1),
-  };
-}
-
 export interface CoordinateSpaceTransform {
   readonly rank: number;
 
@@ -278,25 +236,4 @@ export interface CoordinateSpaceTransform {
   readonly transform: Float64Array;
 }
 
-export class WatchableCoordinateSpaceTransform
-  implements WatchableValueInterface<CoordinateSpaceTransform>
-{
-  private value_: CoordinateSpaceTransform | undefined = undefined;
-  changed = new NullarySignal();
-  readonly defaultTransform: CoordinateSpaceTransform;
-
-  constructor(
-    defaultTransform: CoordinateSpaceTransform,
-  ) {
-    this.defaultTransform = defaultTransform;
-  }
-
-  get value(): CoordinateSpaceTransform {
-    let { value_: value } = this;
-    if (value === undefined) {
-      value = this.value_ = this.defaultTransform;
-    }
-    return value;
-  }
-}
 

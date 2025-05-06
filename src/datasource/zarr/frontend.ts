@@ -19,7 +19,6 @@ import { WithParameters } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
 import {
   makeCoordinateSpace,
-  makeIdentityTransformedBoundingBox,
 } from "#src/state/coordinate_transform.js";
 import type {
   DataSource,
@@ -222,17 +221,19 @@ function getMultiscaleInfoForSingleArray(
     metadata.dimensionNames,
     metadata.zarrVersion,
   );
+  console.log('jwifw')
   const unitsAndScales = metadata.dimensionUnits.map(parseDimensionUnit);
   const modelSpace = makeCoordinateSpace({
     names,
     scales: Float64Array.from(Array.from(unitsAndScales, (x) => x.scale)),
     units: Array.from(unitsAndScales, (x) => x.unit),
-    boundingBoxes: [
-      makeIdentityTransformedBoundingBox({
+    boundingBoxes: [{
+      box: {
         lowerBounds: new Float64Array(metadata.rank),
         upperBounds: Float64Array.from(metadata.shape),
-      }),
-    ],
+      },
+      transform: matrix.createIdentity(Float64Array, metadata.rank, metadata.rank + 1),
+    }],
   });
   const transform = matrix.createIdentity(Float64Array, metadata.rank + 1);
   return {
@@ -296,10 +297,13 @@ async function resolveOmeMultiscale(
     const lower = (lowerBounds[i] = baseScale.transform[(rank + 1) * rank + i]);
     upperBounds[i] = lower + baseZarrMetadata.shape[i];
   }
-  const boundingBox = makeIdentityTransformedBoundingBox({
-    lowerBounds,
-    upperBounds,
-  });
+  const boundingBox = {
+    box: {
+      lowerBounds,
+      upperBounds,
+    },
+    transform: matrix.createIdentity(Float64Array, lowerBounds.length, lowerBounds.length + 1),
+  };
 
   const { coordinateSpace } = multiscale;
   const resolvedCoordinateSpace = makeCoordinateSpace({
