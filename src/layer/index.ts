@@ -18,11 +18,7 @@ import type {
   CoordinateSpace,
 } from "#src/state/coordinate_transform.js";
 import {
-  CoordinateSpaceCombiner,
   emptyInvalidCoordinateSpace,
-  isLocalOrChannelDimension,
-  isChannelDimension,
-  isLocalDimension,
   TrackableCoordinateSpace,
 } from "#src/state/coordinate_transform.js";
 import type {
@@ -57,10 +53,6 @@ import { ShaderControlState } from "#src/webgl/shader_ui_controls.js";
 
 export class UserLayer extends RefCounted {
   localCoordinateSpace = new TrackableCoordinateSpace();
-  localCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
-    this.localCoordinateSpace,
-    () => true,
-  );
   localPosition = this.registerDisposer(
     new Position(this.localCoordinateSpace),
   );
@@ -86,16 +78,10 @@ export class UserLayer extends RefCounted {
 
   constructor(public manager: any) {
     super();
-    this.localCoordinateSpaceCombiner.includeDimensionPredicate =
-      isLocalOrChannelDimension;
     this.localPosition.changed.add(this.specificationChanged.dispatch);
     this.dataSourcesChanged.add(this.specificationChanged.dispatch);
     this.dataSourcesChanged.add(() => this.updateDataSubsourceActivations());
     this.messages.changed.add(this.layersChanged.dispatch);
-    this.manager.coordinateSpaceCombiner = new CoordinateSpaceCombiner(
-      this.manager.coordinateSpace,
-      () => true,
-    );
   }
 
   addDataSource(spec: DataSourceSpecification | undefined) {
@@ -136,16 +122,15 @@ export class UserLayer extends RefCounted {
   }
 
   addCoordinateSpace(
-    coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
-    const globalBinding =
-      this.manager.coordinateSpaceCombiner.bind(coordinateSpace);
-    const localBinding =
-      this.localCoordinateSpaceCombiner.bind(coordinateSpace);
-    return () => {
-      globalBinding();
-      localBinding();
-    };
+    this.manager.coordinateSpace.value = {
+      bounds: {
+        lowerBounds: this.manager.coordinateSpace.value.bounds.lowerBounds,
+        uppperBounds: this.manager.coordinateSpace.value.bounds.upperBounds,
+        voxelCenterAtIntegerCoordinates: [true, true, true],
+      },
+      valid: true,
+    }
   }
 
   getDataSourceSpecifications(layerSpec: any): DataSourceSpecification[] {
@@ -190,10 +175,6 @@ export class ImageUserLayer extends UserLayer {
   dataType = new WatchableValue<DataType | undefined>(undefined);
   sliceViewRenderScaleTarget = new WatchableValue(1);
   channelCoordinateSpace = new TrackableCoordinateSpace();
-  channelCoordinateSpaceCombiner = new CoordinateSpaceCombiner(
-    this.channelCoordinateSpace,
-    isChannelDimension,
-  );
 
   shaderControlState = this.registerDisposer(
     new ShaderControlState(
@@ -213,35 +194,17 @@ export class ImageUserLayer extends UserLayer {
           (a, b) => JSON.stringify(a) === JSON.stringify(b),
         ),
       ),
-      this.channelCoordinateSpaceCombiner,
     ),
   );
-
-  markLoading() {
-    const baseDisposer = super.markLoading?.();
-    const channelDisposer = this.channelCoordinateSpaceCombiner.retain();
-    return () => {
-      baseDisposer?.();
-      channelDisposer();
-    };
-  }
 
   addCoordinateSpace(
     coordinateSpace: WatchableValueInterface<CoordinateSpace>,
   ) {
     const baseBinding = super.addCoordinateSpace(coordinateSpace);
-    const channelBinding =
-      this.channelCoordinateSpaceCombiner.bind(coordinateSpace);
-    return () => {
-      baseBinding();
-      channelBinding();
-    };
   }
 
   constructor(manager: any) {
     super(manager);
-    this.localCoordinateSpaceCombiner.includeDimensionPredicate =
-      isLocalDimension;
     this.fragmentMain.changed.add(this.specificationChanged.dispatch);
     this.sliceViewRenderScaleTarget.changed.add(
       this.specificationChanged.dispatch,

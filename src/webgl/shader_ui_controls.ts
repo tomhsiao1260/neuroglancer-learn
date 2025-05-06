@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import type { CoordinateSpaceCombiner } from "#src/state/coordinate_transform.js";
 import type {
   TrackableValueInterface,
   WatchableValueInterface,
@@ -1034,7 +1033,6 @@ export class ShaderControlState
     public dataContext: WatchableValueInterface<ShaderDataContext | null> = constantWatchableValue(
       {},
     ),
-    public channelCoordinateSpaceCombiner?: CoordinateSpaceCombiner | undefined,
   ) {
     super();
     this.registerDisposer(

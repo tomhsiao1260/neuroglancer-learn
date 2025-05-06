@@ -292,7 +292,7 @@ export class LayerDataSource extends RefCounted {
           new LoadedLayerDataSource(this, source, spec),
         );
         loaded.registerDisposer(
-          layer.addCoordinateSpace(loaded.transform.outputSpace),
+          layer.addCoordinateSpace(),
         );
         loaded.registerDisposer(
           loaded.transform.changed.add(this.changed.dispatch),

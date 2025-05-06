@@ -300,19 +300,6 @@ export function makeIdentityTransform(
   };
 }
 
-
-export function isLocalDimension(name: string) {
-  return name.endsWith("'");
-}
-
-export function isLocalOrChannelDimension(name: string) {
-  return name.endsWith("'") || name.endsWith("^");
-}
-
-export function isChannelDimension(name: string) {
-  return name.endsWith("^");
-}
-
 export class WatchableCoordinateSpaceTransform
   implements WatchableValueInterface<CoordinateSpaceTransform>
 {
@@ -369,86 +356,3 @@ interface BoundCoordinateSpace {
   mappedDimensionIds: (DimensionId | undefined)[];
 }
 
-export class CoordinateSpaceCombiner {
-  private bindings = new Set<BoundCoordinateSpace>();
-
-  private prevCombined: CoordinateSpace | undefined = this.combined.value;
-
-  dimensionRefCounts = new Map<string, number>();
-
-  private includeDimensionPredicate_: (name: string) => boolean;
-
-  get includeDimensionPredicate() {
-    return this.includeDimensionPredicate_;
-  }
-  set includeDimensionPredicate(value: (name: string) => boolean) {
-    this.includeDimensionPredicate_ = value;
-    this.update();
-  }
-
-  constructor(
-    public combined: WatchableValueInterface<CoordinateSpace>,
-    includeDimensionPredicate: (name: string) => boolean,
-  ) {
-    this.includeDimensionPredicate_ = includeDimensionPredicate;
-  }
-
-  private update() {
-    const bounds = {
-      lowerBounds: this.combined.value.bounds.lowerBounds,
-      uppperBounds: this.combined.value.bounds.upperBounds,
-      voxelCenterAtIntegerCoordinates: [true, true, true],
-    }
-
-    const newCombined = {
-      boundingBoxes: [
-        {
-          box: bounds,
-          transform: new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]),
-        }
-      ],
-      bounds,
-      coordinateArrays: new Array(3),
-      ids: [1, 2, 3],
-      names: ['z', 'y', 'x'],
-      rank: 3,
-      scales: new Float64Array([1, 1, 1]),
-      timestamps: [-Infinity, -Infinity, -Infinity],
-      units: ['', '', ''],
-      valid: true,
-    }
-
-    this.prevCombined = newCombined;
-    this.combined.value = newCombined;
-  }
-
-  private handleCombinedChanged = () => {
-    if (this.combined.value === this.prevCombined) return;
-    this.update();
-  };
-
-  bind(space: WatchableValueInterface<CoordinateSpace>) {
-    const binding = { space, mappedDimensionIds: [], prevValue: undefined };
-    const { bindings } = this;
-    if (bindings.size === 0) {
-      this.combined.changed.add(this.handleCombinedChanged);
-    }
-    bindings.add(binding);
-
-    const changedDisposer = space.changed.add(() => {
-      if (space.value === binding.prevValue) return;
-      this.update();
-    });
-    const disposer = () => {
-      changedDisposer();
-      const { bindings } = this;
-      bindings.delete(binding);
-      if (bindings.size === 0) {
-        this.combined.changed.remove(this.handleCombinedChanged);
-      }
-      this.update();
-    };
-    this.update();
-    return disposer;
-  }
-}
