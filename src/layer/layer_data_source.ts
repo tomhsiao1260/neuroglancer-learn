@@ -17,9 +17,6 @@
 import type {
   CoordinateSpace,
 } from "#src/state/coordinate_transform.js";
-import {
-  WatchableCoordinateSpaceTransform,
-} from "#src/state/coordinate_transform.js";
 import type {
   DataSource,
   DataSourceSpecification,
@@ -136,7 +133,6 @@ export class LoadedLayerDataSource extends RefCounted {
   enabledSubsourcesChanged = new NullarySignal();
   activatedSubsourcesChanged = new NullarySignal();
   messages = new MessageList();
-  transform: WatchableCoordinateSpaceTransform;
   subsources: LoadedDataSubsource[];
   enableDefaultSubsources: boolean;
   get enabledSubsources() {
@@ -151,12 +147,7 @@ export class LoadedLayerDataSource extends RefCounted {
     spec: DataSourceSpecification,
   ) {
     super();
-    this.transform = new WatchableCoordinateSpaceTransform(
-      dataSource.modelTransform,
-    );
-    if (spec.transform !== undefined) {
-      this.transform.spec = spec.transform;
-    }
+    this.transform = { value: dataSource.modelTransform, changed: new NullarySignal() }
     const subsourceSpecs = spec.subsources;
     this.enableDefaultSubsources = spec.enableDefaultSubsources;
     this.subsources = dataSource.subsources.map(

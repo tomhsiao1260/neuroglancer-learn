@@ -19,7 +19,6 @@ import { WithParameters } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
 import {
   makeCoordinateSpace,
-  makeIdentityTransform,
   makeIdentityTransformedBoundingBox,
 } from "#src/state/coordinate_transform.js";
 import type {
@@ -407,7 +406,11 @@ export class ZarrDataSource extends DataSourceProvider {
           multiscaleInfo,
         );
         return {
-          modelTransform: makeIdentityTransform(volume.modelSpace),
+          modelTransform: {
+            rank: volume.modelSpace.rank,
+            sourceRank: volume.modelSpace.rank,
+            transform: matrix.createIdentity(Float64Array, volume.modelSpace.rank + 1),
+          },
           subsources: [
             {
               id: "default",

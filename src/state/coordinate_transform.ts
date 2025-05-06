@@ -262,9 +262,6 @@ export function makeIdentityTransformedBoundingBox(box: BoundingBox) {
 }
 
 export interface CoordinateSpaceTransform {
-  /**
-   * Equal to `outputSpace.rank`.
-   */
   readonly rank: number;
 
   /**
@@ -273,13 +270,6 @@ export interface CoordinateSpaceTransform {
    */
   readonly sourceRank: number;
 
-  /**
-   * May have rank less than `outputSpace.rank`, in which case additional unnamed dimensions with
-   * range `[0, 1)` are implicitly added.
-   */
-  readonly inputSpace: CoordinateSpace;
-
-  readonly outputSpace: CoordinateSpace;
 
   /**
    * `(rank + 1) * (rank + 1)` homogeneous column-major transformation matrix, where columns
@@ -288,46 +278,17 @@ export interface CoordinateSpaceTransform {
   readonly transform: Float64Array;
 }
 
-export function makeIdentityTransform(
-  inputSpace: CoordinateSpace,
-): CoordinateSpaceTransform {
-  return {
-    rank: inputSpace.rank,
-    sourceRank: inputSpace.rank,
-    inputSpace,
-    outputSpace: inputSpace,
-    transform: matrix.createIdentity(Float64Array, inputSpace.rank + 1),
-  };
-}
-
 export class WatchableCoordinateSpaceTransform
   implements WatchableValueInterface<CoordinateSpaceTransform>
 {
   private value_: CoordinateSpaceTransform | undefined = undefined;
-  readonly outputSpace: WatchableValueInterface<CoordinateSpace>;
-  readonly inputSpace: WatchableValueInterface<CoordinateSpace>;
   changed = new NullarySignal();
-  private inputSpaceChanged = new NullarySignal();
   readonly defaultTransform: CoordinateSpaceTransform;
 
   constructor(
     defaultTransform: CoordinateSpaceTransform,
-    public readonly mutableSourceRank: boolean = false,
   ) {
     this.defaultTransform = defaultTransform;
-    const self = this;
-    this.outputSpace = {
-      changed: self.changed,
-      get value() {
-        return self.value.outputSpace;
-      },
-    };
-    this.inputSpace = {
-      changed: self.inputSpaceChanged,
-      get value() {
-        return self.value.inputSpace;
-      },
-    };
   }
 
   get value(): CoordinateSpaceTransform {
@@ -337,22 +298,5 @@ export class WatchableCoordinateSpaceTransform
     }
     return value;
   }
-
-  reset() {
-    if (this.value_ === this.defaultTransform) return;
-    this.value_ = this.defaultTransform;
-    this.inputSpaceChanged.dispatch();
-    this.changed.dispatch();
-  }
-
-  get defaultInputSpace() {
-    return this.defaultTransform.inputSpace;
-  }
-}
-
-interface BoundCoordinateSpace {
-  space: WatchableValueInterface<CoordinateSpace>;
-  prevValue: CoordinateSpace | undefined;
-  mappedDimensionIds: (DimensionId | undefined)[];
 }
 

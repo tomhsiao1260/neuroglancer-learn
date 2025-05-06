@@ -100,10 +100,7 @@ export function getRenderLayerTransform(
   channelCoordinateSpace: CoordinateSpace = emptyValidCoordinateSpace,
 ): RenderLayerTransformOrError {
   const {
-    inputSpace: modelSpace,
     rank: fullRank,
-    sourceRank,
-    outputSpace: layerSpace,
     transform: oldTransform,
   } = modelToLayerTransform;
 

@@ -18,11 +18,6 @@ import type {
   CoordinateSpace,
   CoordinateSpaceTransform,
 } from "#src/state/coordinate_transform.js";
-import {
-  emptyValidCoordinateSpace,
-  makeCoordinateSpace,
-  makeIdentityTransform,
-} from "#src/state/coordinate_transform.js";
 import type { WatchableValueInterface } from "#src/state/trackable_value.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
 import { uncancelableToken } from "#src/util/cancellation.js";
@@ -35,7 +30,6 @@ import {
 } from "#src/util/completion.js";
 import type { Owned } from "#src/util/disposable.js";
 import { RefCounted } from "#src/util/disposable.js";
-import { createIdentity } from "#src/util/matrix.js";
 import type { Trackable } from "#src/util/trackable.js";
 
 export type CompletionResult = BasicCompletionResult<CompletionWithDescription>;
@@ -218,69 +212,6 @@ export const localEquivalencesUrl = "local://equivalences";
 class LocalDataSourceProvider extends DataSourceProvider {
   get description() {
     return "Local in-memory";
-  }
-
-  async get(options: GetDataSourceOptions): Promise<DataSource> {
-    switch (options.url) {
-      case localAnnotationsUrl: {
-        const { transform } = options;
-        let modelTransform: CoordinateSpaceTransform;
-        if (transform === undefined) {
-          const baseSpace = options.globalCoordinateSpace.value;
-          const { rank, names, scales, units } = baseSpace;
-          const inputSpace = makeCoordinateSpace({
-            rank,
-            scales,
-            units,
-            names: names.map((_, i) => `${i}`),
-          });
-          const outputSpace = makeCoordinateSpace({
-            rank,
-            scales,
-            units,
-            names,
-          });
-          modelTransform = {
-            rank,
-            sourceRank: rank,
-            inputSpace,
-            outputSpace,
-            transform: createIdentity(Float64Array, rank + 1),
-          };
-        } else {
-          modelTransform = makeIdentityTransform(emptyValidCoordinateSpace);
-        }
-        return {
-          modelTransform,
-          canChangeModelSpaceRank: true,
-          subsources: [
-            {
-              id: "default",
-              default: true,
-              subsource: {
-                local: LocalDataSource.annotations,
-              },
-            },
-          ],
-        };
-      }
-      case localEquivalencesUrl: {
-        return {
-          modelTransform: makeIdentityTransform(emptyValidCoordinateSpace),
-          canChangeModelSpaceRank: false,
-          subsources: [
-            {
-              id: "default",
-              default: true,
-              subsource: {
-                local: LocalDataSource.equivalences,
-              },
-            },
-          ],
-        };
-      }
-    }
-    throw new Error("Invalid local data source URL");
   }
 }
 
