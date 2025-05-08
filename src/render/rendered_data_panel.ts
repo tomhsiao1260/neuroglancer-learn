@@ -33,6 +33,7 @@ const tempVec3 = vec3.create();
 
 export class RenderedDataPanel extends RefCounted {
   gl: GL;
+  private static positionDisplay: HTMLDivElement | null = null;
 
   /**
    * Current mouse position within the viewport, or -1 if the mouse is not in the viewport.
@@ -46,6 +47,13 @@ export class RenderedDataPanel extends RefCounted {
 
   get visible() {
     return true;
+  }
+
+  private updatePositionDisplay() {
+    const position = this.navigationState.position.value;
+    if (RenderedDataPanel.positionDisplay) {
+      RenderedDataPanel.positionDisplay.textContent = `x ${Math.floor(position[2])}, y ${Math.floor(position[1])}, z ${Math.floor(position[0])}`;
+    }
   }
 
   /**
@@ -69,16 +77,42 @@ export class RenderedDataPanel extends RefCounted {
     this.gl = context.gl;
     context.addPanel(this);
 
+    // Create position display element only once
+    if (!RenderedDataPanel.positionDisplay) {
+      RenderedDataPanel.positionDisplay = document.createElement('div');
+      RenderedDataPanel.positionDisplay.style.position = 'fixed';
+      RenderedDataPanel.positionDisplay.style.bottom = '10px';
+      RenderedDataPanel.positionDisplay.style.right = '10px';
+      RenderedDataPanel.positionDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      RenderedDataPanel.positionDisplay.style.color = 'white';
+      RenderedDataPanel.positionDisplay.style.padding = '5px 10px';
+      RenderedDataPanel.positionDisplay.style.borderRadius = '4px';
+      RenderedDataPanel.positionDisplay.style.fontFamily = 'monospace';
+      document.body.appendChild(RenderedDataPanel.positionDisplay);
+    }
+
     this.visibility = viewer.visibility;
     this.inputEventMap = viewer.inputEventMap;
+    this.navigationState = viewer.navigationState;
+
+    // Wait for next frame to ensure navigationState is initialized
+    requestAnimationFrame(() => {
+      if (this.navigationState && this.navigationState.changed) {
+        this.registerDisposer(
+          this.navigationState.changed.add(() => {
+            this.updatePositionDisplay();
+          })
+        );
+        // Initial update
+        this.updatePositionDisplay();
+      }
+    });
 
     this.registerDisposer(
       new MouseEventBinder(element, this.inputEventMap, (event) => {
         this.onMousemove(event);
       }),
     );
-
-    // console.log("control event here");
 
     registerActionListener(
       element,
