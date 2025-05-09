@@ -53,13 +53,87 @@ function makeUploadButton() {
   if (button) { button.onclick = makeMinimalViewer; }
 }
 
+function setupViewParamsUI(viewer: Viewer) {
+  const viewParams = document.querySelector<HTMLDivElement>('#view-params');
+  const centerInput = document.querySelector<HTMLInputElement>('#center-input');
+  const levelInput = document.querySelector<HTMLInputElement>('#level-input');
+  const updateButton = document.querySelector<HTMLButtonElement>('#update-view');
+
+  if (!viewParams || !centerInput || !levelInput || !updateButton) return;
+
+  // Show the view params UI
+  viewParams.classList.remove('hidden');
+
+  // Update inputs with current values
+  const updateInputs = () => {
+    const pos = viewer.navigationState.position.value;
+    centerInput.value = `${Math.round(pos[0])},${Math.round(pos[1])},${Math.round(pos[2])}`;
+    levelInput.value = Math.round(Math.log2(viewer.navigationState.zoomFactor.value)).toString();
+  };
+
+  // Update view when button is clicked
+  updateButton.onclick = () => {
+    // Parse center coordinates
+    const centerCoords = centerInput.value.split(',').map(Number);
+    if (centerCoords.length === 3 && !centerCoords.some(isNaN)) {
+      viewer.navigationState.position.value = new Float32Array(centerCoords);
+    }
+
+    // Parse level
+    const level = Number(levelInput.value);
+    if (!isNaN(level) && level >= 0) {
+      viewer.navigationState.zoomFactor.value = Math.pow(2, level);
+    }
+
+    // Update URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('center', centerInput.value);
+    url.searchParams.set('level', levelInput.value);
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  // Update inputs when view changes
+  viewer.navigationState.position.changed.add(updateInputs);
+  viewer.navigationState.zoomFactor.changed.add(updateInputs);
+
+  // Initial update
+  updateInputs();
+}
+
 /**
  * Creates a minimal viewer for 3D volume data visualization
  */
 async function makeMinimalViewer() {
   // Get the file tree (via file system api)
   const fileTree = await handleFileBtnOnClick();
-  self.fileTree = fileTree;
+  (window as any).fileTree = fileTree;
+
+  // Parse URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const x = urlParams.get('x');
+  const y = urlParams.get('y');
+  const z = urlParams.get('z');
+  const zoom = urlParams.get('zoom');
+
+  // Parse coordinates and zoom
+  let initialCenter: Float32Array | undefined;
+  if (x !== null && y !== null && z !== null) {
+    const coords = [Number(x), Number(y), Number(z)];
+    if (!coords.some(isNaN)) {
+      initialCenter = new Float32Array(coords);
+    } else {
+      console.warn('Invalid coordinate parameters. Expected numbers for x, y, z');
+    }
+  }
+
+  let initialLevel: number | undefined;
+  if (zoom !== null) {
+    initialLevel = Number(zoom);
+    if (isNaN(initialLevel) || initialLevel < 1 || initialLevel > 5) {
+      console.warn('Invalid zoom parameter. Expected a number between 1 and 5.');
+      initialLevel = undefined;
+    }
+  }
 
   // main container layout
   const main = document.querySelector<HTMLElement>("main");
@@ -84,6 +158,90 @@ async function makeMinimalViewer() {
   // create display context and viewer
   const display = new DisplayContext(target);
   const viewer = new Viewer(display);
+
+  // Function to update URL parameters with throttling
+  let lastUpdateTime = 0;
+  const updateUrlParams = () => {
+    const now = Date.now();
+    // Only update every 500ms to prevent too frequent updates
+    if (now - lastUpdateTime < 500) return;
+    lastUpdateTime = now;
+
+    const pos = viewer.navigationState.position.value;
+    const zoomValue = viewer.navigationState.zoomFactor.value;
+    // Convert zoom value to level (1 = widest, 5 = most zoomed)
+    const zoomLevel = (5 - Math.log2(zoomValue)).toFixed(1);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('x', Math.round(pos[2]).toString());
+    url.searchParams.set('y', Math.round(pos[1]).toString());
+    url.searchParams.set('z', Math.round(pos[0]).toString());
+    url.searchParams.set('zoom', zoomLevel);
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  // Wait for coordinate space to be initialized
+  const waitForCoordinateSpace = () => {
+    if (viewer.coordinateSpace.value.valid) {
+      // Set initial view position and level if provided
+      if (initialCenter) {
+        // Convert coordinates to match the display dimension order (z,y,x)
+        const displayCoords = new Float32Array([
+          initialCenter[2], // z
+          initialCenter[1], // y
+          initialCenter[0]  // x
+        ]);
+        viewer.navigationState.position.value = displayCoords;
+      }
+      if (initialLevel !== undefined) {
+        // Convert level to zoom value (1 = widest, 5 = most zoomed)
+        const zoomValue = Math.pow(2, 5 - initialLevel);
+        viewer.navigationState.zoomFactor.value = zoomValue;
+      }
+
+      // Add listeners for view changes
+      viewer.navigationState.position.changed.add(updateUrlParams);
+      viewer.navigationState.zoomFactor.changed.add(updateUrlParams);
+
+      // Initial URL update
+      updateUrlParams();
+
+      // Setup chunk loading logs after coordinate space is initialized
+      const setupChunkLogs = () => {
+        const chunkManager = viewer.dataContext.chunkManager;
+        if (chunkManager && chunkManager.queueManager) {
+          chunkManager.queueManager.visibleChunksChanged.add(() => {
+            const sources = chunkManager.queueManager.sources;
+            for (const source of sources) {
+              const chunks = source.chunks;
+              if (chunks.size > 0) {
+                console.log('Loading chunks from source:', {
+                  sourceId: source.rpcId,
+                  chunks: Array.from(chunks.entries()).map(([key, chunk]) => ({
+                    key,
+                    state: chunk.state,
+                    priority: chunk.priority
+                  }))
+                });
+              }
+            }
+          });
+        } else {
+          // Try again in the next frame if not ready
+          requestAnimationFrame(setupChunkLogs);
+        }
+      };
+
+      // Start setting up chunk logs
+      setupChunkLogs();
+    } else {
+      // Try again in the next frame
+      requestAnimationFrame(waitForCoordinateSpace);
+    }
+  };
+
+  // Start waiting for coordinate space
+  waitForCoordinateSpace();
 
   // handle loading state
   loading(viewer.dataContext.worker);
@@ -150,7 +308,7 @@ class DataManagementContext extends RefCounted {
     this.worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
       const isReady = e.data.functionName === READY_ID;
       if (isReady) { 
-        this.worker.postMessage({ fileTree: self.fileTree });
+        this.worker.postMessage({ fileTree: (window as any).fileTree });
       }
     });
 
@@ -202,7 +360,7 @@ class Viewer extends RefCounted {
   navigationState = new NavigationState(
     new Position(this.coordinateSpace),
     new TrackableZoom(),
-    quat.create()
+    { orientation: quat.create() }
   );
 
   constructor(public display: DisplayContext) {
@@ -268,10 +426,6 @@ class PanelLayout extends RefCounted {
   constructor(public viewer: ViewerUIState) {
     super();
 
-    // Initialize position and scale trackers
-    const position = this.registerDisposer(new Position(this.viewer.coordinateSpace));
-    const crossSectionScale = this.registerDisposer(new TrackableZoom());
-
     // Setup panel container layout
     this.element.style.flex = "1";
     this.element.style.display = "flex";
@@ -292,8 +446,8 @@ class PanelLayout extends RefCounted {
     elementYZ.classList.add("neuroglancer-panel");
     elementYZ.setAttribute("data-view", "YZ View");
     const navigationStateYZ = new NavigationState(
-      position.addRef(),
-      crossSectionScale.addRef(),
+      viewer.navigationState.position.addRef(),
+      viewer.navigationState.zoomFactor.addRef(),
       { orientation: quat.create() }, 
     )
     new SliceViewPanel(elementYZ, navigationStateYZ, state);
@@ -303,8 +457,8 @@ class PanelLayout extends RefCounted {
     elementXY.classList.add("neuroglancer-panel");
     elementXY.setAttribute("data-view", "XY View");
     const navigationStateXY = new NavigationState(
-      position.addRef(),
-      crossSectionScale.addRef(),
+      viewer.navigationState.position.addRef(),
+      viewer.navigationState.zoomFactor.addRef(),
       { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
     )
     new SliceViewPanel(elementXY, navigationStateXY, state);
@@ -314,8 +468,8 @@ class PanelLayout extends RefCounted {
     elementXZ.classList.add("neuroglancer-panel");
     elementXZ.setAttribute("data-view", "XZ View");
     const navigationStateXZ = new NavigationState(
-      position.addRef(),
-      crossSectionScale.addRef(),
+      viewer.navigationState.position.addRef(),
+      viewer.navigationState.zoomFactor.addRef(),
       { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
     )
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
