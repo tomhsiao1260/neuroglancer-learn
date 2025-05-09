@@ -72,14 +72,29 @@ export class ZarrVolumeChunkSource extends WithParameters(
       baseKey += `${sep}${keyCoords[i]}`;
       sep = metadata.dimensionSeparator;
     }
-    const response = await this.fileReader.read(baseKey);
-    if (response !== undefined) {
-      const decoded = await decodeArray(
-        metadata.codecs,
-        response.data,
-        cancellationToken,
-      );
-      await postProcessRawData(chunk, cancellationToken, decoded);
+    try {
+      const response = await this.fileReader.read(baseKey);
+      if (response !== undefined) {
+        const decoded = await decodeArray(
+          metadata.codecs,
+          response.data,
+          cancellationToken,
+        );
+        await postProcessRawData(chunk, cancellationToken, decoded);
+      } else {
+        // If the block is missing, use fillValue silently
+        const fillValue = typeof metadata.fillValue === 'number' ? metadata.fillValue : 0;
+        const numElements = this.spec.chunkDataSize.reduce((a, b) => a * b, 1);
+        const data = new Uint8Array(numElements).fill(fillValue);
+        await postProcessRawData(chunk, cancellationToken, data);
+      }
+    } catch (e) {
+      // If there's an error, we'll use the fillValue
+      console.error(`Error reading block ${baseKey}:`, e);
+      const fillValue = typeof metadata.fillValue === 'number' ? metadata.fillValue : 0;
+      const numElements = this.spec.chunkDataSize.reduce((a, b) => a * b, 1);
+      const data = new Uint8Array(numElements).fill(fillValue);
+      await postProcessRawData(chunk, cancellationToken, data);
     }
   }
 }

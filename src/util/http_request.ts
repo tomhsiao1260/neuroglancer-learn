@@ -104,6 +104,9 @@ async function getFile(input: string, fileTree: any) {
     .slice(1);
 
   for (const part of parts) {
+    if (res === undefined || res[part] === undefined) {
+      return undefined;
+    }
     res = res[part];
   }
 
@@ -114,7 +117,15 @@ async function fetchOk(input: RequestInfo): Promise<Response> {
   for (let requestAttempt = 0; ; ) {
     let response: Response;
     try {
-      response = await getFile(input, self.fileTree);
+      const result = await getFile(input, self.fileTree);
+      if (result === undefined) {
+        throw new HttpError(
+          typeof input === 'string' ? input : input.url,
+          404,
+          'File not found'
+        );
+      }
+      response = result;
     } catch (error) {
       throw HttpError.fromRequestError(input, error);
     }

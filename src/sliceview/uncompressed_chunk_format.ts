@@ -190,6 +190,30 @@ ${shaderType} getDataValueAt(highp ivec3 p`;
     chunkDisplaySubspaceDimensions: readonly number[],
     channelDimensions: readonly number[],
   ) {
+    if (!textureLayout) {
+      // If textureLayout is undefined, use default values
+      const stridesUniform = tempStridesUniform;
+      const numChannelDimensions = channelDimensions.length;
+      const uniformDataSize = (4 + numChannelDimensions) * this.textureDims;
+      stridesUniform.fill(0, 0, uniformDataSize);
+      if (this.textureDims === 3) {
+        gl.uniform3iv(
+          shader.uniform("uVolumeChunkStrides"),
+          stridesUniform,
+          0,
+          uniformDataSize,
+        );
+      } else {
+        gl.uniform2iv(
+          shader.uniform("uVolumeChunkStrides"),
+          stridesUniform,
+          0,
+          uniformDataSize,
+        );
+      }
+      return;
+    }
+
     const stridesUniform = tempStridesUniform;
     const numChannelDimensions = channelDimensions.length;
     const { strides } = textureLayout;
@@ -274,7 +298,14 @@ export class UncompressedVolumeChunk extends SingleTextureVolumeChunk<
 
     let textureLayout: TextureLayout;
     this.textureLayout = textureLayout = chunkFormatHandler.textureLayout.addRef();
-    this.chunkFormat.setTextureData(gl, textureLayout, this.data!);
+    if (this.data !== null) {
+      this.chunkFormat.setTextureData(gl, textureLayout, this.data);
+    } else {
+      // Create an empty texture with the same dimensions when data is missing
+      const { textureShape } = textureLayout;
+      const emptyData = new Uint8Array(textureShape[0] * textureShape[1] * textureShape[2]);
+      this.chunkFormat.setTextureData(gl, textureLayout, emptyData);
+    }
   }
 
   getValueAt(dataPosition: Uint32Array): number | Uint64 {

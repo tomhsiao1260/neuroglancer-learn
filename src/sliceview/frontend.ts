@@ -68,7 +68,6 @@ import { getObjectId } from "#src/util/object_id.js";
 import { NullarySignal } from "#src/util/signal.js";
 import { withSharedVisibility } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import type { TextureBuffer } from "#src/webgl/offscreen.js";
 import {
   DepthTextureBuffer,
   FramebufferConfiguration,
@@ -110,9 +109,9 @@ function serializeTransformedSource(
   return {
     source: tsource.source.addCounterpartRef(),
     effectiveVoxelSize: tsource.effectiveVoxelSize,
-    layerRank: tsource.layerRank,
-    nonDisplayLowerClipBound: tsource.nonDisplayLowerClipBound,
-    nonDisplayUpperClipBound: tsource.nonDisplayUpperClipBound,
+    // layerRank: tsource.layerRank,
+    // nonDisplayLowerClipBound: tsource.nonDisplayLowerClipBound,
+    // nonDisplayUpperClipBound: tsource.nonDisplayUpperClipBound,
     lowerClipBound: tsource.lowerClipBound,
     upperClipBound: tsource.upperClipBound,
     lowerClipDisplayBound: tsource.lowerClipDisplayBound,
@@ -120,7 +119,7 @@ function serializeTransformedSource(
     chunkDisplayDimensionIndices: tsource.chunkDisplayDimensionIndices,
     lowerChunkDisplayBound: tsource.lowerChunkDisplayBound,
     upperChunkDisplayBound: tsource.upperChunkDisplayBound,
-    fixedLayerToChunkTransform: tsource.fixedLayerToChunkTransform,
+    // fixedLayerToChunkTransform: tsource.fixedLayerToChunkTransform,
     combinedGlobalLocalToChunkTransform:
       tsource.combinedGlobalLocalToChunkTransform,
     chunkLayout: tsource.chunkLayout.toObject(),
@@ -131,18 +130,6 @@ export function serializeAllTransformedSources(
   allSources: TransformedSource<SliceViewRenderLayer, SliceViewChunkSource>[][],
 ) {
   return allSources.map((scales) => scales.map(serializeTransformedSource));
-}
-
-function disposeTransformedSources(
-  layer: SliceViewRenderLayer,
-  allSources: TransformedSource<SliceViewRenderLayer, SliceViewChunkSource>[][],
-) {
-  for (const scales of allSources) {
-    for (const { source } of scales) {
-      layer.removeSource(source);
-      source.dispose();
-    }
-  }
 }
 
 @registerSharedObjectOwner(SLICEVIEW_RPC_ID)
@@ -164,14 +151,6 @@ export class SliceView extends Base {
   projectionParameters: Owned<
     DerivedProjectionParameters<SliceViewProjectionParameters>
   >;
-
-  sharedProjectionParameters: Owned<
-    SharedProjectionParameters<SliceViewProjectionParameters>
-  >;
-
-  flushBackendProjectionParameters() {
-    this.sharedProjectionParameters.flush();
-  }
 
   constructor(
     public chunkManager: ChunkManager,
@@ -299,46 +278,26 @@ export class SliceView extends Base {
     for (const renderLayer of this.layerManager.readyRenderLayers()) {
       if (renderLayer instanceof SliceViewRenderLayer) {
         visibleLayerList.push(renderLayer);
-        let layerInfo = visibleLayers.get(renderLayer);
-        if (layerInfo === undefined) {
-          const disposers: Disposer[] = [];
-          const messages = new MessageList();
-          layerInfo = {
-            messages,
-            allSources: this.getTransformedSources(renderLayer, messages),
-            transformGeneration: renderLayer.transform.changed.count,
-            visibleSources: [],
-            disposers,
-            lastSeenGeneration: curUpdateGeneration,
-            displayDimensionRenderInfo,
-          };
-          disposers.push(renderLayer.messages.addChild(layerInfo.messages));
-          visibleLayers.set(renderLayer.addRef(), layerInfo);
-          this.bindVisibleRenderLayer(renderLayer, disposers);
-        } else {
-          layerInfo.lastSeenGeneration = curUpdateGeneration;
-          const curTransformGeneration = renderLayer.transform.changed.count;
-          if (
-            layerInfo.transformGeneration === curTransformGeneration &&
-            layerInfo.displayDimensionRenderInfo === displayDimensionRenderInfo
-          ) {
-            continue;
-          }
-          const allSources = layerInfo.allSources;
-          layerInfo.allSources = this.getTransformedSources(
-            renderLayer,
-            layerInfo.messages,
-          );
-          disposeTransformedSources(renderLayer, allSources);
-          layerInfo.visibleSources.length = 0;
-          layerInfo.displayDimensionRenderInfo = displayDimensionRenderInfo;
-          layerInfo.transformGeneration = curTransformGeneration;
-        }
+
+        const disposers: Disposer[] = [];
+        const messages = new MessageList();
+        const layerInfo = {
+          messages,
+          allSources: this.getTransformedSources(renderLayer, messages),
+          transformGeneration: renderLayer.transform.changed.count,
+          visibleSources: [],
+          disposers,
+          lastSeenGeneration: curUpdateGeneration,
+          displayDimensionRenderInfo,
+        };
+        disposers.push(renderLayer.messages.addChild(layerInfo.messages));
+        visibleLayers.set(renderLayer.addRef(), layerInfo);
+        this.bindVisibleRenderLayer(renderLayer, disposers);
+
         rpcMessage.layerId = renderLayer.rpcId;
         rpcMessage.sources = serializeAllTransformedSources(
           layerInfo.allSources,
         );
-        this.flushBackendProjectionParameters();
         rpc.invoke(SLICEVIEW_ADD_VISIBLE_LAYER_RPC_ID, rpcMessage);
         changed = true;
       }
@@ -738,10 +697,6 @@ export function getVolumetricTransformedSources(
       );
       const { chunkDataSize } = spec;
       const { channelToChunkDimensionIndices } = chunkTransform;
-      const nonDisplayLowerClipBound = new Float32Array(chunkRank);
-      const nonDisplayUpperClipBound = new Float32Array(chunkRank);
-      nonDisplayLowerClipBound.set(lowerClipBound);
-      nonDisplayUpperClipBound.set(upperClipBound);
       const channelRank = channelToChunkDimensionIndices.length;
       const { channelSpaceShape } = transform;
       for (let channelDim = 0; channelDim < channelRank; ++channelDim) {
@@ -758,8 +713,6 @@ export function getVolumetricTransformedSources(
               `${chunkDataSize[chunkDim]}`,
           );
         }
-        nonDisplayLowerClipBound[chunkDim] = Number.NEGATIVE_INFINITY;
-        nonDisplayUpperClipBound[chunkDim] = Number.POSITIVE_INFINITY;
       }
       const chunkDisplayTransform = getChunkDisplayTransformParameters(
         chunkTransform,
@@ -774,23 +727,12 @@ export function getVolumetricTransformedSources(
       const chunkDisplaySize = vec3.create();
       const { numChunkDisplayDims, chunkDisplayDimensionIndices } =
         chunkDisplayTransform;
-      const {
-        combinedGlobalLocalToChunkTransform,
-        layerRank,
-        combinedGlobalLocalRank,
-      } = chunkTransform;
-      const fixedLayerToChunkTransform = new Float32Array(
-        combinedGlobalLocalToChunkTransform,
-      );
       for (
         let chunkDisplayDimIndex = 0;
         chunkDisplayDimIndex < numChunkDisplayDims;
         ++chunkDisplayDimIndex
       ) {
         const chunkDim = chunkDisplayDimensionIndices[chunkDisplayDimIndex];
-        for (let i = 0; i <= combinedGlobalLocalRank; ++i) {
-          fixedLayerToChunkTransform[chunkDim + i * layerRank] = 0;
-        }
         if (chunkDim < chunkRank) {
           chunkDisplaySize[chunkDisplayDimIndex] = spec.chunkDataSize[chunkDim];
           lowerChunkDisplayBound[chunkDisplayDimIndex] =
@@ -801,21 +743,9 @@ export function getVolumetricTransformedSources(
             lowerClipBound[chunkDim];
           upperClipDisplayBound[chunkDisplayDimIndex] =
             upperClipBound[chunkDim];
-          nonDisplayLowerClipBound[chunkDim] = Number.NEGATIVE_INFINITY;
-          nonDisplayUpperClipBound[chunkDim] = Number.POSITIVE_INFINITY;
-        } else {
-          chunkDisplaySize[chunkDisplayDimIndex] = 1;
-          lowerChunkDisplayBound[chunkDisplayDimIndex] = 0;
-          upperChunkDisplayBound[chunkDisplayDimIndex] = 1;
-          lowerClipDisplayBound[chunkDisplayDimIndex] = 0;
-          upperClipDisplayBound[chunkDisplayDimIndex] = 1;
         }
       }
       chunkDisplaySize.fill(1, numChunkDisplayDims);
-      lowerChunkDisplayBound.fill(0, numChunkDisplayDims);
-      upperChunkDisplayBound.fill(1, numChunkDisplayDims);
-      lowerClipDisplayBound.fill(0, numChunkDisplayDims);
-      upperClipDisplayBound.fill(1, numChunkDisplayDims);
       const chunkLayout = new ChunkLayout(
         chunkDisplaySize,
         chunkDisplayTransform.displaySubspaceModelMatrix,
@@ -830,11 +760,8 @@ export function getVolumetricTransformedSources(
       );
       effectiveVoxelSize.fill(1, displayRank);
       return {
-        layerRank,
         lowerClipBound,
         upperClipBound,
-        nonDisplayLowerClipBound,
-        nonDisplayUpperClipBound,
         renderLayer: layer,
         source,
         lowerChunkDisplayBound,
@@ -844,7 +771,6 @@ export function getVolumetricTransformedSources(
         effectiveVoxelSize,
         chunkLayout,
         chunkDisplayDimensionIndices,
-        fixedLayerToChunkTransform,
         curPositionInChunks: new Float32Array(chunkRank),
         combinedGlobalLocalToChunkTransform:
           chunkTransform.combinedGlobalLocalToChunkTransform,

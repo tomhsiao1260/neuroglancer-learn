@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { cancellableFetchOk } from "#src/util/http_request.js";
+import { cancellableFetchOk, HttpError } from "#src/util/http_request.js";
 
 export interface FileReadResponse {
   data: Uint8Array;
@@ -36,6 +36,10 @@ export class SimpleFileReader {
         totalSize: data.byteLength,
       };
     } catch (e) {
+      // Only log non-404 errors
+      if (e instanceof HttpError && e.status === 404) {
+        return undefined;
+      }
       console.error(`Failed to read file: ${url}`, e);
       return undefined;
     }
