@@ -91,7 +91,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
   getSources(volumeSourceOptions: VolumeSourceOptions) {
     return transposeNestedArrays(
-      this.multiscale.scales.map((scale) => {
+      this.multiscale.scales.map((scale, scaleIndex) => {
         const { metadata } = scale;
         const { rank, codecs, shape } = metadata;
         const readChunkShape = codecs.layoutInfo[0].readChunkShape;
@@ -136,6 +136,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
                 parameters: {
                   url: scale.url,
                   metadata,
+                  level: scaleIndex,
                 },
               },
             ),

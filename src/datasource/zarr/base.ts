@@ -19,5 +19,6 @@ import type { ArrayMetadata } from "#src/datasource/zarr/metadata/index.js";
 export class VolumeChunkSourceParameters {
   url: string;
   metadata: ArrayMetadata;
+  level: number;
   static RPC_ID = "zarr/VolumeChunkSource";
 }

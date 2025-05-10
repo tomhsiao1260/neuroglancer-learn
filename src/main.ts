@@ -257,8 +257,14 @@ export interface ViewerUIState {
 }
 
 // Register RPC handler for missing blocks
-registerRPC('onMissingBlock', function(this: RPC, x: { key: string }) {
-  console.log(`Block ${x.key} is missing, using fillValue`);
+registerRPC('onMissingBlock', function(this: RPC, x: { 
+  key: string,
+  dataSize: number[]
+}) {
+  console.log('Missing block:', {
+    key: x.key,
+    dataSize: x.dataSize
+  });
 });
 
 /**
