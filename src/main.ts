@@ -33,7 +33,7 @@ import {
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
-import { RPC, READY_ID } from "#src/worker/worker_rpc.js";
+import { RPC, READY_ID, registerRPC } from "#src/worker/worker_rpc.js";
 import {
   NavigationState,
   Position,
@@ -163,21 +163,25 @@ async function makeMinimalViewer() {
   let lastUpdateTime = 0;
   const updateUrlParams = () => {
     const now = Date.now();
-    // Only update every 500ms to prevent too frequent updates
-    if (now - lastUpdateTime < 500) return;
+    // Only update every 200ms to make it more responsive
+    if (now - lastUpdateTime < 200) return;
     lastUpdateTime = now;
 
     const pos = viewer.navigationState.position.value;
     const zoomValue = viewer.navigationState.zoomFactor.value;
-    // Convert zoom value to level (1 = widest, 5 = most zoomed)
-    const zoomLevel = (5 - Math.log2(zoomValue)).toFixed(1);
+    // Convert zoom value to level (1 = widest, 5 = most zoomed) with 2 decimal places
+    const zoomLevel = (5 - Math.log2(zoomValue)).toFixed(2);
+    const zoomNumber = Number(zoomLevel);
 
-    const url = new URL(window.location.href);
-    url.searchParams.set('x', Math.round(pos[2]).toString());
-    url.searchParams.set('y', Math.round(pos[1]).toString());
-    url.searchParams.set('z', Math.round(pos[0]).toString());
-    url.searchParams.set('zoom', zoomLevel);
-    window.history.replaceState({}, '', url.toString());
+    // Ensure zoom level is within valid range
+    if (zoomNumber >= 1 && zoomNumber <= 5) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('x', Math.round(pos[2]).toString());
+      url.searchParams.set('y', Math.round(pos[1]).toString());
+      url.searchParams.set('z', Math.round(pos[0]).toString());
+      url.searchParams.set('zoom', zoomLevel);
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   // Wait for coordinate space to be initialized
@@ -205,35 +209,6 @@ async function makeMinimalViewer() {
 
       // Initial URL update
       updateUrlParams();
-
-      // Setup chunk loading logs after coordinate space is initialized
-      const setupChunkLogs = () => {
-        const chunkManager = viewer.dataContext.chunkManager;
-        if (chunkManager && chunkManager.queueManager) {
-          chunkManager.queueManager.visibleChunksChanged.add(() => {
-            const sources = chunkManager.queueManager.sources;
-            for (const source of sources) {
-              const chunks = source.chunks;
-              if (chunks.size > 0) {
-                console.log('Loading chunks from source:', {
-                  sourceId: source.rpcId,
-                  chunks: Array.from(chunks.entries()).map(([key, chunk]) => ({
-                    key,
-                    state: chunk.state,
-                    priority: chunk.priority
-                  }))
-                });
-              }
-            }
-          });
-        } else {
-          // Try again in the next frame if not ready
-          requestAnimationFrame(setupChunkLogs);
-        }
-      };
-
-      // Start setting up chunk logs
-      setupChunkLogs();
     } else {
       // Try again in the next frame
       requestAnimationFrame(waitForCoordinateSpace);
@@ -280,6 +255,11 @@ export interface ViewerUIState {
   navigationState: NavigationState;
   layerManager: ImageUserLayer;
 }
+
+// Register RPC handler for missing blocks
+registerRPC('onMissingBlock', function(this: RPC, x: { key: string }) {
+  console.log(`Block ${x.key} is missing, using fillValue`);
+});
 
 /**
  * Manages data processing and worker communication

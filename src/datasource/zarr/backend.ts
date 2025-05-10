@@ -26,7 +26,7 @@ import { postProcessRawData } from "#src/sliceview/backend_chunk_decoders/postpr
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import { VolumeChunkSource } from "#src/sliceview/volume/backend.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
-import { registerSharedObject } from "#src/worker/worker_rpc.js";
+import { registerSharedObject, SharedObject } from "#src/worker/worker_rpc.js";
 
 @registerSharedObject()
 export class ZarrVolumeChunkSource extends WithParameters(
@@ -86,6 +86,10 @@ export class ZarrVolumeChunkSource extends WithParameters(
         const fillValue = typeof metadata.fillValue === 'number' ? metadata.fillValue : 0;
         const numElements = this.spec.chunkDataSize.reduce((a, b) => a * b, 1);
         const data = new Uint8Array(numElements).fill(fillValue);
+        // Send message to main thread about missing block using RPC
+        if (this.rpc) {
+          this.rpc.invoke('onMissingBlock', { key: baseKey });
+        }
         await postProcessRawData(chunk, cancellationToken, data);
       }
     } catch (e) {
