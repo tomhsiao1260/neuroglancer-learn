@@ -53,53 +53,6 @@ function makeUploadButton() {
   if (button) { button.onclick = makeMinimalViewer; }
 }
 
-function setupViewParamsUI(viewer: Viewer) {
-  const viewParams = document.querySelector<HTMLDivElement>('#view-params');
-  const centerInput = document.querySelector<HTMLInputElement>('#center-input');
-  const levelInput = document.querySelector<HTMLInputElement>('#level-input');
-  const updateButton = document.querySelector<HTMLButtonElement>('#update-view');
-
-  if (!viewParams || !centerInput || !levelInput || !updateButton) return;
-
-  // Show the view params UI
-  viewParams.classList.remove('hidden');
-
-  // Update inputs with current values
-  const updateInputs = () => {
-    const pos = viewer.navigationState.position.value;
-    centerInput.value = `${Math.round(pos[0])},${Math.round(pos[1])},${Math.round(pos[2])}`;
-    levelInput.value = Math.round(Math.log2(viewer.navigationState.zoomFactor.value)).toString();
-  };
-
-  // Update view when button is clicked
-  updateButton.onclick = () => {
-    // Parse center coordinates
-    const centerCoords = centerInput.value.split(',').map(Number);
-    if (centerCoords.length === 3 && !centerCoords.some(isNaN)) {
-      viewer.navigationState.position.value = new Float32Array(centerCoords);
-    }
-
-    // Parse level
-    const level = Number(levelInput.value);
-    if (!isNaN(level) && level >= 0) {
-      viewer.navigationState.zoomFactor.value = Math.pow(2, level);
-    }
-
-    // Update URL
-    const url = new URL(window.location.href);
-    url.searchParams.set('center', centerInput.value);
-    url.searchParams.set('level', levelInput.value);
-    window.history.replaceState({}, '', url.toString());
-  };
-
-  // Update inputs when view changes
-  viewer.navigationState.position.changed.add(updateInputs);
-  viewer.navigationState.zoomFactor.changed.add(updateInputs);
-
-  // Initial update
-  updateInputs();
-}
-
 /**
  * Creates a minimal viewer for 3D volume data visualization
  */
