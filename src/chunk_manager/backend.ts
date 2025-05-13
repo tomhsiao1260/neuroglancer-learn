@@ -1075,19 +1075,8 @@ export class ChunkQueueManager extends SharedObjectCounterpart {
     const gpuMemoryGeneration = this.gpuMemoryGeneration;
     this.processGPUPromotions_();
     this.processQueuePromotions_();
-    this.logStatistics();
     if (this.gpuMemoryGeneration !== gpuMemoryGeneration) {
       this.gpuMemoryChanged.dispatch();
-    }
-  }
-
-  logStatistics() {
-    if (DEBUG_CHUNK_UPDATES) {
-      console.log(
-        `[Chunk status] QUEUED: ${this.numQueued}, FAILED: ` +
-          `${this.numFailed}, DOWNLOAD: ${this.downloadCapacity}, ` +
-          `MEM: ${this.systemMemoryCapacity}, GPU: ${this.gpuMemoryCapacity}`,
-      );
     }
   }
 

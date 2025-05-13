@@ -161,6 +161,7 @@ function getJsonResource(
       try {
         return await cancellableFetchOk(url, responseJson);
       } catch (e) {
+        console.log(`Missing block: ${url}`);
         if (isNotFoundError(e)) return undefined;
         throw e;
       }

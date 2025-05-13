@@ -63,6 +63,7 @@ async function makeMinimalViewer() {
   if (fileTree) {
     (window as any).fileTree = fileTree;
   } else {
+    console.log("No file tree found");
     return;
   }
 
@@ -134,9 +135,9 @@ async function makeMinimalViewer() {
     // Ensure zoom level is within valid range
     if (zoomNumber >= 1 && zoomNumber <= 5) {
       const url = new URL(window.location.href);
-      url.searchParams.set('x', Math.round(pos[2]).toString());
-      url.searchParams.set('y', Math.round(pos[1]).toString());
       url.searchParams.set('z', Math.round(pos[0]).toString());
+      url.searchParams.set('y', Math.round(pos[1]).toString());
+      url.searchParams.set('x', Math.round(pos[2]).toString());
       url.searchParams.set('zoom', zoomLevel);
       window.history.replaceState({}, '', url.toString());
     }
@@ -251,7 +252,7 @@ class DataManagementContext extends RefCounted {
     // Handle worker ready state and file tree initialization
     this.worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
       const isReady = e.data.functionName === READY_ID;
-      if (isReady) { 
+      if (isReady) {
         this.worker.postMessage({ fileTree: (window as any).fileTree });
       }
     });

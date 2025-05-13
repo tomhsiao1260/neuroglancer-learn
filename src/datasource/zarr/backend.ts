@@ -21,19 +21,19 @@ import { WithParameters } from "#src/chunk_manager/backend.js";
 import { VolumeChunkSourceParameters } from "#src/datasource/zarr/base.js";
 import { decodeArray } from "#src/datasource/zarr/codec/simple_decode.js";
 import { ChunkKeyEncoding } from "#src/datasource/zarr/metadata/index.js";
-import { getFileReader } from "#src/util/file_reader.js";
+import { FileReader } from "#src/util/file_system.js";
 import { postProcessRawData } from "#src/sliceview/backend_chunk_decoders/postprocess.js";
 import type { VolumeChunk } from "#src/sliceview/volume/backend.js";
 import { VolumeChunkSource } from "#src/sliceview/volume/backend.js";
 import type { CancellationToken } from "#src/util/cancellation.js";
-import { registerSharedObject, SharedObject } from "#src/worker/worker_rpc.js";
+import { registerSharedObject } from "#src/worker/worker_rpc.js";
 
 @registerSharedObject()
 export class ZarrVolumeChunkSource extends WithParameters(
   VolumeChunkSource,
   VolumeChunkSourceParameters,
 ) {
-  private fileReader = getFileReader(this.parameters.url + "/");
+  private fileReader = new FileReader(this.parameters.url + "/");
 
   async download(chunk: VolumeChunk, cancellationToken: CancellationToken) {
     chunk.chunkDataSize = this.spec.chunkDataSize;

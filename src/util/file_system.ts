@@ -1,3 +1,5 @@
+import { cancellableFetchOk, HttpError } from "#src/util/http_request.js";
+
 interface FileSystemDirectoryHandle {
   kind: 'directory';
   name: string;
@@ -53,4 +55,34 @@ async function readDirectory(
   }
 
   return files;
+}
+
+export interface FileReadResponse {
+  data: Uint8Array;
+  totalSize: number;
+}
+
+export class FileReader {
+  constructor(public baseUrl: string) {}
+
+  async read(key: string): Promise<FileReadResponse | undefined> {
+    const url = this.baseUrl + key;
+    try {
+      const { data } = await cancellableFetchOk(url, async (response) => ({
+        response,
+        data: await response.arrayBuffer(),
+      }));
+      return {
+        data: new Uint8Array(data),
+        totalSize: data.byteLength,
+      };
+    } catch (e) {
+      // Only log non-404 errors
+      if (e instanceof HttpError && e.status === 404) {
+        return undefined;
+      }
+      console.error(`Failed to read file: ${url}`, e);
+      return undefined;
+    }
+  }
 }

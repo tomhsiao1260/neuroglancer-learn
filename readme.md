@@ -101,6 +101,8 @@ The project is organized into several key directories, each handling specific as
   - Coordinate transformation
   - Projection parameter handling
   - Panel rendering
+  - Real-time mouse position tracking
+  - Smooth navigation controls
 
 ### Background Processing
 - `src/worker/`: Handles background processing:
@@ -119,6 +121,7 @@ The project is organized into several key directories, each handling specific as
   - JSON processing
   - Memory management
   - Error handling
+  - File system access
 
 ### Build Configuration
 - `vite.config.ts`: Vite build configuration

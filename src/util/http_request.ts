@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+declare global {
+  interface Window {
+    fileTree: any;
+  }
+}
+
 export class HttpError extends Error {
   url: string;
   status: number;
@@ -114,23 +120,19 @@ async function getFile(input: string, fileTree: any) {
 }
 
 async function fetchOk(input: RequestInfo): Promise<Response> {
-  for (let requestAttempt = 0; ; ) {
-    let response: Response;
-    try {
-      const result = await getFile(input, self.fileTree);
-      if (result === undefined) {
-        throw new HttpError(
-          typeof input === 'string' ? input : input.url,
-          404,
-          'File not found'
-        );
-      }
-      response = result;
-    } catch (error) {
-      throw HttpError.fromRequestError(input, error);
-    }
-    return response;
+  let response: Response;
+
+  const result = await getFile(input.toString(), self.fileTree);
+  if (result === undefined) {
+    const error = new HttpError(
+      typeof input === 'string' ? input : input.url,
+      404,
+      'File not found'
+    );
+    throw error;
   }
+  response = result;
+  return response;
 }
 
 export function responseArrayBuffer(response: Response): Promise<ArrayBuffer> {
