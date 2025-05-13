@@ -59,7 +59,12 @@ function makeUploadButton() {
 async function makeMinimalViewer() {
   // Get the file tree (via file system api)
   const fileTree = await handleFileBtnOnClick();
-  (window as any).fileTree = fileTree;
+
+  if (fileTree) {
+    (window as any).fileTree = fileTree;
+  } else {
+    return;
+  }
 
   // Parse URL parameters
   const urlParams = new URLSearchParams(window.location.search);

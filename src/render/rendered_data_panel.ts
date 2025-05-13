@@ -34,6 +34,13 @@ const tempVec3 = vec3.create();
 export class RenderedDataPanel extends RefCounted {
   gl: GL;
   private static positionDisplay: HTMLDivElement | null = null;
+  private animationFrameId: number | null = null;
+  private lastUpdateTime = 0;
+  private readonly UPDATE_INTERVAL = 16; // about 60fps
+  private isMouseInViewport = false;
+  private lastMouseX = -1;
+  private lastMouseY = -1;
+  private isDragging = false;
 
   /**
    * Current mouse position within the viewport, or -1 if the mouse is not in the viewport.
@@ -49,22 +56,60 @@ export class RenderedDataPanel extends RefCounted {
     return true;
   }
 
-  private updatePositionDisplay() {
+  private updatePositionDisplay(mouseVoxel?: Float32Array) {
     const position = this.navigationState.position.value;
-    if (RenderedDataPanel.positionDisplay) {
-      RenderedDataPanel.positionDisplay.textContent = `x ${Math.floor(position[2])}, y ${Math.floor(position[1])}, z ${Math.floor(position[0])}`;
+    let text = '';
+    if (mouseVoxel && this.isMouseInViewport && !this.isDragging) {
+      text += `<span style="color:rgb(241, 227, 98)">z ${Math.floor(mouseVoxel[0])}, y ${Math.floor(mouseVoxel[1])}, x ${Math.floor(mouseVoxel[2])}</span> `;
     }
+    text += `<span style="color: #ffffff">z ${Math.floor(position[0])}, y ${Math.floor(position[1])}, x ${Math.floor(position[2])}</span>`;
+    if (RenderedDataPanel.positionDisplay) {
+      RenderedDataPanel.positionDisplay.innerHTML = text;
+    }
+  }
+
+  private animate = () => {
+    const now = performance.now();
+    if (now - this.lastUpdateTime >= this.UPDATE_INTERVAL) {
+      this.lastUpdateTime = now;
+      if (this.isMouseInViewport && this.mouseX !== -1 && this.mouseY !== -1) {
+        // Only update if mouse position has changed and not dragging
+        if ((this.mouseX !== this.lastMouseX || this.mouseY !== this.lastMouseY) && !this.isDragging) {
+          this.lastMouseX = this.mouseX;
+          this.lastMouseY = this.mouseY;
+          this.updateMousePosition(this.mouseX, this.mouseY);
+        }
+      }
+    }
+    this.animationFrameId = requestAnimationFrame(this.animate);
   }
 
   /**
    * Called each time the mouse position relative to the top level of the rendered viewport changes.
    */
   private updateMousePosition(mouseX: number, mouseY: number): void {
-    if (mouseX === this.mouseX && mouseY === this.mouseY) {
-      return;
+    // Try to get volume/voxel coordinates
+    let mouseVoxel: Float32Array | undefined = undefined;
+    // Try sliceView/projectionParameters conversion
+    const panel = (this as any);
+    if (panel.sliceView && panel.sliceView.projectionParameters) {
+      const params = panel.sliceView.projectionParameters.value;
+      if (params && params.invViewMatrix) {
+        const { width, height, invViewMatrix } = params;
+        // Convert to center-based coordinates
+        let mx = mouseX - width / 2;
+        let my = mouseY - height / 2;
+        // Transform to volume space
+        mouseVoxel = new Float32Array(3);
+        for (let i = 0; i < 3; ++i) {
+          mouseVoxel[i] =
+            invViewMatrix[i] * mx +
+            invViewMatrix[4 + i] * my +
+            invViewMatrix[12 + i];
+        }
+      }
     }
-    this.mouseX = mouseX;
-    this.mouseY = mouseY;
+    this.updatePositionDisplay(mouseVoxel);
   }
 
   constructor(
@@ -84,16 +129,19 @@ export class RenderedDataPanel extends RefCounted {
       RenderedDataPanel.positionDisplay.style.bottom = '10px';
       RenderedDataPanel.positionDisplay.style.right = '10px';
       RenderedDataPanel.positionDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-      RenderedDataPanel.positionDisplay.style.color = 'white';
       RenderedDataPanel.positionDisplay.style.padding = '5px 10px';
       RenderedDataPanel.positionDisplay.style.borderRadius = '4px';
       RenderedDataPanel.positionDisplay.style.fontFamily = 'monospace';
+      RenderedDataPanel.positionDisplay.style.opacity = '0.8';
       document.body.appendChild(RenderedDataPanel.positionDisplay);
     }
 
     this.visibility = viewer.visibility;
     this.inputEventMap = viewer.inputEventMap;
     this.navigationState = viewer.navigationState;
+
+    // Start animation loop
+    this.animate();
 
     // Wait for next frame to ensure navigationState is initialized
     requestAnimationFrame(() => {
@@ -108,11 +156,34 @@ export class RenderedDataPanel extends RefCounted {
       }
     });
 
+    // Add mousemove event listener for hover updates
+    element.addEventListener('mousemove', (event) => {
+      this.handleMouseMove(event.clientX, event.clientY);
+    });
+
     this.registerDisposer(
       new MouseEventBinder(element, this.inputEventMap, (event) => {
         this.onMousemove(event);
       }),
     );
+
+    // Stop animation when mouse leaves the element
+    element.addEventListener('mouseleave', () => {
+      this.isMouseInViewport = false;
+      this.mouseX = -1;
+      this.mouseY = -1;
+      this.lastMouseX = -1;
+      this.lastMouseY = -1;
+      this.updatePositionDisplay();
+    });
+
+    // Restart animation when mouse enters the element
+    element.addEventListener('mouseenter', () => {
+      this.isMouseInViewport = true;
+      if (this.animationFrameId === null) {
+        this.animate();
+      }
+    });
 
     registerActionListener(
       element,
@@ -128,8 +199,11 @@ export class RenderedDataPanel extends RefCounted {
       element,
       "translate-via-mouse-drag",
       (e: ActionEvent<MouseEvent>) => {
+        this.isDragging = true;
         startRelativeMouseDrag(e.detail, (_event, deltaX, deltaY) => {
           this.translateByViewportPixels(deltaX, deltaY);
+        }, () => {
+          this.isDragging = false;
         });
       },
     );
@@ -160,7 +234,15 @@ export class RenderedDataPanel extends RefCounted {
     const { mouseState } = this.viewer;
     mouseState.pageX = clientX + window.scrollX;
     mouseState.pageY = clientY + window.scrollY;
-    this.updateMousePosition(mouseX, mouseY);
+    
+    // Update mouse position immediately if it has changed
+    if (mouseX !== this.mouseX || mouseY !== this.mouseY) {
+      this.mouseX = mouseX;
+      this.mouseY = mouseY;
+      if (this.isMouseInViewport) {
+        this.updateMousePosition(mouseX, mouseY);
+      }
+    }
   }
 
   onMousemove(event: MouseEvent, atOnly = true) {
@@ -169,5 +251,13 @@ export class RenderedDataPanel extends RefCounted {
       return;
     }
     this.handleMouseMove(event.clientX, event.clientY);
+  }
+
+  dispose() {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    super.dispose();
   }
 }

@@ -1,8 +1,34 @@
-export const handleFileBtnOnClick = async () => {
-  const directoryHandle = await window.showDirectoryPicker();
-  const dir = await readDirectory(directoryHandle);
+interface FileSystemDirectoryHandle {
+  kind: 'directory';
+  name: string;
+  values(): AsyncIterableIterator<FileSystemHandle>;
+  getDirectoryHandle(name: string): Promise<FileSystemDirectoryHandle>;
+}
 
-  return dir;
+interface FileSystemHandle {
+  kind: 'file' | 'directory';
+  name: string;
+  getFile(): Promise<File>;
+}
+
+declare global {
+  interface Window {
+    showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+  }
+}
+
+export const handleFileBtnOnClick = async () => {
+  try {
+    const directoryHandle = await window.showDirectoryPicker();
+    const dir = await readDirectory(directoryHandle);
+    return dir;
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log('Directory selection was cancelled by user');
+      return;
+    }
+    throw error;
+  }
 };
 
 async function readDirectory(
