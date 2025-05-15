@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2019 Google Inc.
+ * Copyright 2023 Google Inc.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,26 +14,58 @@
  * limitations under the License.
  */
 
-import { CodecKind } from "../index";
-import { registerCodec } from "../resolve";
-import { verifyObject } from "../../../../util/json";
-import { DATA_TYPE_BYTES } from "../../../../util/data_type";
-import { ENDIANNESS, Endianness } from "../../../../util/endian";
+import type {
+  CodecArrayInfo,
+  CodecArrayLayoutInfo,
+} from "#src/datasource/zarr/codec/index.js";
+import { CodecKind } from "#src/datasource/zarr/codec/index.js";
+import { registerCodec } from "#src/datasource/zarr/codec/resolve.js";
+import { DATA_TYPE_BYTES } from "#src/util/data_type.js";
+import { ENDIANNESS, Endianness } from "#src/util/endian.js";
+import { verifyObject, verifyObjectProperty } from "#src/util/json.js";
 
-export type Configuration = {
+export interface Configuration {
   endian: Endianness;
-};
+}
 
 registerCodec({
   name: "bytes",
-  kind: CodecKind.bytesToBytes,
-  resolve(configuration: unknown, decodedSize: number | undefined): { configuration: Configuration; encodedSize?: number } {
+  kind: CodecKind.arrayToBytes,
+  resolve(
+    configuration: unknown,
+    decodedArrayInfo: CodecArrayInfo,
+  ): { configuration: Configuration; encodedSize: number } {
     verifyObject(configuration);
+    const endian = verifyObjectProperty(configuration, "endian", (value) => {
+      switch (value) {
+        case "little":
+          return Endianness.LITTLE;
+        case "big":
+          return Endianness.BIG;
+        case undefined:
+          if (DATA_TYPE_BYTES[decodedArrayInfo.dataType] === 1) {
+            return ENDIANNESS;
+          }
+      }
+      throw new Error(`Invalid endian value: ${JSON.stringify(value)}`);
+    });
+    const numElements = decodedArrayInfo.chunkShape.reduce((a, b) => a * b, 1);
     return {
-      configuration: {
-        endian: ENDIANNESS,
-      },
-      encodedSize: decodedSize,
+      configuration: { endian },
+      encodedSize: DATA_TYPE_BYTES[decodedArrayInfo.dataType] * numElements,
+    };
+  },
+  getDecodedArrayLayoutInfo(
+    configuration: Configuration,
+    decodedArrayInfo: CodecArrayInfo,
+  ): CodecArrayLayoutInfo {
+    configuration;
+    return {
+      physicalToLogicalDimension: Array.from(
+        decodedArrayInfo.chunkShape,
+        (_, i) => i,
+      ),
+      readChunkShape: decodedArrayInfo.chunkShape,
     };
   },
 });

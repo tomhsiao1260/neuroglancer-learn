@@ -15,5 +15,4 @@
  */
 
 // Register all codecs
-import "./bytes/decode.ts";
-import "./blosc/decode.ts"; 
+import "./bytes/decode.ts"; 
