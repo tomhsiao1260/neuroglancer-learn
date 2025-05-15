@@ -22,11 +22,24 @@ import { DATA_TYPE_BYTES, makeDataTypeArrayView } from "#src/util/data_type.js";
 import { convertEndian, type Endianness } from "#src/util/endian.js";
 import { Blosc } from 'numcodecs';
 
+interface BloscCompressorConfig {
+  id: string;
+  clevel?: number;
+  cname?: string;
+  shuffle?: number;
+  blocksize?: number;
+}
+
+interface DecodeConfiguration {
+  endian: Endianness;
+  compressor: BloscCompressorConfig | null;
+}
+
 registerCodec({
   name: "bytes",
   kind: CodecKind.arrayToBytes,
   async decode(
-    configuration: { endian: Endianness },
+    configuration: DecodeConfiguration,
     decodedArrayInfo: CodecArrayInfo,
     encoded: Uint8Array,
     cancellationToken: CancellationToken,
@@ -40,13 +53,18 @@ registerCodec({
     if (encoded.byteLength !== expectedBytes) {
       // Try to decode as blosc/zstd compressed data
       try {
-        const codec = Blosc.fromConfig({
+        const defaultConfig: BloscCompressorConfig = {
           id: 'blosc',
           clevel: 5,
           cname: 'zstd',
-          shuffle: 1, // 1 for shuffle
+          shuffle: 1,
           blocksize: 0
-        });
+        };
+
+        const codec = Blosc.fromConfig(
+          configuration.compressor || defaultConfig
+        );
+        
         const decoded = await codec.decode(encoded);
         const data = makeDataTypeArrayView(
           dataType,
