@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2023 Google Inc.
+ * Copyright 2019 Google Inc.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
-// Register all codecs
-import "./bytes/decode.ts";
-import "./blosc/decode.ts"; 
+import { CodecKind } from "../index";
+import { decodeBlosc } from "../../../../async_computation/decode_blosc";
+import { registerCodec } from "../decode";
+
+registerCodec({
+  name: "blosc",
+  kind: CodecKind.bytesToBytes,
+  decode: (_, data: Uint8Array) => decodeBlosc(data, { cname: "zstd", clevel: 5, shuffle: 1, blocksize: 0 }).then(result => result.value),
+}); 

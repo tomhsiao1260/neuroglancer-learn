@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import { CodecKind } from "#src/datasource/zarr/codec/index.js";
-import type { CancellationToken } from "#src/util/cancellation.js";
+import { CodecKind } from "./index";
 
 export interface Codec {
   name: string;
@@ -27,7 +26,6 @@ export interface BytesToBytesCodec<Configuration = unknown> extends Codec {
   decode(
     configuration: Configuration,
     encoded: Uint8Array,
-    cancellationToken?: CancellationToken,
   ): Promise<Uint8Array>;
 }
 
@@ -44,9 +42,7 @@ export function registerCodec<Configuration>(
 export async function decodeArray(
   codecs: any,
   encoded: Uint8Array,
-  cancellationToken?: CancellationToken,
 ): Promise<Uint8Array> {
-  // Apply bytes-to-bytes codecs
   const bytesToBytes = codecs[CodecKind.bytesToBytes];
   for (let i = bytesToBytes.length; i--; ) {
     const codec = bytesToBytes[i];
@@ -54,12 +50,7 @@ export async function decodeArray(
     if (impl === undefined) {
       throw new Error(`Unsupported codec: ${JSON.stringify(codec.name)}`);
     }
-    encoded = await impl.decode(
-      codec.configuration,
-      encoded,
-      cancellationToken,
-    );
+    encoded = await impl.decode(codec.configuration, encoded);
   }
-
   return encoded;
 } 

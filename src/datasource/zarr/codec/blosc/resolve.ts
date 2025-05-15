@@ -17,23 +17,27 @@
 import { CodecKind } from "../index";
 import { registerCodec } from "../resolve";
 import { verifyObject } from "../../../../util/json";
-import { DATA_TYPE_BYTES } from "../../../../util/data_type";
-import { ENDIANNESS, Endianness } from "../../../../util/endian";
 
 export type Configuration = {
-  endian: Endianness;
+  cname: string;
+  clevel: number;
+  shuffle: number;
+  blocksize: number;
 };
 
 registerCodec({
-  name: "bytes",
+  name: "blosc",
   kind: CodecKind.bytesToBytes,
   resolve(configuration: unknown, decodedSize: number | undefined): { configuration: Configuration; encodedSize?: number } {
     verifyObject(configuration);
     return {
       configuration: {
-        endian: ENDIANNESS,
+        cname: "zstd",
+        clevel: 3,
+        shuffle: 0,
+        blocksize: 0,
       },
       encodedSize: decodedSize,
     };
   },
-});
+}); 

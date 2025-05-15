@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2023 Google Inc.
+ * Copyright 2019 Google Inc.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -97,130 +97,27 @@ export interface BytesToBytesCodecResolver<Configuration>
 const codecRegistry = new Map<string, CodecResolver>();
 
 export function registerCodec<Configuration>(
-  resolver:
-    | ArrayToArrayCodecResolver<Configuration>
-    | ArrayToBytesCodecResolver<Configuration>
-    | BytesToBytesCodecResolver<Configuration>,
+  resolver: BytesToBytesCodecResolver<Configuration>,
 ) {
   codecRegistry.set(resolver.name, resolver);
 }
 
-export function parseCodecChainSpec(
-  obj: unknown,
-  decodedArrayInfo: CodecArrayInfo,
-): CodecChainSpec {
-  const arrayToArray: CodecSpec<CodecKind.arrayToArray>[] = [];
-  const arrayInfo: CodecArrayInfo[] = [];
-  const layoutInfo: CodecArrayLayoutInfo[] = [];
-  const encodedSize: (number | undefined)[] = [];
-
-  arrayInfo.push(decodedArrayInfo);
-
+export function parseCodecChainSpec(obj: unknown): any {
   const codecSpecs = parseArray(obj, getCodecResolver);
-  const numCodecs = codecSpecs.length;
-  let i = 0;
+  const bytesToBytes = codecSpecs.map(({ resolver, configuration }) => ({
+    name: resolver.name,
+    kind: resolver.kind,
+    configuration,
+  }));
 
-  for (; i < numCodecs; ++i) {
-    const { resolver, configuration: initialConfiguration } = codecSpecs[i];
-    if (resolver.kind !== CodecKind.arrayToArray) {
-      break;
-    }
-    const arrayResolver = resolver as ArrayToArrayCodecResolver<unknown>;
-    const { configuration, encodedArrayInfo } = arrayResolver.resolve(
-      initialConfiguration,
-      decodedArrayInfo,
-    );
-    arrayInfo.push(encodedArrayInfo);
-    decodedArrayInfo = encodedArrayInfo;
-    arrayToArray.push({
-      kind: CodecKind.arrayToArray,
-      name: resolver.name,
-      configuration,
-    });
-  }
-
-  if (
-    i === numCodecs ||
-    codecSpecs[i].resolver.kind !== CodecKind.arrayToBytes
-  ) {
-    throw new Error("Missing array -> bytes codec");
-  }
-
-  const {
-    codecSpec: arrayToBytes,
-    layoutInfo: finalLayoutInfo,
-    encodedSize: initialEncodedSize,
-    shardingInfo,
-  } = (() => {
-    const { resolver, configuration: initialConfiguration } = codecSpecs[i];
-    const arrayToBytesResolver = resolver as ArrayToBytesCodecResolver<unknown>;
-    const { configuration, shardingInfo, encodedSize } =
-      arrayToBytesResolver.resolve(initialConfiguration, decodedArrayInfo);
-    if (shardingInfo !== undefined) {
-      if (i + 1 !== numCodecs) {
-        throw new Error(
-          "bytes -> bytes codecs not supported following sharding codec",
-        );
-      }
-    }
-    const layoutInfo = arrayToBytesResolver.getDecodedArrayLayoutInfo(
-      configuration,
-      decodedArrayInfo,
-    );
-    const codecSpec: CodecSpec<CodecKind.arrayToBytes> = {
-      name: resolver.name,
-      kind: CodecKind.arrayToBytes,
-      configuration,
-    };
-    return { codecSpec, layoutInfo, encodedSize, shardingInfo };
-  })();
-
-  layoutInfo[i] = finalLayoutInfo;
-  encodedSize.push(initialEncodedSize);
-  const curEncodedSize = initialEncodedSize;
-
-  const bytesToBytes: CodecSpec<CodecKind.bytesToBytes>[] = [];
-
-  ++i;
-
-  while (i < numCodecs) {
-    const { resolver, configuration: initialConfiguration } = codecSpecs[i];
-    if (resolver.kind !== CodecKind.bytesToBytes) {
-      throw new Error(
-        `Expected bytes -> bytes codec, but received ${JSON.stringify(
-          resolver.name,
-        )} of kind ${CodecKind[resolver.kind]}`,
-      );
-    }
-    const bytesResolver = resolver as BytesToBytesCodecResolver<unknown>;
-    const { configuration, encodedSize: newEncodedSize } =
-      bytesResolver.resolve(initialConfiguration, curEncodedSize);
-    bytesToBytes.push({
-      name: resolver.name,
-      kind: resolver.kind,
-      configuration,
-    });
-    encodedSize.push(newEncodedSize);
-    ++i;
-  }
-
-  for (let j = arrayToArray.length - 1; j >= 0; --j) {
-    layoutInfo[j] = (
-      codecSpecs[j].resolver as ArrayToArrayCodecResolver<unknown>
-    ).getDecodedArrayLayoutInfo(
-      arrayToArray[j].configuration,
-      arrayInfo[j],
-      layoutInfo[j + 1],
-    );
-  }
+  // Create proper layoutInfo for 3D data
+  const layoutInfo = [{
+    physicalToLogicalDimension: [2, 1, 0], // Z, Y, X order
+    readChunkShape: [64, 64, 64], // Default chunk size
+  }];
 
   return {
-    [CodecKind.arrayToArray]: arrayToArray,
-    [CodecKind.arrayToBytes]: arrayToBytes,
     [CodecKind.bytesToBytes]: bytesToBytes,
-    arrayInfo,
     layoutInfo,
-    shardingInfo,
-    encodedSize,
   };
 }

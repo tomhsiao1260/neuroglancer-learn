@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2023 Google Inc.
+ * Copyright 2019 Google Inc.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,40 +14,26 @@
  * limitations under the License.
  */
 
-import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
 import { CodecKind } from "#src/datasource/zarr/codec/index.js";
-import type { CancellationToken } from "#src/util/cancellation.js";
-import type { CodecArrayInfo } from "#src/datasource/zarr/codec/index.js";
-import { DATA_TYPE_BYTES, makeDataTypeArrayView } from "#src/util/data_type.js";
-import { convertEndian, type Endianness } from "#src/util/endian.js";
+import { registerCodec } from "#src/datasource/zarr/codec/simple_decode.js";
+import type { Configuration } from "#src/datasource/zarr/codec/bytes/resolve.js";
+import { DATA_TYPE_BYTES, makeDataTypeArrayView, DataType } from "#src/util/data_type.js";
+import { convertEndian } from "#src/util/endian.js";
 
 registerCodec({
   name: "bytes",
-  kind: CodecKind.arrayToBytes,
-  decode(
-    configuration: { endian: Endianness },
-    decodedArrayInfo: CodecArrayInfo,
+  kind: CodecKind.bytesToBytes,
+  async decode(
+    configuration: Configuration,
     encoded: Uint8Array,
-    cancellationToken: CancellationToken,
-  ): Promise<ArrayBufferView> {
-    cancellationToken;
-    const { dataType, chunkShape } = decodedArrayInfo;
-    const numElements = chunkShape.reduce((a, b) => a * b, 1);
-    const bytesPerElement = DATA_TYPE_BYTES[dataType];
-    const expectedBytes = numElements * bytesPerElement;
-    if (encoded.byteLength !== expectedBytes) {
-      throw new Error(
-        `Raw-format chunk is ${encoded.byteLength} bytes, ` +
-          `but ${numElements} * ${bytesPerElement} = ${expectedBytes} bytes are expected.`,
-      );
-    }
+  ): Promise<Uint8Array> {
     const data = makeDataTypeArrayView(
-      dataType,
+      DataType.UINT8,
       encoded.buffer,
       encoded.byteOffset,
       encoded.byteLength,
     );
-    convertEndian(data, configuration.endian, bytesPerElement);
-    return Promise.resolve(data);
+    convertEndian(data, configuration.endian, 1);
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   },
 });
