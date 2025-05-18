@@ -215,17 +215,6 @@ export interface ViewerUIState {
   layerManager: ImageUserLayer;
 }
 
-// Register RPC handler for missing blocks
-registerRPC('onMissingBlock', function(this: RPC, x: { 
-  key: string,
-  dataSize: number[]
-}) {
-  console.log('Missing block:', {
-    key: x.key,
-    dataSize: x.dataSize
-  });
-});
-
 /**
  * Manages data processing and worker communication
  */
@@ -296,6 +285,8 @@ class DataManagementContext extends RefCounted {
 /**
  * Main viewer class that handles the 3D visualization
  */
+const holder = {}
+
 class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
   mouseState = new MouseSelectionState();
@@ -358,6 +349,9 @@ class Viewer extends RefCounted {
     container.style.position = "absolute";
     container.appendChild(panel.element);
     this.display.container.appendChild(container);
+
+    holder.layerManager = layerManager;
+    holder.dataContext = this.dataContext;
   }
 }
 
@@ -424,5 +418,56 @@ class PanelLayout extends RefCounted {
     this.element.appendChild(elementXY);
     this.element.appendChild(elementXZ);
   }
+}
+
+// Register RPC handler for missing chunks
+registerRPC('onMissingChunk', function(this: RPC, x: { 
+  key: string,
+  dataSize: number[]
+}) {
+  console.log('Missing chunk:', {
+    key: x.key,
+    dataSize: x.dataSize
+  });
+});
+
+// Add space key event listener to update chunks
+document.addEventListener('keydown', (event) => {
+  if (event.code === 'Space') {
+    updateChunks();
+  }
+});
+
+function updateChunks() {
+  const chunksToUpdate = [
+    [20, 24, 52]
+  ];
+
+  const { visibleSourcesList } = holder.layerManager.renderLayers[0];
+  // 0: level 5, 1: level 4, 2: level 3, 3: level 2, 4: level 1, 5: level 0
+  const source = visibleSourcesList[5].source;
+      
+  // Process each chunk in chunksToUpdate
+  for (const chunkCoords of chunksToUpdate) {
+    const chunkKey = chunkCoords.join(',');
+    const chunk = source.chunks.get(chunkKey);
+  
+    if (!chunk) {
+      console.log('Chunk not found');
+      continue;
+    } else {
+      console.log('Chunk found:', chunkKey)
+    }
+
+    try {
+      holder.dataContext.rpc.invoke('processChunk', {
+        sourceId: source.rpcId,
+        chunkId: chunkKey,
+        coordinates: chunkCoords,
+      });
+      } catch (error) {
+        console.error('Failed to process chunk:', error);
+      }
+    }
 }
 

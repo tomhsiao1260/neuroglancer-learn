@@ -1359,3 +1359,32 @@ registerPromiseRPC(
     return Promise.resolve({ value: results });
   },
 );
+
+// Register RPC handler for direct chunk processing
+registerRPC('processChunk', function(this: RPC, x: {
+  sourceId: string,
+  chunkId: string,
+  coordinates: number[]
+}) {
+  self.updateChunkAvailable = true;
+
+  const { sourceId, chunkId, coordinates } = x;
+  console.log('Processing chunk:', { sourceId, chunkId, coordinates });
+  
+  // Get the chunk source
+  const source = this.get(sourceId);
+  if (!source) {
+    console.error('Source not found:', sourceId);
+    return;
+  }
+
+  // Get the chunk
+  const chunk = source.chunks.get(chunkId);
+  if (!chunk) {
+    console.error('Chunk not found:', chunkId);
+    return;
+  }
+
+  // Start chunk download
+  startChunkDownload(chunk);
+});

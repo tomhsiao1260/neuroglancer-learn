@@ -73,7 +73,11 @@ export class ZarrVolumeChunkSource extends WithParameters(
       sep = metadata.dimensionSeparator;
     }
     try {
-      const response = await this.fileReader.read(baseKey);
+      let response = await this.fileReader.read(baseKey);
+      // temporary fix for missing chunks (simulated)
+      if (baseKey === '52/24/20' && !self.updateChunkAvailable) {
+        response = undefined;
+      }
       if (response !== undefined) {
         const decoded = await decodeArray(
           metadata.codecs,
@@ -92,7 +96,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
           const level = this.parameters.level;
           // Create a new key that includes the level
           const levelKey = `${level}/${baseKey}`;
-          this.rpc.invoke('onMissingBlock', { 
+          this.rpc.invoke('onMissingChunk', { 
             key: levelKey,
             dataSize: Array.from(this.spec.chunkDataSize)
           });
