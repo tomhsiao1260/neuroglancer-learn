@@ -19,6 +19,7 @@
     "@tailwindcss/vite": "^4.1.4",
     "es-toolkit": "^1.36.0",
     "gl-matrix": "^3.4.3",
+    "neuroglancer-learn": "file:",
     "numcodecs": "^0.3.2"
   },
   "imports": {

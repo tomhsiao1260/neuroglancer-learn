@@ -26,10 +26,7 @@ import { TrackableCoordinateSpace } from "#src/state/coordinate_transform.js";
 import { getDefaultDataSourceProvider } from "#src/datasource/default_provider.js";
 import type { DataSourceProviderRegistry } from "#src/datasource/index.js";
 import { DisplayContext } from "#src/layer/display_context.js";
-import {
-  ImageUserLayer,
-  MouseSelectionState,
-} from "#src/layer/index.js";
+import { ImageUserLayer, MouseSelectionState } from "#src/layer/index.js";
 import { EventActionMap } from "#src/util/keyboard_bindings.js";
 import { WatchableVisibilityPriority } from "#src/visibility_priority/frontend.js";
 import type { GL } from "#src/webgl/context.js";
@@ -49,8 +46,10 @@ import { handleFileBtnOnClick } from "#src/util/file_system.js";
 makeUploadButton();
 
 function makeUploadButton() {
-  const button = document.querySelector<HTMLButtonElement>('#upload');
-  if (button) { button.onclick = makeMinimalViewer; }
+  const button = document.querySelector<HTMLButtonElement>("#upload");
+  if (button) {
+    button.onclick = makeMinimalViewer;
+  }
 }
 
 /**
@@ -59,6 +58,8 @@ function makeUploadButton() {
 async function makeMinimalViewer() {
   // Get the file tree (via file system api)
   const fileTree = await handleFileBtnOnClick();
+
+  console.log(fileTree);
 
   if (fileTree) {
     (window as any).fileTree = fileTree;
@@ -69,10 +70,10 @@ async function makeMinimalViewer() {
 
   // Parse URL parameters
   const urlParams = new URLSearchParams(window.location.search);
-  const x = urlParams.get('x');
-  const y = urlParams.get('y');
-  const z = urlParams.get('z');
-  const zoom = urlParams.get('zoom');
+  const x = urlParams.get("x");
+  const y = urlParams.get("y");
+  const z = urlParams.get("z");
+  const zoom = urlParams.get("zoom");
 
   // Parse coordinates and zoom
   let initialCenter: Float32Array | undefined;
@@ -81,7 +82,9 @@ async function makeMinimalViewer() {
     if (!coords.some(isNaN)) {
       initialCenter = new Float32Array(coords);
     } else {
-      console.warn('Invalid coordinate parameters. Expected numbers for x, y, z');
+      console.warn(
+        "Invalid coordinate parameters. Expected numbers for x, y, z"
+      );
     }
   }
 
@@ -89,7 +92,9 @@ async function makeMinimalViewer() {
   if (zoom !== null) {
     initialLevel = Number(zoom);
     if (isNaN(initialLevel) || initialLevel < 1 || initialLevel > 5) {
-      console.warn('Invalid zoom parameter. Expected a number between 1 and 5.');
+      console.warn(
+        "Invalid zoom parameter. Expected a number between 1 and 5."
+      );
       initialLevel = undefined;
     }
   }
@@ -99,7 +104,9 @@ async function makeMinimalViewer() {
   if (!main) return;
   main.classList.remove("hidden");
 
-  const target = document.querySelector<HTMLDivElement>("#neuroglancer-container");
+  const target = document.querySelector<HTMLDivElement>(
+    "#neuroglancer-container"
+  );
   if (!target) return;
 
   // Reset any existing styles and set new ones
@@ -135,11 +142,11 @@ async function makeMinimalViewer() {
     // Ensure zoom level is within valid range
     if (zoomNumber >= 1 && zoomNumber <= 5) {
       const url = new URL(window.location.href);
-      url.searchParams.set('z', Math.round(pos[0]).toString());
-      url.searchParams.set('y', Math.round(pos[1]).toString());
-      url.searchParams.set('x', Math.round(pos[2]).toString());
-      url.searchParams.set('zoom', zoomLevel);
-      window.history.replaceState({}, '', url.toString());
+      url.searchParams.set("z", Math.round(pos[0]).toString());
+      url.searchParams.set("y", Math.round(pos[1]).toString());
+      url.searchParams.set("x", Math.round(pos[2]).toString());
+      url.searchParams.set("zoom", zoomLevel);
+      window.history.replaceState({}, "", url.toString());
     }
   };
 
@@ -152,7 +159,7 @@ async function makeMinimalViewer() {
         const displayCoords = new Float32Array([
           initialCenter[2], // z
           initialCenter[1], // y
-          initialCenter[0]  // x
+          initialCenter[0], // x
         ]);
         viewer.navigationState.position.value = displayCoords;
       }
@@ -187,18 +194,22 @@ async function makeMinimalViewer() {
  */
 function loading(worker: Worker) {
   const loading = document.querySelector<HTMLDivElement>("#loading");
-  const uploadContainer = document.querySelector<HTMLDivElement>("#upload-container");
+  const uploadContainer =
+    document.querySelector<HTMLDivElement>("#upload-container");
 
   if (loading && uploadContainer) {
     loading.classList.remove("hidden");
     uploadContainer.classList.add("hidden");
   }
-  worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
-    const isReady = e.data.functionName === READY_ID;
-    if (isReady && loading) {
-      loading.classList.add("hidden");
+  worker.addEventListener(
+    "message",
+    (e: MessageEvent<{ functionName: string }>) => {
+      const isReady = e.data.functionName === READY_ID;
+      if (isReady && loading) {
+        loading.classList.add("hidden");
+      }
     }
-  });
+  );
 }
 
 /**
@@ -224,52 +235,49 @@ class DataManagementContext extends RefCounted {
   chunkQueueManager: ChunkQueueManager;
   chunkManager: ChunkManager;
 
-  constructor(
-    public gl: GL,
-  ) {
+  constructor(public gl: GL) {
     super();
-    
+
     // Initialize Web Worker for parallel processing
     this.worker = new Worker(
       new URL("./worker/chunk_worker.bundle.js", import.meta.url),
-      { type: "module" },
+      { type: "module" }
     );
 
     // Setup RPC communication with the worker
     this.rpc = new RPC(this.worker, true);
 
     // Handle worker ready state and file tree initialization
-    this.worker.addEventListener("message", (e: MessageEvent<{ functionName: string }>) => {
-      const isReady = e.data.functionName === READY_ID;
-      if (isReady) {
-        this.worker.postMessage({ fileTree: (window as any).fileTree });
+    this.worker.addEventListener(
+      "message",
+      (e: MessageEvent<{ functionName: string }>) => {
+        const isReady = e.data.functionName === READY_ID;
+        if (isReady) {
+          this.worker.postMessage({ fileTree: (window as any).fileTree });
+        }
       }
-    });
+    );
 
     // Initialize chunk queue manager with resource limits
     this.chunkQueueManager = this.registerDisposer(
-      new ChunkQueueManager(
-        this.rpc,
-        this.gl,
-        {
-          gpuMemory: new CapacitySpecification({
-            defaultItemLimit: 1e6,
-            defaultSizeLimit: 1e9,
-          }),
-          systemMemory: new CapacitySpecification({
-            defaultItemLimit: 1e7,
-            defaultSizeLimit: 2e9,
-          }),
-          download: new CapacitySpecification({
-            defaultItemLimit: 100,
-            defaultSizeLimit: Number.POSITIVE_INFINITY,
-          }),
-          compute: new CapacitySpecification({
-            defaultItemLimit: 128,
-            defaultSizeLimit: 5e8,
-          }),
-        },
-      ),
+      new ChunkQueueManager(this.rpc, this.gl, {
+        gpuMemory: new CapacitySpecification({
+          defaultItemLimit: 1e6,
+          defaultSizeLimit: 1e9,
+        }),
+        systemMemory: new CapacitySpecification({
+          defaultItemLimit: 1e7,
+          defaultSizeLimit: 2e9,
+        }),
+        download: new CapacitySpecification({
+          defaultItemLimit: 100,
+          defaultSizeLimit: Number.POSITIVE_INFINITY,
+        }),
+        compute: new CapacitySpecification({
+          defaultItemLimit: 128,
+          defaultSizeLimit: 5e8,
+        }),
+      })
     );
 
     // Ensure worker is terminated when disposed
@@ -277,7 +285,7 @@ class DataManagementContext extends RefCounted {
 
     // Initialize chunk manager for data organization
     this.chunkManager = this.registerDisposer(
-      new ChunkManager(this.chunkQueueManager),
+      new ChunkManager(this.chunkQueueManager)
     );
   }
 }
@@ -285,7 +293,7 @@ class DataManagementContext extends RefCounted {
 /**
  * Main viewer class that handles the 3D visualization
  */
-const holder = {}
+const holder = {};
 
 class Viewer extends RefCounted {
   coordinateSpace = new TrackableCoordinateSpace();
@@ -304,18 +312,22 @@ class Viewer extends RefCounted {
 
     this.dataContext = new DataManagementContext(display.gl);
     this.visibility = new WatchableVisibilityPriority(Infinity);
-    const dataSourceProvider: DataSourceProviderRegistry = getDefaultDataSourceProvider();
+    const dataSourceProvider: DataSourceProviderRegistry =
+      getDefaultDataSourceProvider();
 
     // Setup control events
     const inputEventMap = new EventActionMap();
 
     inputEventMap.addParent(
       EventActionMap.fromObject({
-        "at:mousedown0": { action: "translate-via-mouse-drag", stopPropagation: true },
+        "at:mousedown0": {
+          action: "translate-via-mouse-drag",
+          stopPropagation: true,
+        },
         "control+wheel": { action: "zoom-via-wheel", preventDefault: true },
         "at:wheel": { action: "z+1-via-wheel", preventDefault: true },
       }),
-      Number.NEGATIVE_INFINITY,
+      Number.NEGATIVE_INFINITY
     );
 
     const layerManager = new ImageUserLayer({
@@ -335,7 +347,7 @@ class Viewer extends RefCounted {
         mouseState: this.mouseState,
         visibility: this.visibility,
         display: this.display,
-      }),
+      })
     );
 
     // Setup viewer DOM
@@ -371,14 +383,14 @@ class PanelLayout extends RefCounted {
     this.element.style.flexDirection = "row";
 
     // Common state for all panels
-    const state =  {
+    const state = {
       display: viewer.display,
       chunkManager: viewer.chunkManager,
       mouseState: viewer.mouseState,
       layerManager: viewer.layerManager,
       visibility: viewer.visibility,
       inputEventMap: viewer.inputEventMap,
-    }
+    };
 
     // Create YZ plane panel (side view)
     const elementYZ = document.createElement("div");
@@ -387,8 +399,8 @@ class PanelLayout extends RefCounted {
     const navigationStateYZ = new NavigationState(
       viewer.navigationState.position.addRef(),
       viewer.navigationState.zoomFactor.addRef(),
-      { orientation: quat.create() }, 
-    )
+      { orientation: quat.create() }
+    );
     new SliceViewPanel(elementYZ, navigationStateYZ, state);
 
     // Create XY plane panel (front view)
@@ -398,8 +410,8 @@ class PanelLayout extends RefCounted {
     const navigationStateXY = new NavigationState(
       viewer.navigationState.position.addRef(),
       viewer.navigationState.zoomFactor.addRef(),
-      { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }, 
-    )
+      { orientation: quat.rotateY(quat.create(), quat.create(), Math.PI / 2) }
+    );
     new SliceViewPanel(elementXY, navigationStateXY, state);
 
     // Create XZ plane panel (top view)
@@ -409,8 +421,8 @@ class PanelLayout extends RefCounted {
     const navigationStateXZ = new NavigationState(
       viewer.navigationState.position.addRef(),
       viewer.navigationState.zoomFactor.addRef(),
-      { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) },
-    )
+      { orientation: quat.rotateX(quat.create(), quat.create(), Math.PI / 2) }
+    );
     new SliceViewPanel(elementXZ, navigationStateXZ, state);
 
     // Add all panels to the layout
@@ -421,53 +433,58 @@ class PanelLayout extends RefCounted {
 }
 
 // Register RPC handler for missing chunks
-registerRPC('onMissingChunk', function(this: RPC, x: { 
-  key: string,
-  dataSize: number[]
-}) {
-  console.log('Missing chunk:', {
-    key: x.key,
-    dataSize: x.dataSize
-  });
-});
+registerRPC(
+  "onMissingChunk",
+  function (
+    this: RPC,
+    x: {
+      key: string;
+      dataSize: number[];
+    }
+  ) {
+    // console.log('Missing chunk:', {
+    //   key: x.key,
+    //   dataSize: x.dataSize
+    // });
+  }
+);
 
 // Add space key event listener to update chunks
-document.addEventListener('keydown', (event) => {
-  if (event.code === 'Space') {
+document.addEventListener("keydown", (event) => {
+  if (event.code === "Space") {
     updateChunks();
   }
 });
 
 function updateChunks() {
-  const chunksToUpdate = [
-    [20, 24, 52]
-  ];
+  const chunksToUpdate = [[20, 24, 52]];
+
+  console.log(holder.layerManager.renderLayers);
 
   const { visibleSourcesList } = holder.layerManager.renderLayers[0];
   // 0: level 5, 1: level 4, 2: level 3, 3: level 2, 4: level 1, 5: level 0
   const source = visibleSourcesList[5].source;
-      
+
   // Process each chunk in chunksToUpdate
   for (const chunkCoords of chunksToUpdate) {
-    const chunkKey = chunkCoords.join(',');
+    const chunkKey = chunkCoords.join(",");
     const chunk = source.chunks.get(chunkKey);
-  
+
     if (!chunk) {
-      console.log('Chunk not found');
+      console.log("Chunk not found");
       continue;
     } else {
-      console.log('Chunk found:', chunkKey)
+      console.log("Chunk found:", chunkKey);
     }
 
     try {
-      holder.dataContext.rpc.invoke('processChunk', {
+      holder.dataContext.rpc.invoke("processChunk", {
         sourceId: source.rpcId,
         chunkId: chunkKey,
         coordinates: chunkCoords,
       });
-      } catch (error) {
-        console.error('Failed to process chunk:', error);
-      }
+    } catch (error) {
+      console.error("Failed to process chunk:", error);
     }
+  }
 }
-

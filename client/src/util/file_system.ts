@@ -1,14 +1,14 @@
 import { cancellableFetchOk, HttpError } from "#src/util/http_request.js";
 
 interface FileSystemDirectoryHandle {
-  kind: 'directory';
+  kind: "directory";
   name: string;
   values(): AsyncIterableIterator<FileSystemHandle>;
   getDirectoryHandle(name: string): Promise<FileSystemDirectoryHandle>;
 }
 
 interface FileSystemHandle {
-  kind: 'file' | 'directory';
+  kind: "file" | "directory";
   name: string;
   getFile(): Promise<File>;
 }
@@ -23,10 +23,11 @@ export const handleFileBtnOnClick = async () => {
   try {
     const directoryHandle = await window.showDirectoryPicker();
     const dir = await readDirectory(directoryHandle);
+    console.log(dir);
     return dir;
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.log('Directory selection was cancelled by user');
+    if (error instanceof Error && error.name === "AbortError") {
+      console.log("Directory selection was cancelled by user");
       return;
     }
     throw error;
@@ -35,26 +36,19 @@ export const handleFileBtnOnClick = async () => {
 
 async function readDirectory(
   directoryHandle: FileSystemDirectoryHandle,
-  path = "",
+  path = ""
 ) {
-  const files: any = {};
+  const url = "http://localhost:3005/api/data/zarr/dir";
 
-  for await (const item of directoryHandle.values()) {
-    if (item.kind === "directory") {
-      const subDirectoryHandle = await directoryHandle.getDirectoryHandle(
-        item.name,
-      );
-      files[item.name] = await readDirectory(
-        subDirectoryHandle,
-        path + item.name + "/",
-      );
-    } else {
-      const file = await item.getFile();
-      files[item.name] = file;
-    }
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+
+    return json;
+  } catch (e) {
+    console.log(e);
   }
-
-  return files;
+  return {};
 }
 
 export interface FileReadResponse {
@@ -66,15 +60,19 @@ export class FileReader {
   constructor(public baseUrl: string) {}
 
   async read(key: string): Promise<FileReadResponse | undefined> {
-    const url = this.baseUrl + key;
+    const url =
+      `http://localhost:3005/api/data/zarr?key=${this.baseUrl.slice(-2, -1)}/` +
+      key;
+
     try {
-      const { data } = await cancellableFetchOk(url, async (response) => ({
-        response,
-        data: await response.arrayBuffer(),
-      }));
+      const res = await fetch(url);
+      const json = await res.json();
+
+      const buffer = new Uint8Array(json.data);
+
       return {
-        data: new Uint8Array(data),
-        totalSize: data.byteLength,
+        data: buffer,
+        totalSize: buffer.byteLength,
       };
     } catch (e) {
       // Only log non-404 errors

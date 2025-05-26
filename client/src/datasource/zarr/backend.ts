@@ -36,6 +36,8 @@ export class ZarrVolumeChunkSource extends WithParameters(
   private fileReader = new FileReader(this.parameters.url + "/");
 
   async download(chunk: VolumeChunk, cancellationToken: CancellationToken) {
+
+    
     chunk.chunkDataSize = this.spec.chunkDataSize;
     const { parameters } = this;
     const { chunkGridPosition } = chunk;
