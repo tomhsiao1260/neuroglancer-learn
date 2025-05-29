@@ -17,9 +17,7 @@
 import type { ChunkManager } from "#src/chunk_manager/frontend.js";
 import { WithParameters } from "#src/chunk_manager/frontend.js";
 import type { CoordinateSpace } from "#src/state/coordinate_transform.js";
-import {
-  makeCoordinateSpace,
-} from "#src/state/coordinate_transform.js";
+import { makeCoordinateSpace } from "#src/state/coordinate_transform.js";
 import type {
   DataSource,
   GetDataSourceOptions,
@@ -60,10 +58,11 @@ import {
 } from "#src/util/json.js";
 import * as matrix from "#src/util/matrix.js";
 import { cancellableFetchOk } from "#src/util/http_request.js";
+import { SERVER_API_ENDPOINT } from "#src/config.js";
 
 class ZarrVolumeChunkSource extends WithParameters(
   VolumeChunkSource,
-  VolumeChunkSourceParameters,
+  VolumeChunkSourceParameters
 ) {}
 
 export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSource {
@@ -83,7 +82,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
 
   constructor(
     chunkManager: Borrowed<ChunkManager>,
-    public multiscale: ZarrMultiscaleInfo,
+    public multiscale: ZarrMultiscaleInfo
   ) {
     super(chunkManager);
     this.volumeType = VolumeType.IMAGE;
@@ -116,7 +115,7 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
           rank + 1,
           rank + 1,
           rank + 1,
-          rank + 1,
+          rank + 1
         );
         return makeDefaultVolumeChunkSpecifications({
           rank,
@@ -138,19 +137,19 @@ export class MultiscaleVolumeChunkSource extends GenericMultiscaleVolumeChunkSou
                   metadata,
                   level: scaleIndex,
                 },
-              },
+              }
             ),
             chunkToMultiscaleTransform: transform,
-          }),
+          })
         );
-      }),
+      })
     );
   }
 }
 
 function getJsonResource(
   chunkManager: ChunkManager,
-  url: string,
+  url: string
 ): Promise<any | undefined> {
   return chunkManager.memoize.getUncounted(
     {
@@ -165,7 +164,7 @@ function getJsonResource(
         if (isNotFoundError(e)) return undefined;
         throw e;
       }
-    },
+    }
   );
 }
 
@@ -183,7 +182,7 @@ interface ZarrMultiscaleInfo {
 
 function getNormalizedDimensionNames(
   names: (string | null)[],
-  zarrVersion: 2 | 3,
+  zarrVersion: 2 | 3
 ): string[] {
   const seenNames = new Set<string>();
   const dimPrefix = zarrVersion === 2 ? "d" : "dim_";
@@ -217,25 +216,31 @@ function getNormalizedDimensionNames(
 
 function getMultiscaleInfoForSingleArray(
   url: string,
-  metadata: ArrayMetadata,
+  metadata: ArrayMetadata
 ): ZarrMultiscaleInfo {
   const names = getNormalizedDimensionNames(
     metadata.dimensionNames,
-    metadata.zarrVersion,
+    metadata.zarrVersion
   );
-  console.log('jwifw')
+  console.log("jwifw");
   const unitsAndScales = metadata.dimensionUnits.map(parseDimensionUnit);
   const modelSpace = makeCoordinateSpace({
     names,
     scales: Float64Array.from(Array.from(unitsAndScales, (x) => x.scale)),
     units: Array.from(unitsAndScales, (x) => x.unit),
-    boundingBoxes: [{
-      box: {
-        lowerBounds: new Float64Array(metadata.rank),
-        upperBounds: Float64Array.from(metadata.shape),
+    boundingBoxes: [
+      {
+        box: {
+          lowerBounds: new Float64Array(metadata.rank),
+          upperBounds: Float64Array.from(metadata.shape),
+        },
+        transform: matrix.createIdentity(
+          Float64Array,
+          metadata.rank,
+          metadata.rank + 1
+        ),
       },
-      transform: matrix.createIdentity(Float64Array, metadata.rank, metadata.rank + 1),
-    }],
+    ],
   });
   const transform = matrix.createIdentity(Float64Array, metadata.rank + 1);
   return {
@@ -253,18 +258,18 @@ function getMultiscaleInfoForSingleArray(
 
 async function resolveOmeMultiscale(
   chunkManager: ChunkManager,
-  multiscale: OmeMultiscaleMetadata,
+  multiscale: OmeMultiscaleMetadata
 ): Promise<ZarrMultiscaleInfo> {
   const scaleZarrMetadata = await Promise.all(
     multiscale.scales.map(async (scale) => {
       const metadata = await getMetadataB(chunkManager, scale.url);
       if (metadata === undefined) {
         throw new Error(
-          `zarr v{zarrVersion} array metadata not found at ${scale.url}`,
+          `zarr v{zarrVersion} array metadata not found at ${scale.url}`
         );
       }
       return metadata as ArrayMetadata;
-    }),
+    })
   );
   const dataType = scaleZarrMetadata[0].dataType;
   const numScales = scaleZarrMetadata.length;
@@ -275,18 +280,18 @@ async function resolveOmeMultiscale(
     if (zarrMetadata.rank !== rank) {
       throw new Error(
         `Expected zarr array at ${JSON.stringify(
-          scale.url,
-        )} to have rank ${rank}, ` + `but received: ${zarrMetadata.rank}`,
+          scale.url
+        )} to have rank ${rank}, ` + `but received: ${zarrMetadata.rank}`
       );
     }
     if (zarrMetadata.dataType !== dataType) {
       throw new Error(
         `Expected zarr array at ${JSON.stringify(
-          scale.url,
+          scale.url
         )} to have data type ` +
           `${DataType[dataType]}, but received: ${
             DataType[zarrMetadata.dataType]
-          }`,
+          }`
       );
     }
   }
@@ -304,7 +309,11 @@ async function resolveOmeMultiscale(
       lowerBounds,
       upperBounds,
     },
-    transform: matrix.createIdentity(Float64Array, lowerBounds.length, lowerBounds.length + 1),
+    transform: matrix.createIdentity(
+      Float64Array,
+      lowerBounds.length,
+      lowerBounds.length + 1
+    ),
   };
 
   const { coordinateSpace } = multiscale;
@@ -331,26 +340,32 @@ async function resolveOmeMultiscale(
 
 async function getMetadataA(
   chunkManager: ChunkManager,
-  url: string,
+  url: string
 ): Promise<Metadata | undefined> {
-  const [zattrs] = await Promise.all([
-    getJsonResource(chunkManager, `${url}/.zattrs`),
-  ]);
+  // const [zattrs] = await Promise.all([
+  //   getJsonResource(chunkManager, `${url}/.zattrs`),
+  // ]);
+
+  const res = await fetch(SERVER_API_ENDPOINT + "/api/data/zarr/config");
+  const config = await res.json();
+
   return {
     zarrVersion: 2,
     nodeType: "group",
-    userAttributes: verifyObject(zattrs),
+    userAttributes: verifyObject(config[".zattrs"]["data"]),
   };
 }
 
 async function getMetadataB(
   chunkManager: ChunkManager,
-  url: string,
+  url: string
 ): Promise<Metadata | undefined> {
-  const [zarray] = await Promise.all([
-    getJsonResource(chunkManager, `${url}/.zarray`),
-  ]);
-  return parseV2Metadata(zarray);
+  // const [zarray] = await Promise.all([
+  //   getJsonResource(chunkManager, `${url}/.zarray`),
+  // ]);
+  const res = await fetch(SERVER_API_ENDPOINT + "/api/data/zarr/config");
+  const config = await res.json();
+  return parseV2Metadata(config[`${url.slice(-1)}/.zarray`]["data"]);
 }
 
 export class ZarrDataSource extends DataSourceProvider {
@@ -371,7 +386,7 @@ export class ZarrDataSource extends DataSourceProvider {
     const dimensionSeparator = verifyOptionalObjectProperty(
       parameters,
       "dimension_separator",
-      parseDimensionSeparator,
+      parseDimensionSeparator
     );
     if (providerUrl.endsWith("/")) {
       providerUrl = providerUrl.substring(0, providerUrl.length - 1);
@@ -402,20 +417,23 @@ export class ZarrDataSource extends DataSourceProvider {
             {
               zarrVersion: metadata.zarrVersion,
               explicitDimensionSeparator: dimensionSeparator,
-            },
+            }
           );
         } else {
           multiscaleInfo = getMultiscaleInfoForSingleArray(url, metadata);
         }
         const volume = new MultiscaleVolumeChunkSource(
           options.chunkManager,
-          multiscaleInfo,
+          multiscaleInfo
         );
         return {
           modelTransform: {
             rank: volume.modelSpace.rank,
             sourceRank: volume.modelSpace.rank,
-            transform: matrix.createIdentity(Float64Array, volume.modelSpace.rank + 1),
+            transform: matrix.createIdentity(
+              Float64Array,
+              volume.modelSpace.rank + 1
+            ),
           },
           subsources: [
             {
@@ -426,7 +444,7 @@ export class ZarrDataSource extends DataSourceProvider {
             },
           ],
         };
-      },
+      }
     );
   }
 }

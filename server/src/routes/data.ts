@@ -83,6 +83,47 @@ async function getDirectoryTree(dirPath: string): Promise<any> {
   return result;
 }
 
+router.get("/zarr/config", async (req: Request, res: Response) => {
+  const settings = await getSettings();
+  const zarrPath = settings.zarr_data_path;
+
+  try {
+    const data = await getZarrConfig(zarrPath);
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to read Zarr config files" });
+  }
+});
+
+async function getZarrConfig(basePath: string): Promise<Record<string, any>> {
+  const targets = [
+    ".zattrs",
+    ".zgroup",
+    "0/.zarray",
+    "1/.zarray",
+    "2/.zarray",
+    "3/.zarray",
+    "4/.zarray",
+    "5/.zarray",
+  ];
+
+  const result: Record<string, any> = {};
+
+  for (const relativePath of targets) {
+    const fullPath = path.join(basePath, relativePath);
+
+    try {
+      const content = await fsp.readFile(fullPath, "utf-8");
+      result[relativePath] = { data: JSON.parse(content) };
+    } catch (err) {
+      result[relativePath] = { error: "File not found or invalid JSON" };
+    }
+  }
+
+  return result;
+}
+
 // http://localhost:3005/api/data/zarr/download?key=0/52/12/13
 router.get("/zarr/download", async (req: Request, res: Response) => {
   const { key } = req.query as { key: string };
@@ -92,17 +133,14 @@ router.get("/zarr/download", async (req: Request, res: Response) => {
   const zarrPath = path.join(settings.zarr_data_path, key);
 
   if (!fs.existsSync(zarrPath)) {
-    vcgrab(
+    await vcgrab(
       "https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/" +
         key,
       settings.zarr_data_path,
       "full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/"
     );
-
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
   }
+  res.json({ success: true });
 });
 
 export default router;

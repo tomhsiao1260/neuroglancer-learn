@@ -1,3 +1,4 @@
+import { SERVER_API_ENDPOINT } from "#src/config.js";
 import { cancellableFetchOk, HttpError } from "#src/util/http_request.js";
 
 interface FileSystemDirectoryHandle {
@@ -21,9 +22,8 @@ declare global {
 
 export const handleFileBtnOnClick = async () => {
   try {
-    const directoryHandle = await window.showDirectoryPicker();
-    const dir = await readDirectory(directoryHandle);
-    console.log(dir);
+    //  const directoryHandle = await window.showDirectoryPicker();
+    const dir = await readDirectory();
     return dir;
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -35,16 +35,15 @@ export const handleFileBtnOnClick = async () => {
 };
 
 async function readDirectory(
-  directoryHandle: FileSystemDirectoryHandle,
+  // directoryHandle: FileSystemDirectoryHandle,
   path = ""
 ) {
-  const url = "http://localhost:3005/api/data/zarr/dir";
+  const url = SERVER_API_ENDPOINT + "/api/data/zarr/dir";
 
   try {
     const res = await fetch(url);
-    const json = await res.json();
-
-    return json;
+    const files = res.json();
+    return files;
   } catch (e) {
     console.log(e);
   }
@@ -61,12 +60,15 @@ export class FileReader {
 
   async read(key: string): Promise<FileReadResponse | undefined> {
     const url =
-      `http://localhost:3005/api/data/zarr?key=${this.baseUrl.slice(-2, -1)}/` +
+      SERVER_API_ENDPOINT +
+      `/api/data/zarr?key=${this.baseUrl.slice(-2, -1)}/` +
       key;
 
     try {
       const res = await fetch(url);
       const json = await res.json();
+
+      if (json.data == null) return undefined;
 
       const buffer = new Uint8Array(json.data);
 
@@ -80,7 +82,7 @@ export class FileReader {
         return undefined;
       }
       console.error(`Failed to read file: ${url}`, e);
-      return undefined;
+      // return undefined;
     }
   }
 }

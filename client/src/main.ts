@@ -39,6 +39,7 @@ import {
 import { SliceViewPanel } from "#src/sliceview/panel.js";
 import { quat } from "#src/util/geom.js";
 import { handleFileBtnOnClick } from "#src/util/file_system.js";
+import { SERVER_API_ENDPOINT } from "./config";
 
 /**
  * Creates and sets up the upload button for .zarr files
@@ -435,16 +436,29 @@ class PanelLayout extends RefCounted {
 // Register RPC handler for missing chunks
 registerRPC(
   "onMissingChunk",
-  function (
+  async function (
     this: RPC,
     x: {
       key: string;
       dataSize: number[];
     }
   ) {
-    // console.log('Missing chunk:', {
+    // download
+    const res = await fetch(
+      SERVER_API_ENDPOINT + "/api/data/zarr/download?key=" + x.key
+    );
+    const data = await res.json();
+    if (data.success) {
+      updateChunks([
+        x.key
+          .split("/")
+          .slice(1)
+          .map((e) => Number(e)),
+      ]);
+    }
+    // console.log("Missing chunk:", {
     //   key: x.key,
-    //   dataSize: x.dataSize
+    //   dataSize: x.dataSize,
     // });
   }
 );
@@ -456,11 +470,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-function updateChunks() {
-  const chunksToUpdate = [[20, 24, 52]];
-
-  console.log(holder.layerManager.renderLayers);
-
+function updateChunks(chunksToUpdate = [[20, 24, 52]]) {
+  console.log(chunksToUpdate)
   const { visibleSourcesList } = holder.layerManager.renderLayers[0];
   // 0: level 5, 1: level 4, 2: level 3, 3: level 2, 4: level 1, 5: level 0
   const source = visibleSourcesList[5].source;
