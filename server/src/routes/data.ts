@@ -140,6 +140,15 @@ router.get("/zarr/download", async (req: Request, res: Response) => {
       "full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/"
     );
   }
+
+  while (true) {
+    if (fs.existsSync(zarrPath)) {
+      break;
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
   res.json({ success: true });
 });
 

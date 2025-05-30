@@ -434,6 +434,8 @@ class PanelLayout extends RefCounted {
 }
 
 // Register RPC handler for missing chunks
+const processedKeys = new Set<string>();
+
 registerRPC(
   "onMissingChunk",
   async function (
@@ -443,18 +445,20 @@ registerRPC(
       dataSize: number[];
     }
   ) {
+    // don't process the same key twice (prevent infinite loop)
+    if (processedKeys.has(x.key)) return;
+    processedKeys.add(x.key);
+
     // download
     const res = await fetch(
       SERVER_API_ENDPOINT + "/api/data/zarr/download?key=" + x.key
     );
     const data = await res.json();
     if (data.success) {
-      updateChunks([
-        x.key
-          .split("/")
-          .slice(1)
-          .map((e) => Number(e)),
-      ]);
+      const indices = x.key.split("/").map((e) => Number(e));
+      const level = indices[0];
+      const chunkCoords = indices.slice(1).reverse();
+      updateChunks(level, [chunkCoords]);
     }
     // console.log("Missing chunk:", {
     //   key: x.key,
@@ -470,11 +474,11 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-function updateChunks(chunksToUpdate = [[20, 24, 52]]) {
-  console.log(chunksToUpdate)
+// chunksToUpdate = [[x1, y1, z1], [x2, y2, z2], ...]
+function updateChunks(level = 0, chunksToUpdate = [[0, 0, 0]]) {
   const { visibleSourcesList } = holder.layerManager.renderLayers[0];
   // 0: level 5, 1: level 4, 2: level 3, 3: level 2, 4: level 1, 5: level 0
-  const source = visibleSourcesList[5].source;
+  const source = visibleSourcesList[5-level].source;
 
   // Process each chunk in chunksToUpdate
   for (const chunkCoords of chunksToUpdate) {

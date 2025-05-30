@@ -1374,9 +1374,6 @@ registerRPC(
       coordinates: number[];
     }
   ) {
-    self.updateChunkAvailable = true;
-
-    
     const { sourceId, chunkId, coordinates } = x;
     console.log("Processing chunk:", { sourceId, chunkId, coordinates });
 

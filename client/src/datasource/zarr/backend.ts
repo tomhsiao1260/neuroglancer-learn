@@ -76,10 +76,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
     }
     try {
       let response = await this.fileReader.read(baseKey);
-      // temporary fix for missing chunks (simulated)
-      if (baseKey === '52/24/20' && !self.updateChunkAvailable) {
-        response = undefined;
-      }
+
       if (response !== undefined) {
         const decoded = await decodeArray(
           metadata.codecs,
