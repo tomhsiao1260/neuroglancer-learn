@@ -483,14 +483,6 @@ function updateChunks(level = 0, chunksToUpdate = [[0, 0, 0]]) {
   // Process each chunk in chunksToUpdate
   for (const chunkCoords of chunksToUpdate) {
     const chunkKey = chunkCoords.join(",");
-    const chunk = source.chunks.get(chunkKey);
-
-    if (!chunk) {
-      console.log("Chunk not found");
-      continue;
-    } else {
-      console.log("Chunk found:", chunkKey);
-    }
 
     try {
       holder.dataContext.rpc.invoke("processChunk", {

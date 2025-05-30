@@ -438,7 +438,7 @@ function startChunkDownload(chunk: Chunk) {
     new CancellationTokenSource());
   const startTime = Date.now();
   chunk.source!.download(chunk, downloadCancellationToken).then(
-    () => {
+    ({ success }: { success: boolean }) => {
       if (chunk.downloadCancellationToken === downloadCancellationToken) {
         chunk.downloadCancellationToken = undefined;
         const endTime = Date.now();
@@ -450,6 +450,11 @@ function startChunkDownload(chunk: Chunk) {
           getChunkDownloadStatisticIndex(ChunkDownloadStatistics.totalChunks)
         ];
         chunk.downloadSucceeded();
+
+        if (!success) {
+          chunk.downloadCancellationToken = undefined;
+          chunk.downloadFailed('missing chunk');
+        }
       }
     },
     (error: any) => {

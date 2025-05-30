@@ -84,6 +84,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
           cancellationToken,
         );
         await postProcessRawData(chunk, cancellationToken, decoded);
+        return { success: true };
       } else {
         // If the block is missing, use fillValue silently
         const fillValue = typeof metadata.fillValue === 'number' ? metadata.fillValue : 0;
@@ -101,6 +102,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
           });
         }
         await postProcessRawData(chunk, cancellationToken, data);
+        return { success: false };
       }
     } catch (e) {
       // If there's an error, we'll use the fillValue
@@ -109,6 +111,7 @@ export class ZarrVolumeChunkSource extends WithParameters(
       const numElements = this.spec.chunkDataSize.reduce((a, b) => a * b, 1);
       const data = new Uint8Array(numElements).fill(fillValue);
       await postProcessRawData(chunk, cancellationToken, data);
+      return { success: false };
     }
   }
 }
