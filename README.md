@@ -2,6 +2,8 @@
 
 This is a trimmed-down version of the original Neuroglancer source code, designed to make its core logic more accessible and easier to understand. This is not a new implementation, but rather a carefully curated subset of the original codebase (~115,510 lines) that has been reduced to about 22,677 lines by retaining only the minimal core functionality needed for the program to run, reducing npm dependencies, and simplifying the build process. This lightweight version serves as a learning demo, allowing developers to grasp the core concepts and architecture of Neuroglancer without being overwhelmed by the complexity of the original implementation.
 
+<img width="1193" alt="img2" src="https://github.com/user-attachments/assets/c69a9014-3250-4d05-8350-abb96975b64c" />
+
 Note: This is not an officially maintained version of Neuroglancer. Neuroglancer and Neuroglancer Mini are two independently developed projects, but this project is based on a reduced version of the original Neuroglancer source code.
 
 # Project Structure
@@ -30,6 +32,8 @@ You can obtain current position information from the following sources:
 
 We believe that the coordination between local and remote data is important, which is why we developed this feature early in the project. In this feature, data is automatically downloaded from the remote server when browsing specific areas and automatically loaded from the local storage when reopening.
 
+Only the specific regions that have been viewed will be downloaded, and network transmission is only required the first time you view an area. This reduces dependency on network transmission. You can even write your own scripts to perform subsequent analysis on these local data.
+
 ## Installation & Startup
 
 1. Make sure you are on the forward branch
@@ -37,26 +41,19 @@ We believe that the coordination between local and remote data is important, whi
 git checkout forward
 ```
 
-2. Install packages in the client folder and start the application
+2. Install packages in the scripts folder and run the app.
 ```bash
-cd client
+cd scripts
 npm install
-npm run dev
+node start.js
 ```
 
-3. Then install packages in the server folder and start the application
-```bash
-cd server
-npm install
-npm run dev
+3. After completion, the application window will open. You can re-select the x, y, z coordinates you want to browse, for example:
+```
+http://localhost:4173/?z=6690&y=3073&x=2572&zoom=5.0
 ```
 
-4. Open your browser and select the x, y, z coordinates you want to browse, for example:
-```
-http://localhost:3000/?z=6690&y=3073&x=2572&zoom=5.0
-```
-
-5. Enter the information:
+4. Enter the information:
 
 - Username & Password: Please first fill out the [Vesuvius Challenge](https://scrollprize.org/data) registration form to obtain the scroll data credentials.
 
@@ -70,7 +67,9 @@ https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_stan
 E:/PATH_TO_YOUR_ZARR_FOLDER/scroll.zarr/
 ```
 
-6. Click the Confirm button
+5. Click the Confirm button
+
+The first time, data will be loaded from the remote server, which may take some time. You can find these data files in the local zarr folder you selected earlier. On subsequent visits to the same coordinates, the data will be loaded directly from your local storage.
 
 # Neuroglancer Mini (backward branch)
 
@@ -91,14 +90,17 @@ To address these challenges, I created Neuroglancer Mini by:
 
 This project serves as a learning resource for developers who want to understand Neuroglancer's fundamental codebase.
 
-## How to Run
+## Installation & Startup
 
 This lightweight demo uses the File System Access API to load data directly from your local filesystem. This API is currently not supported in some browsers. Please use Chrome or Edge to run this project.
 
-<img width="974" alt="img1" src="https://github.com/user-attachments/assets/42784acc-39cc-4585-948b-0b2d4a971ee1" />
+<img width="1193" alt="img1" src="https://github.com/user-attachments/assets/42784acc-39cc-4585-948b-0b2d4a971ee1" />
 
 ### Option 1: Local Development
-1. Clone the repository
+1. Make sure you are on the backward branch
+```bash
+git checkout backward
+```
 2. Install dependencies:
    ```bash
    npm install

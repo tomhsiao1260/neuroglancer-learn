@@ -21,13 +21,13 @@ async function main() {
   const serverDir = path.join(__dirname, "..", "server");
 
   try {
-    // 先幫 server 執行 npm install
+    // First run npm install for server
     await runCommand("npm", ["install"], serverDir);
     await runCommand("npm", ["install"], clientDir);
-    // 再 build client
+    // Then build client
     await runCommand("npm", ["run", "build"], clientDir);
 
-    // preview client 與 server dev 同時跑
+    // Run preview client and server dev simultaneously
     const preview = spawn("npm", ["run", "preview"], {
       cwd: clientDir,
       shell: true,
@@ -40,12 +40,12 @@ async function main() {
       stdio: "inherit",
     });
 
-    // 3秒後開瀏覽器
+    // Open browser after 3 seconds
     setTimeout(() => {
       open("http://localhost:4173/");
     }, 3000);
 
-    // 等 server 和 preview 結束（通常不會結束）
+    // Wait for server and preview to end (usually won't end)
     await Promise.all([
       new Promise((resolve) => preview.on("close", resolve)),
       new Promise((resolve) => server.on("close", resolve)),
