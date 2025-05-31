@@ -16,6 +16,8 @@ If you want to understand the core workings of the Neuroglancer code, you can ju
 
 You can use our additional features in the forward branch. Below we will introduce the related features and how to start the application.
 
+<img width="1193" alt="screen-shot" src="https://github.com/user-attachments/assets/6bcf96ff-48be-4b89-a791-43e8c669027e" />
+
 ## Features
 
 - [Coordinate Information](#coordinate-information)
@@ -33,6 +35,8 @@ You can obtain current position information from the following sources:
 We believe that the coordination between local and remote data is important, which is why we developed this feature early in the project. In this feature, data is automatically downloaded from the remote server when browsing specific areas and automatically loaded from the local storage when reopening.
 
 Only the specific regions that have been viewed will be downloaded, and network transmission is only required the first time you view an area. This reduces dependency on network transmission. You can even write your own scripts to perform subsequent analysis on these local data.
+
+<img width="1193" alt="zarr-file" src="https://github.com/user-attachments/assets/61ce75de-bed4-49a3-bc44-c7b144888bcd" />
 
 ## Installation & Startup
 
