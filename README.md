@@ -1,3 +1,9 @@
+# Neuroglancer Mini
+
+This is a trimmed-down version of the original Neuroglancer source code, designed to make its core logic more accessible and easier to understand. This is not a new implementation, but rather a carefully curated subset of the original codebase (~115,510 lines) that has been reduced to about 22,677 lines by retaining only the minimal core functionality needed for the program to run, reducing npm dependencies, and simplifying the build process. This lightweight version serves as a learning demo, allowing developers to grasp the core concepts and architecture of Neuroglancer without being overwhelmed by the complexity of the original implementation.
+
+Note: This is not an officially maintained version of Neuroglancer. Neuroglancer and Neuroglancer Mini are two independently developed projects, but this project is based on a reduced version of the original Neuroglancer source code.
+
 # Project Structure
 
 This project has two main branches: the [forward branch](https://github.com/tomhsiao1260/neuroglancer-mini/tree/forward) and the [backward branch](https://github.com/tomhsiao1260/neuroglancer-mini/tree/backward). The backward branch is a simplified version of Neuroglancer, while the forward branch builds additional features on top of this simplified version.
@@ -6,42 +12,84 @@ If you want to understand the core workings of the Neuroglancer code, you can ju
 
 # Neuroglancer Mini (forward branch)
 
+You can use our additional features in the forward branch. Below we will introduce the related features and how to start the application.
+
 ## Features
 
 - [Coordinate Information](#coordinate-information)
 - [Local First Design](#local-first-design)
 
-## Coordinate Information
+### Coordinate Information
 
 You can obtain current position information from the following sources:
 
 - Bottom-right panel: Displays the center coordinates of the current view (in white) and the 3D coordinates of the mouse cursor (in yellow)
 - URL query parameters: Includes x, y, z coordinates and zoom value
 
-## Local First Design
+### Local First Design
 
 We believe that the coordination between local and remote data is important, which is why we developed this feature early in the project. In this feature, data is automatically downloaded from the remote server when browsing specific areas and automatically loaded from the local storage when reopening.
 
+## Installation & Startup
+
+1. Make sure you are on the forward branch
+```bash
+git checkout forward
+```
+
+2. Install packages in the client folder and start the application
+```bash
+cd client
+npm install
+npm run dev
+```
+
+3. Then install packages in the server folder and start the application
+```bash
+cd server
+npm install
+npm run dev
+```
+
+4. Open your browser and select the x, y, z coordinates you want to browse, for example:
+```
+http://localhost:3000/?z=6690&y=3073&x=2572&zoom=5.0
+```
+
+5. Enter the information:
+
+- Username & Password: Please first fill out the [Vesuvius Challenge](https://scrollprize.org/data) registration form to obtain the scroll data credentials.
+
+- Scroll URL: The remote scroll's zarr folder path, for example:
+```
+https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/
+```
+
+- Zarr Data Path: The local path to store zarr data. For first-time use, you can create an empty folder with the `.zarr` extension and select that path, for example:
+```
+E:/PATH_TO_YOUR_ZARR_FOLDER/scroll.zarr/
+```
+
+6. Click the Confirm button
+
 # Neuroglancer Mini (backward branch)
 
-This is a trimmed-down version of the original Neuroglancer source code, designed to make its core logic more accessible and easier to understand. This is not a new implementation, but rather a carefully curated subset of the original codebase (~115,510 lines) that has been reduced to about 22,677 lines by retaining only the minimal core functionality needed for the program to run, reducing npm dependencies, and simplifying the build process. This lightweight version serves as a learning demo, allowing developers to grasp the core concepts and architecture of Neuroglancer without being overwhelmed by the complexity of the original implementation.
+The reduced architecture in the backward branch. We will continue to update the documentation as we gain more understanding of the project.
 
 ## Motivation
 
-When I first attempted to understand Neuroglancer's source code, I encountered significant challenges. The project's complexity, coupled with numerous abstract layers and features that weren't immediately relevant to my learning goals, made it difficult to grasp the core functionality.
-
-I was particularly interested in understanding:
+When I first tried to understand Neuroglancer's source code, I found it challenging due to its complexity and numerous abstract layers. I was particularly interested in understanding:
 - How data is loaded in batches
 - The rendering mechanisms
 - Core visualization principles
 
-To address these challenges, I created Neuroglancer Mini by carefully selecting and preserving the essential parts of the original codebase:
-1. Retaining only the essential code needed for basic functionality
-2. Removing complex interface and data transfer logic
-3. Streamlining the build process
-4. Focusing on core visualization features
+To address these challenges, I created Neuroglancer Mini by:
+- Keeping only essential code for basic functionality
+- Removing complex interface and data transfer logic
+- Simplifying the build process
+- Focusing on core visualization features
 
-This project serves as a learning resource, providing a more approachable entry point for developers who want to understand the fundamental concepts behind Neuroglancer's powerful visualization capabilities. This is a derivative work based on the original Neuroglancer codebase, and the core implementation is derived from the original authors' work.
+This project serves as a learning resource for developers who want to understand Neuroglancer's fundamental codebase.
 
 ## How to Run
 
