@@ -23,7 +23,7 @@ async function main() {
   try {
     // 先幫 server 執行 npm install
     await runCommand("npm", ["install"], serverDir);
-
+    await runCommand("npm", ["install"], clientDir);
     // 再 build client
     await runCommand("npm", ["run", "build"], clientDir);
 
