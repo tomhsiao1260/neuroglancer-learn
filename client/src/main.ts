@@ -478,7 +478,7 @@ document.addEventListener("keydown", (event) => {
 function updateChunks(level = 0, chunksToUpdate = [[0, 0, 0]]) {
   const { visibleSourcesList } = holder.layerManager.renderLayers[0];
   // 0: level 5, 1: level 4, 2: level 3, 3: level 2, 4: level 1, 5: level 0
-  const source = visibleSourcesList[5-level].source;
+  const source = visibleSourcesList[5 - level].source;
 
   // Process each chunk in chunksToUpdate
   for (const chunkCoords of chunksToUpdate) {
@@ -495,3 +495,12 @@ function updateChunks(level = 0, chunksToUpdate = [[0, 0, 0]]) {
     }
   }
 }
+
+window.addEventListener("load", async () => {
+  const url = SERVER_API_ENDPOINT + "/api/settings";
+  const res = await fetch(url);
+  const settings = await res.json();
+  document.querySelector("#account-input").value = settings.username || "";
+  document.querySelector("#password-input").value = settings.password || "";
+  document.querySelector("#zarr-path-input").value = settings.zarr_data_path || "";
+});

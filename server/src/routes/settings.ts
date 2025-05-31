@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import fsp from "fs/promises";
 import { getSettings } from "../utils/settings";
+import { dialog } from "electron";
 
 const router = Router();
 
@@ -10,7 +11,7 @@ const SETTING_PATH = path.join(process.cwd(), "db", "json", "settings.json");
 // Read settings
 router.get("/", async (req: Request, res: Response) => {
   try {
-   const settings = await getSettings()
+    const settings = await getSettings();
     res.json(settings);
   } catch (error) {
     res.status(500).json({ error: "Failed to read settings file" });

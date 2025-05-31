@@ -22,6 +22,19 @@ declare global {
 
 export const handleFileBtnOnClick = async () => {
   try {
+    const username = document.querySelector("#account-input")?.value;
+    const password = document.querySelector("#password-input")?.value;
+    const zarr_data_path = document.querySelector("#zarr-path-input")?.value;
+
+    const url = SERVER_API_ENDPOINT + "/api/settings";
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ zarr_data_path, username, password }),
+    });
+
     //  const directoryHandle = await window.showDirectoryPicker();
     const dir = await readDirectory();
     return dir;

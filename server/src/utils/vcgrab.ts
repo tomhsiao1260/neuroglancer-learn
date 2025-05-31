@@ -1,9 +1,7 @@
 import * as cheerio from "cheerio";
 import fs from "fs/promises";
 import path from "path";
-
-const USERNAME = "registeredusers";
-const PASSWORD = "only";
+import { getSettings } from "./settings";
 
 export default async function vcgrab(
   url: string,
@@ -19,6 +17,11 @@ async function fetchNode(
   downloadRelative: string
 ) {
   sleep(100);
+
+  const settings = await getSettings();
+
+  const USERNAME = settings.username || "";
+  const PASSWORD = settings.password || "";
 
   var headers = new Headers({
     Authorization: `Basic ${btoa(USERNAME + ":" + PASSWORD)}`,
