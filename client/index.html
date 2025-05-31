@@ -45,38 +45,42 @@
         <div class="space-y-4 w-full max-w-sm -mt-10">
           <!-- account -->
           <input
-          id="account-input"
+            id="account-input"
             type="password"
             placeholder="Username"
             class="w-full h-10 px-3 border border-gray-700 rounded-md focus:outline-none"
           />
-        
+
           <!-- password -->
           <input
-          id="password-input"
+            id="password-input"
             type="password"
             placeholder="Password"
             class="w-full h-10 px-3 border border-gray-700 rounded-md focus:outline-none"
           />
-        
-        
           <input
-          id="zarr-path-input"
+            id="scroll-url-input"
+            type="text"
+            placeholder="Scroll URL"
+            class="w-full h-10 px-3 border border-gray-700 rounded-md focus:outline-none"
+          />
+
+          <input
+            id="zarr-path-input"
             type="text"
             placeholder="Zarr Data Path"
             class="w-full h-10 px-3 border border-gray-700 rounded-md focus:outline-none"
           />
-        
-         
+
           <button
-          id="upload"
-          class="w-full h-9 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white px-4 py-2 rounded flex items-center justify-center space-x-2 text-sm shadow hover:shadow-md active:shadow-sm transition-all"
-        >
-          <i class="fas fa-upload text-base"></i>
-          <span>Confirm</span>
-        </button>
+            id="upload"
+            class="w-full h-9 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white px-4 py-2 rounded flex items-center justify-center space-x-2 text-sm shadow hover:shadow-md active:shadow-sm transition-all"
+          >
+            <i class="fas fa-upload text-base"></i>
+            <span>Confirm</span>
+          </button>
         </div>
-        
+
         <div class="mt-6 text-sm text-gray-400 opacity-90">
           <p>Supported formats: OME-Zarr, Zarr</p>
         </div>

@@ -2,7 +2,6 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import fsp from "fs/promises";
 import { getSettings } from "../utils/settings";
-import { dialog } from "electron";
 
 const router = Router();
 
@@ -27,7 +26,7 @@ router.post("/", async (req: Request, res: Response) => {
       JSON.stringify(newSettings, null, 2),
       "utf-8"
     );
-    res.json({ message: "Settings updated successfully" });
+    res.json({ message: "Settings updated successfully", success: true });
   } catch (error) {
     console.error("Error writing settings file:", error);
     res.status(500).json({ error: "Failed to write settings file" });

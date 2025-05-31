@@ -25,6 +25,7 @@ export const handleFileBtnOnClick = async () => {
     const username = document.querySelector("#account-input")?.value;
     const password = document.querySelector("#password-input")?.value;
     const zarr_data_path = document.querySelector("#zarr-path-input")?.value;
+    const scroll_url_path = document.querySelector("#scroll-url-input")?.value;
 
     const url = SERVER_API_ENDPOINT + "/api/settings";
     const res = await fetch(url, {
@@ -32,12 +33,24 @@ export const handleFileBtnOnClick = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ zarr_data_path, username, password }),
+      body: JSON.stringify({
+        zarr_data_path,
+        username,
+        password,
+        scroll_url_path,
+      }),
     });
-
-    //  const directoryHandle = await window.showDirectoryPicker();
-    const dir = await readDirectory();
-    return dir;
+    const json = await res.json();
+    if (json.success) {
+      const url = SERVER_API_ENDPOINT + "/api/data/zarr/download/init";
+      const res = await fetch(url);
+      const json = await res.json();
+      //  const directoryHandle = await window.showDirectoryPicker();
+      if (json.success) {
+        const dir = await readDirectory();
+        return dir;
+      }
+    }
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "AbortError") {
       console.log("Directory selection was cancelled by user");

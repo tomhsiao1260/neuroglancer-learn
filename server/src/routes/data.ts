@@ -45,7 +45,7 @@ router.get("/zarr", async (req: Request, res: Response) => {
   const zarrPath = path.join(settings.zarr_data_path, key);
 
   if (fs.existsSync(zarrPath)) {
-    const data = await fsp.readFile(path.join(settings.zarr_data_path, key));
+    const data = await fsp.readFile(zarrPath);
     res.json(data);
   } else {
     res.json({});
@@ -128,26 +128,80 @@ async function getZarrConfig(basePath: string): Promise<Record<string, any>> {
 router.get("/zarr/download", async (req: Request, res: Response) => {
   const { key } = req.query as { key: string };
 
+  if (!key) {
+    res.status(400).json({ error: "Missing key parameter" });
+  }
+
   const settings = await getSettings();
 
   const zarrPath = path.join(settings.zarr_data_path, key);
 
-  if (!fs.existsSync(zarrPath)) {
-    await vcgrab(
-      "https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/" +
-        key,
-      settings.zarr_data_path,
-      "full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/"
-    );
+  // 檢查是否存在且是檔案
+  let exists = false;
+  if (fs.existsSync(zarrPath)) {
+    const stat = fs.statSync(zarrPath);
+    exists = stat.isFile(); // 避免資料夾誤判
   }
 
-  while (true) {
-    if (fs.existsSync(zarrPath)) {
-      break;
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  if (!exists) {
+    const baseUrl =
+      settings.scroll_url_path ??
+      "https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/";
+
+    const relative = settings.scroll_url_path
+      ? settings.scroll_url_path.replace("https://dl.ash2txt.org/", "")
+      : "full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/";
+
+    await vcgrab(baseUrl + key, settings.zarr_data_path, relative);
+
+    // 等檔案下載完成
+    while (true) {
+      if (fs.existsSync(zarrPath) && fs.statSync(zarrPath).isFile()) {
+        break;
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
   }
+
+  res.json({ success: true });
+});
+
+router.get("/zarr/download/init", async (req: Request, res: Response) => {
+  const targets = [
+    ".zattrs",
+    ".zgroup",
+    "0/.zarray",
+    "1/.zarray",
+    "2/.zarray",
+    "3/.zarray",
+    "4/.zarray",
+    "5/.zarray",
+  ];
+
+  const settings = await getSettings();
+
+  const scrollUrlBase =
+    settings.scroll_url_path ||
+    "https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/";
+
+  const scrollRelativeBase =
+    settings.scroll_url_path?.replace("https://dl.ash2txt.org/", "") ||
+    "full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/";
+
+  await Promise.all(
+    targets.map(async (relativePath) => {
+      const configPath = path.join(settings.zarr_data_path, relativePath);
+
+      if (!fs.existsSync(configPath)) {
+        await vcgrab(
+          scrollUrlBase + relativePath,
+          settings.zarr_data_path,
+          scrollRelativeBase
+        );
+      }
+    })
+  );
 
   res.json({ success: true });
 });

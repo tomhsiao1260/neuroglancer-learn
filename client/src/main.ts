@@ -502,5 +502,9 @@ window.addEventListener("load", async () => {
   const settings = await res.json();
   document.querySelector("#account-input").value = settings.username || "";
   document.querySelector("#password-input").value = settings.password || "";
-  document.querySelector("#zarr-path-input").value = settings.zarr_data_path || "";
+  document.querySelector("#zarr-path-input").value =
+    settings.zarr_data_path || "";
+  document.querySelector("#scroll-url-input").value =
+    settings.scroll_url ||
+    "https://dl.ash2txt.org/full-scrolls/Scroll1/PHercParis4.volpkg/volumes_zarr_standardized/54keV_7.91um_Scroll1A.zarr/";
 });
